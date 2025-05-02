@@ -11,10 +11,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# This section is crucial for client-side routing with Next.js
+# The redirects for Next.js App Router shouldn't point to index.html
+# Instead let the Next.js plugin handle the routing
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/next_serverless"
   status = 200
-
-# Next.js handles its own routing

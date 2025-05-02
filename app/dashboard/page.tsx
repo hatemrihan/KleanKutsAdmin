@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Nav from "../sections/nav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Progress } from "../components/ui/progress";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { config } from '@/config';
+import { config } from '../../config';
 
 interface DashboardStats {
   totalOrders: number;

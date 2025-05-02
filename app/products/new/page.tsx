@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import axios, { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import Nav from '@/app/sections/nav';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '../../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
+import Nav from '../../sections/nav';
 
 
 // Lazy load components with ssr disabled to prevent hydration mismatch

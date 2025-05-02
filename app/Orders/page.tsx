@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react';
 import axios, { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
 import Nav from '../sections/nav';
-import { Input } from '@/components/ui/input';
-import { config } from '@/config';
+import { Input } from '../components/ui/input';
+import { config } from '../../config';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "../components/ui/alert-dialog";
 
 interface Product {
   _id: string;

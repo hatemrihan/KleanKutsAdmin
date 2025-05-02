@@ -86,6 +86,8 @@ interface Order {
   phone?: string;
   address?: string;
   total?: number;
+  apartmentNumber?: string;
+  city?: string;
 }
 
 interface ApiErrorResponse {
@@ -613,9 +615,25 @@ export default function Dashboard() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               #{order._id.substring(0, 8)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{order.customer.name}</div>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{order.customer.name}</div>
                               <div className="text-sm text-gray-500">{order.customer.email}</div>
+                              <div className="text-sm text-gray-500">{order.customer.phone || order.phone || 'No phone'}</div>
+                              <div className="text-sm text-gray-500">{order.customer.address || order.address || 'No address'}</div>
+                              {order.apartmentNumber && <div className="text-sm text-gray-500">Apt: {order.apartmentNumber}</div>}
+                              {order.city && <div className="text-sm text-gray-500">City: {order.city}</div>}
+                              {order.products?.length > 0 && (
+                                <div className="text-sm text-gray-500 mt-2">
+                                  <strong>Products:</strong>
+                                  <ul className="list-disc pl-5">
+                                    {order.products.map((item) => (
+                                      <li key={item.productId || Math.random()}>
+                                        {item.name} - {item.size || 'N/A'} x {item.quantity} - L.E {item.price.toFixed(2)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               L.E {order.totalAmount.toLocaleString()}

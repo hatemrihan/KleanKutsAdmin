@@ -24,8 +24,6 @@ const nextConfig = {
   },
   // These options help with routing on Netlify
   trailingSlash: true,
-  output: 'standalone',
-  poweredByHeader: false,
 }
 
 module.exports = nextConfig

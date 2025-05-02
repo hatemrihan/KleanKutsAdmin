@@ -8,8 +8,6 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { config } from '../../config';
-import OrdersPage from '../orders/page';
-import Settings from '../settings/page';
 
 interface DashboardStats {
   totalOrders: number;
@@ -270,14 +268,200 @@ export default function Dashboard() {
           {activeSection === 'orders' && (
             <div className="w-full">
               <h1 className="text-2xl font-bold text-gray-900 mb-6">Orders</h1>
-              <OrdersPage />
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <input
+                      type="search"
+                      placeholder="Search orders..."
+                      className="w-full sm:w-[300px] px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                    <select 
+                      className="w-full sm:w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #12345
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">John Doe</div>
+                            <div className="text-sm text-gray-500">john@example.com</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            L.E 1,200.00
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              Pending
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button className="text-red-600 hover:text-red-900">Delete</button>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #12346
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">Jane Smith</div>
+                            <div className="text-sm text-gray-500">jane@example.com</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            L.E 950.00
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Delivered
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button className="text-red-600 hover:text-red-900">Delete</button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-4 text-center text-gray-500">
+                    <p>Visit the Dashboard page for more options once we fix the routing issue.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           
           {activeSection === 'settings' && (
             <div className="w-full">
               <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-              <Settings />
+              <div className="bg-white rounded-lg shadow">
+                <div className="p-6 space-y-8">
+                  {/* Profile Settings Card */}
+                  <div className="border rounded-lg p-4">
+                    <h2 className="text-lg font-medium mb-4">Profile Settings</h2>
+                    <form className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                            First Name
+                          </label>
+                          <input
+                            id="firstName"
+                            name="firstName"
+                            type="text"
+                            placeholder="Enter your first name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                            Last Name
+                          </label>
+                          <input
+                            id="lastName"
+                            name="lastName"
+                            type="text"
+                            placeholder="Enter your last name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email
+                        </label>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="Enter your email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
+                      >
+                        Save Changes
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Password Settings Card */}
+                  <div className="border rounded-lg p-4">
+                    <h2 className="text-lg font-medium mb-4">OTP Password Settings</h2>
+                    <form className="space-y-4">
+                      <div>
+                        <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          Current OTP Password
+                        </label>
+                        <input
+                          id="currentPassword"
+                          name="currentPassword"
+                          type="password"
+                          placeholder="Enter current OTP password"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          New OTP Password
+                        </label>
+                        <input
+                          id="newPassword"
+                          name="newPassword"
+                          type="password"
+                          placeholder="Enter new OTP password"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirm New OTP Password
+                        </label>
+                        <input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type="password"
+                          placeholder="Confirm new OTP password"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
+                      >
+                        Update Password
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="mt-4 text-center text-gray-500">
+                    <p>Visit the Settings page for full functionality once we fix the routing issue.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

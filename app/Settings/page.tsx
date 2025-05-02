@@ -1,17 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import axios, { AxiosError } from 'axios';
 import Nav from '../sections/nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import { useRouter } from 'next/navigation';
 
 interface ApiErrorResponse {
   error: string;
 }
 
 export default function Settings() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -23,6 +25,19 @@ export default function Settings() {
     newPassword: '',
     confirmPassword: ''
   });
+
+  // Add this useEffect to ensure the page works in deployed environment
+  useEffect(() => {
+    // Force client-side rendering for this page
+    const path = window.location.pathname;
+    if (path === '/settings' && typeof window !== 'undefined') {
+      // Check authentication
+      const isAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
+      if (!isAuthenticated) {
+        router.push('/');
+      }
+    }
+  }, [router]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

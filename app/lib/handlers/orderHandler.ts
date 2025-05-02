@@ -1,4 +1,4 @@
-import { mongooseConnect } from "@/app/lib/mongoose";
+import { mongooseConnect } from "../mongoose";
 import { Order } from "../../models/order";
 
 interface OrderData {

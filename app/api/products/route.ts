@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Product } from "../../models/product";
 import { mongooseConnect } from "../../lib/mongoose";
-import clientPromise from '@/app/lib/mongodb';
+import clientPromise from '../../lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 interface ProductQuery {

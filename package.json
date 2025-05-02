@@ -6,7 +6,8 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "netlify-build": "npm install typescript @types/node --no-save && next build"
     },
     "dependencies": {
         "@auth/mongodb-adapter": "^3.9.0",

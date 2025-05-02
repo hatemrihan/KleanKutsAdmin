@@ -11,4 +11,10 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# This section is crucial for client-side routing with Next.js
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 # Next.js handles its own routing

@@ -1,19 +1,41 @@
 [build]
   command = "npm install --legacy-peer-deps && npm run build"
   publish = ".next"
+  ignore = "git diff --quiet HEAD^ HEAD ."
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_VERSION = "18"
   NPM_VERSION = "9"
   NODE_ENV = "production"
+  NEXT_USE_NETLIFY_EDGE = "true"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# No plugins - override the default Next.js plugin
 
-# The magic solution for Next.js App Router on Netlify
-# This ensures that deep links work correctly
+# This is the critical part for deep links to work
+[[redirects]]
+  from = "/_next/static/*"
+  to = "/_next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/data/*"
+  to = "/_next/data/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/*"
+  to = "/_next/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = true

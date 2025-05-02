@@ -6,6 +6,12 @@ if (!process.env.MONGODB_URL) {
 }
 
 const uri = process.env.MONGODB_URL
+
+// Validate MongoDB URI format
+if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+  throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://')
+}
+
 const options = {
   serverApi: {
     version: ServerApiVersion.v1,

@@ -7,7 +7,8 @@
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
-        "netlify-build": "npm install typescript @types/node --no-save && next build"
+        "netlify-build": "npm install typescript @types/node --no-save && next build",
+        "export-static-routes": "node scripts/export-routes.js"
     },
     "dependencies": {
         "@auth/mongodb-adapter": "^3.9.0",

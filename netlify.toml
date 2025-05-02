@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --legacy-peer-deps && npm run netlify-build"
+  command = "npm install --legacy-peer-deps && npm run build"
   publish = ".next"
 
 [build.environment]
@@ -10,3 +10,10 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# The magic solution for Next.js App Router on Netlify
+# This ensures that deep links work correctly
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

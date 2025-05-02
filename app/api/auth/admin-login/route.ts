@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { Admin } from '@/app/models/admin';
+import { Admin } from '../../../models/admin';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {

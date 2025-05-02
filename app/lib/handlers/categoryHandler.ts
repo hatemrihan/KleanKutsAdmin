@@ -1,5 +1,5 @@
 import { mongooseConnect } from "../mongoose";
-import { Category } from "@/app/models/category";
+import { Category } from "../../models/category";
 import { CategoryRequest } from "../../types/category";
 import { NextResponse } from "next/server";
 

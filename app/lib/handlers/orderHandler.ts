@@ -1,5 +1,5 @@
 import { mongooseConnect } from "@/app/lib/mongoose";
-import { Order } from "@/app/models/order";
+import { Order } from "../../models/order";
 
 interface OrderData {
   firstName: string;

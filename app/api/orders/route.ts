@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { getOrders, updateOrderStatus, deleteOrder } from "@/app/lib/handlers/orderHandler";
-import { mongooseConnect } from "@/app/lib/mongoose";
-import { Order } from "@/app/models/order";
+import { connectToDatabase } from '../../../lib/mongoose';
+import { Order } from "../../models/order";
 
 interface OrderProduct {
   productId: string;
@@ -104,7 +104,7 @@ async function validateApiKey(request: Request) {
 // Get all orders
 export async function GET(request: Request) {
   try {
-    await mongooseConnect();
+    await connectToDatabase();
     const orders = await getOrders();
     return corsHeaders(NextResponse.json(orders), request);
   } catch (error) {
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       contentType: request.headers.get('content-type')
     });
 
-    await mongooseConnect();
+    await connectToDatabase();
     
     // Parse request body
     const orderData = await request.json();

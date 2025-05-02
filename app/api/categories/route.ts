@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../lib/mongoose';
 import { getCategory, createCategory, updateCategory, deleteCategory } from '../../lib/handlers/categoryHandler';
-import { Category } from '@/app/models/category';
+import { Category } from '../../models/category';
 
 interface CategoryQuery {
   deleted?: { $ne: boolean };

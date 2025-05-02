@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongoose';
-import { Admin } from '@/app/models/admin';
+import { Admin } from '../../../models/admin';
 
 export async function PUT(req: Request) {
   try {

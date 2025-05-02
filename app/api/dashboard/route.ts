@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { mongooseConnect } from '@/app/lib/mongoose';
-import { Order } from '@/app/models/order';
-import { Product } from '@/app/models/product';
-import { Category } from '@/app/models/category';
+import { Order } from '../../models/order';
+import { Product } from '../../models/product';
+import { Category } from '../../models/category';
 
 export async function GET() {
   try {

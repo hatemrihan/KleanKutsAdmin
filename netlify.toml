@@ -11,5 +11,15 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Let the Next.js plugin handle all the routing
-# No need for explicit redirects
+# Specific redirects for problematic routes
+[[redirects]]
+  from = "/orders/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/settings/*"
+  to = "/index.html"
+  status = 200
+  force = true

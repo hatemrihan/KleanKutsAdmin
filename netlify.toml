@@ -10,28 +10,3 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Handle both with and without trailing slashes for these routes
-[[redirects]]
-  from = "/orders"
-  to = "/index.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/orders/"
-  to = "/index.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/settings"
-  to = "/index.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/settings/"
-  to = "/index.html"
-  status = 200
-  force = true

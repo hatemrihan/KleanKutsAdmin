@@ -1,4 +1,4 @@
-import clientPromise from '@/app/lib/mongodb';
+import clientPromise from './mongodb';
 import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from "next-auth/providers/google";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
 import dynamic from 'next/dynamic';
 
-const UploadSection = dynamic(() => import('@/app/sections/UploadSection'), { ssr: false });
-const CategorySection = dynamic(() => import('@/app/sections/CategorySection'), { ssr: false });
+const UploadSection = dynamic(() => import('../../sections/UploadSection'), { ssr: false });
+const CategorySection = dynamic(() => import('../../sections/CategorySection'), { ssr: false });
 
 interface Product {
   _id: string;

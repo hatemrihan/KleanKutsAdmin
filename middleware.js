@@ -10,8 +10,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - orders or settings (our problem routes)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|orders|settings).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }

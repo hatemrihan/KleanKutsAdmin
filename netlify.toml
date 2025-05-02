@@ -34,20 +34,22 @@
   to = "/api/:splat"
   status = 200
 
-# Add specific routes for orders and settings before the catch-all
+# Add specific routes for orders and settings pages (add these before the catch-all)
 [[redirects]]
   from = "/orders"
-  to = "/orders/index.html"
+  to = "/orders"
   status = 200
+  force = false
 
 [[redirects]]
   from = "/settings"
-  to = "/settings/index.html"
+  to = "/settings"
   status = 200
+  force = false
 
-# Make SPA routing work by redirecting all paths to index.html
+# Make SPA routing work by redirecting all paths to index.html, but with lower priority
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = true
+  force = false

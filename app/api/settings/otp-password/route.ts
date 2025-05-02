@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongoose';
+import { mongooseConnect } from '../../../lib/mongoose';
 import { Admin } from '../../../models/admin';
 
 export async function PUT(req: Request) {
   try {
-    await connectToDatabase();
+    await mongooseConnect();
     
     const { currentPassword, newPassword } = await req.json();
 

@@ -205,39 +205,25 @@ export default function Dashboard() {
               <CardTitle>Recent Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {stats.recentOrders.map((order) => (
-                      <tr key={order._id}>
-                        <td className="px-4 py-3 text-sm text-gray-900">{order._id}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{order.customerName}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{order.total?.toLocaleString() || '0'} L.E</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                {stats.recentOrders.map((order) => (
+                  <div key={order._id} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                    <div>
+                      <p className="font-medium">{order.customerName}</p>
+                      <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{order.total.toLocaleString()} L.E</p>
+                      <p className={`text-sm ${
+                        order.status === 'completed' ? 'text-green-500' :
+                        order.status === 'pending' ? 'text-yellow-500' :
+                        'text-red-500'
+                      }`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

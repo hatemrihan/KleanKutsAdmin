@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { mongooseConnect } from '@/app/lib/mongoose';
+import { mongooseConnect } from '../../lib/mongoose';
 import { Order } from '../../models/order';
 import { Product } from '../../models/product';
 import { Category } from '../../models/category';

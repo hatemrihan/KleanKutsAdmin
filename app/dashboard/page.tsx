@@ -5,10 +5,32 @@ import Nav from "../sections/nav";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
 import { config } from '../../config';
+import { Input } from '../components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
+import { Card as CardUI, CardContent as CardContentUI, CardDescription, CardHeader as CardHeaderUI, CardTitle as CardTitleUI } from "../components/ui/card";
 
+// Common interfaces
 interface DashboardStats {
   totalOrders: number;
   totalSales: number;
@@ -25,14 +47,95 @@ interface DashboardStats {
   }>;
 }
 
+// Orders interfaces
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+}
+
+interface OrderProduct {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  image?: string;
+}
+
+interface Customer {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+interface Order {
+  _id: string;
+  customer: Customer;
+  products: OrderProduct[];
+  totalAmount: number;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  notes?: string;
+  orderDate: string;
+  createdAt: string;
+  updatedAt: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  total?: number;
+}
+
+interface ApiErrorResponse {
+  error: string;
+}
+
+const statusColors: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  processing: 'bg-blue-100 text-blue-800',
+  shipped: 'bg-purple-100 text-purple-800',
+  delivered: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+};
+
 export default function Dashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
+  
+  // Orders state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Settings state
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    email: ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   useEffect(() => {
     fetchDashboardStats();
   }, []);
+  
+  // Fetch orders when orders tab is selected
+  useEffect(() => {
+    if (activeSection === 'orders') {
+      fetchOrders();
+    }
+  }, [activeSection]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -44,6 +147,206 @@ export default function Dashboard() {
       toast.error('Failed to load dashboard data');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Orders functionality
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      setOrdersError('');
+      const response = await axios.get(`${config.apiUrl}/orders`);
+      console.log('Raw orders data:', response.data);
+      
+      // Transform and validate orders data
+      const validatedOrders = response.data.map((order: any) => {
+        // Skip invalid orders
+        if (!order) return null;
+
+        // Create a default customer object
+        const defaultCustomer = {
+          name: 'Unknown Customer',
+          email: 'No email provided',
+          phone: 'No phone provided',
+          address: 'No address provided'
+        };
+
+        // Handle old order format (with firstName/lastName)
+        if (!order.customer && (order.firstName || order.lastName)) {
+          return {
+            ...order,
+            customer: {
+              name: `${order.firstName || ''} ${order.lastName || ''}`.trim() || defaultCustomer.name,
+              email: order.email || defaultCustomer.email,
+              phone: order.phone || defaultCustomer.phone,
+              address: order.address || defaultCustomer.address
+            },
+            totalAmount: Number(order.total || order.totalAmount) || 0,
+            products: Array.isArray(order.products) ? order.products.map((product: any) => ({
+              productId: product.id || product.productId || '',
+              name: product.name || 'Unknown Product',
+              price: Number(product.price) || 0,
+              quantity: Number(product.quantity) || 1,
+              size: product.size || 'N/A',
+              image: product.image || ''
+            })) : []
+          };
+        }
+
+        // Ensure customer object exists and has all required fields
+        const customer = order.customer || defaultCustomer;
+        order.customer = {
+          name: customer.name || defaultCustomer.name,
+          email: customer.email || defaultCustomer.email,
+          phone: customer.phone || defaultCustomer.phone,
+          address: customer.address || defaultCustomer.address
+        };
+
+        // Ensure products array is properly formatted
+        order.products = Array.isArray(order.products) ? order.products.map((product: any) => ({
+          productId: product.productId || product.id || '',
+          name: product.name || 'Unknown Product',
+          price: Number(product.price) || 0,
+          quantity: Number(product.quantity) || 1,
+          size: product.size || 'N/A',
+          image: product.image || ''
+        })) : [];
+
+        // Ensure totalAmount is a number
+        order.totalAmount = Number(order.totalAmount || order.total) || 0;
+
+        return order;
+      }).filter(Boolean); // Remove any null orders
+      
+      console.log('Validated orders:', validatedOrders);
+      setOrders(validatedOrders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      setOrdersError(axiosError.response?.data?.error || 'Failed to load orders');
+      toast.error('Failed to load orders');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      const response = await axios.put(`${config.apiUrl}/orders`, {
+        _id: orderId,
+        status: newStatus,
+      });
+      
+      if (response.data) {
+        const updatedOrders = orders.map(order => 
+          order._id === orderId ? { ...order, status: newStatus } : order
+        );
+        setOrders(updatedOrders);
+        toast.success('Order status updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Failed to update order status');
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await axios.delete(`${config.apiUrl}/orders?id=${orderId}`);
+      setOrders(orders.filter(order => order._id !== orderId));
+      toast.success('Order deleted successfully');
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Failed to delete order');
+    }
+  };
+
+  // Filter orders based on search query and status
+  const filteredOrders = orders.filter(order => {
+    if (!order) return false;
+
+    const matchesSearch = searchQuery === '' || (
+      order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order._id.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Settings functionality
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSettingsLoading(true);
+      // Add your profile update logic here
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      console.error('Error updating profile:', error);
+      toast.error(axiosError.response?.data?.error || 'Failed to update profile');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error('All password fields are required');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New password and confirm password do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      setSettingsLoading(true);
+      const response = await axios.put('/api/settings/otp-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+
+      if (response.data.success) {
+        toast.success('OTP password updated successfully');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      }
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      console.error('Error updating OTP password:', error);
+      toast.error(axiosError.response?.data?.error || 'Failed to update OTP password');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -271,21 +574,26 @@ export default function Dashboard() {
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <input
+                    <Input
                       type="search"
                       placeholder="Search orders..."
                       className="w-full sm:w-[300px] px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                    <select 
-                      className="w-full sm:w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
+                      <SelectTrigger className="w-full sm:w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -300,46 +608,33 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        <tr>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            #12345
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">John Doe</div>
-                            <div className="text-sm text-gray-500">john@example.com</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            L.E 1,200.00
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                              Pending
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-red-600 hover:text-red-900">Delete</button>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            #12346
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">Jane Smith</div>
-                            <div className="text-sm text-gray-500">jane@example.com</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            L.E 950.00
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              Delivered
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-red-600 hover:text-red-900">Delete</button>
-                          </td>
-                        </tr>
+                        {filteredOrders.map((order) => (
+                          <tr key={order._id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              #{order._id.substring(0, 8)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{order.customer.name}</div>
+                              <div className="text-sm text-gray-500">{order.customer.email}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              L.E {order.totalAmount.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[order.status]}`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <button 
+                                className="text-red-600 hover:text-red-900"
+                                onClick={() => deleteOrder(order._id)}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -360,30 +655,34 @@ export default function Dashboard() {
                   {/* Profile Settings Card */}
                   <div className="border rounded-lg p-4">
                     <h2 className="text-lg font-medium mb-4">Profile Settings</h2>
-                    <form className="space-y-4">
+                    <form onSubmit={handleProfileSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
                             First Name
                           </label>
-                          <input
+                          <Input
                             id="firstName"
                             name="firstName"
                             type="text"
                             placeholder="Enter your first name"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                            value={profileData.firstName}
+                            onChange={handleProfileChange}
                           />
                         </div>
                         <div>
                           <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
                             Last Name
                           </label>
-                          <input
+                          <Input
                             id="lastName"
                             name="lastName"
                             type="text"
                             placeholder="Enter your last name"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                            value={profileData.lastName}
+                            onChange={handleProfileChange}
                           />
                         </div>
                       </div>
@@ -391,19 +690,22 @@ export default function Dashboard() {
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                           Email
                         </label>
-                        <input
+                        <Input
                           id="email"
                           name="email"
                           type="email"
                           placeholder="Enter your email"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          value={profileData.email}
+                          onChange={handleProfileChange}
                         />
                       </div>
                       <button 
                         type="submit"
                         className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
+                        disabled={settingsLoading}
                       >
-                        Save Changes
+                        {settingsLoading ? 'Saving...' : 'Save Changes'}
                       </button>
                     </form>
                   </div>
@@ -411,48 +713,55 @@ export default function Dashboard() {
                   {/* Password Settings Card */}
                   <div className="border rounded-lg p-4">
                     <h2 className="text-lg font-medium mb-4">OTP Password Settings</h2>
-                    <form className="space-y-4">
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
                       <div>
                         <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
                           Current OTP Password
                         </label>
-                        <input
+                        <Input
                           id="currentPassword"
                           name="currentPassword"
                           type="password"
                           placeholder="Enter current OTP password"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
                         />
                       </div>
                       <div>
                         <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
                           New OTP Password
                         </label>
-                        <input
+                        <Input
                           id="newPassword"
                           name="newPassword"
                           type="password"
                           placeholder="Enter new OTP password"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
                         />
                       </div>
                       <div>
                         <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                           Confirm New OTP Password
                         </label>
-                        <input
+                        <Input
                           id="confirmPassword"
                           name="confirmPassword"
                           type="password"
                           placeholder="Confirm new OTP password"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
                         />
                       </div>
                       <button 
                         type="submit"
                         className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
+                        disabled={settingsLoading}
                       >
-                        Update Password
+                        {settingsLoading ? 'Updating...' : 'Update OTP Password'}
                       </button>
                     </form>
                   </div>

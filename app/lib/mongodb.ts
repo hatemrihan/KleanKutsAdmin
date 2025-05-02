@@ -1,16 +1,17 @@
 // This approach is taken from https://github.com/vercel/next.js/tree/canary/examples/with-mongodb
 import { MongoClient, ServerApiVersion } from "mongodb"
 
-if (!process.env.MONGODB_URL) {
-  throw new Error('Invalid/Missing environment variable: "MONGODB_URL"')
+// Get MongoDB URI from environment variables
+const uri = process.env.MONGODB_URL || process.env.MONGODB_URI
+
+if (!uri) {
+  throw new Error('Invalid/Missing environment variable: "MONGODB_URL" or "MONGODB_URI"')
 }
 
-const uri = process.env.MONGODB_URL
-
-// Validate MongoDB URI format
-if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
-  throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://')
-}
+// Ensure URI starts with mongodb:// or mongodb+srv://
+const formattedUri = uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://') 
+  ? uri 
+  : `mongodb+srv://${uri}`
 
 const options = {
   serverApi: {
@@ -31,13 +32,13 @@ if (process.env.NODE_ENV === "development") {
   }
 
   if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options)
+    client = new MongoClient(formattedUri, options)
     globalWithMongo._mongoClientPromise = client.connect()
   }
   clientPromise = globalWithMongo._mongoClientPromise
 } else {
   // In production mode, it's best to not use a global variable.
-  client = new MongoClient(uri, options)
+  client = new MongoClient(formattedUri, options)
   clientPromise = client.connect()
 }
 

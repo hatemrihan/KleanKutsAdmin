@@ -517,17 +517,7 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-500">#{order._id.substring(0, 8)}</p>
                   </div>
                   <div className="ml-auto font-medium">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      order.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'processing'
-                        ? 'bg-blue-100 text-blue-800'
-                        : order.status === 'shipped'
-                        ? 'bg-purple-100 text-purple-800'
-                        : order.status === 'delivered'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status]}`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                   </div>
@@ -639,9 +629,25 @@ export default function Dashboard() {
                               L.E {order.totalAmount.toLocaleString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[order.status]}`}>
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                              </span>
+                              <Select
+                                value={order.status}
+                                onValueChange={(value: Order['status']) => updateOrderStatus(order._id, value)}
+                              >
+                                <SelectTrigger className="w-[130px]">
+                                  <SelectValue>
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status]}`}>
+                                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                    </span>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="processing">Processing</SelectItem>
+                                  <SelectItem value="shipped">Shipped</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <button 

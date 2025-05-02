@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orders - KleanKuts Admin</title>
+  <script>
+    // Force the URL to be /orders as a full page load
+    if (window.location.pathname.includes('/orders') && window.location.pathname.endsWith('.html')) {
+      window.location.href = '/orders';
+    } else if (window.location.pathname.includes('/orders/index.html')) {
+      window.location.href = '/orders';
+    }
+  </script>
+  <!-- Add meta refresh as a fallback -->
+  <meta http-equiv="refresh" content="0;url=/orders" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f9fafb;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    h1 {
+      margin-bottom: 1rem;
+      color: #1f2937;
+    }
+    p {
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Loading Orders Page</h1>
+    <p>Loading Orders page...</p>
+  </div>
+</body>
+</html>

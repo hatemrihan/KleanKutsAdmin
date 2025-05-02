@@ -22,8 +22,8 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  // These options help with routing on Netlify
-  trailingSlash: true,
+  // Set trailingSlash to false to ensure consistent URL handling
+  trailingSlash: false,
 }
 
 module.exports = nextConfig

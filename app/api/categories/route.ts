@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCategory, updateCategory, deleteCategory, createCategory } from '@/app/lib/handlers/categoryHandler';
-import { connectToDatabase } from '@/lib/mongoose';
+import { connectToDatabase } from '../../../lib/mongoose';
+import { handleGetCategories, handlePostCategory } from '../../../lib/handlers/categoryHandler';
 import { Category } from '@/app/models/category';
 
 interface CategoryQuery {

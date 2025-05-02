@@ -132,6 +132,13 @@ export default function Dashboard() {
     fetchDashboardStats();
   }, []);
   
+  // Refresh dashboard stats when switching back to dashboard section
+  useEffect(() => {
+    if (activeSection === 'dashboard') {
+      fetchDashboardStats();
+    }
+  }, [activeSection]);
+  
   // Fetch orders when orders tab is selected
   useEffect(() => {
     if (activeSection === 'orders') {
@@ -245,6 +252,8 @@ export default function Dashboard() {
         );
         setOrders(updatedOrders);
         toast.success('Order status updated successfully');
+        // Refresh dashboard stats after updating an order
+        fetchDashboardStats();
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -257,6 +266,8 @@ export default function Dashboard() {
       await axios.delete(`${config.apiUrl}/orders?id=${orderId}`);
       setOrders(orders.filter(order => order._id !== orderId));
       toast.success('Order deleted successfully');
+      // Refresh dashboard stats after deleting an order
+      fetchDashboardStats();
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Failed to delete order');

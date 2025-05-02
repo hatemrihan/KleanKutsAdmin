@@ -31,7 +31,7 @@ export async function GET() {
       .reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0);
 
     // Set monthly goal (you can adjust this value)
-    const monthlyGoal = 10000; // Example: 10,000 L.E monthly goal
+    const monthlyGoal = 100000; // Updated to 100,000 L.E monthly goal
 
     // Get monthly data for the last 6 months
     const monthlyData = await Order.aggregate([

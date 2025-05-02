@@ -34,6 +34,18 @@
   to = "/api/:splat"
   status = 200
 
+# Add specific routes for orders and settings before the catch-all
+[[redirects]]
+  from = "/orders"
+  to = "/orders/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/settings"
+  to = "/settings/index.html"
+  status = 200
+
+# Make SPA routing work by redirecting all paths to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { Card } from "./card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { ReactElement } from "react";
 

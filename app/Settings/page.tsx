@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import axios, { AxiosError } from 'axios';
 import Nav from '../sections/nav';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
 
 interface ApiErrorResponse {
   error: string;

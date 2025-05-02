@@ -15,17 +15,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "../components/ui/alert-dialog";
+import { Button } from "../components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../components/ui/select";
 import Nav from '../sections/nav';
-import { Input } from '@/components/ui/input';
+import { Input } from '../components/ui/input';
 
 interface Product {
   _id: string;

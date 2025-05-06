@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { logStock, logApi } from '@/app/utils/logger';
+import { StockEventType, emitStockUpdate } from '@/app/utils/websocketServer';
 
 interface StockInfo {
   originalStock: number;
@@ -18,11 +20,22 @@ interface StockValidationItem {
 
 export async function POST(req: NextRequest) {
   try {
+    const startTime = Date.now();
+    const requestId = Math.random().toString(36).substring(2, 15);
+    const afterOrder = req.nextUrl.searchParams.get('afterOrder') === 'true';
+    
     // Parse request body
     const body = await req.json();
     const items: StockValidationItem[] = body.items;
     
+    logApi(`Stock validation request ${requestId} started`, 'info', { 
+      itemCount: items?.length || 0,
+      afterOrder,
+      url: req.url
+    });
+    
     if (!items || !Array.isArray(items) || items.length === 0) {
+      logApi(`Stock validation request ${requestId} failed: Invalid items array`, 'error');
       return NextResponse.json(
         { error: 'Invalid request: items array is required' },
         { status: 400 }
@@ -115,18 +128,51 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Return validation results
-    return NextResponse.json({
+    // Calculate processing time
+    const processingTime = Date.now() - startTime;
+    
+    // Prepare response with timestamp information
+    const response = NextResponse.json({
       valid: invalidItems.length === 0,
       validItems,
-      invalidItems: invalidItems.length > 0 ? invalidItems : undefined
+      invalidItems: invalidItems.length > 0 ? invalidItems : undefined,
+      timestamp: new Date().toISOString(),
+      processingTime,
+      requestId,
+      afterOrder
     });
     
+    // Set cache control headers
+    response.headers.set('Cache-Control', afterOrder ? 'no-cache, no-store, must-revalidate' : 'max-age=10');
+    response.headers.set('Pragma', afterOrder ? 'no-cache' : 'cache');
+    response.headers.set('X-Stock-Timestamp', Date.now().toString());
+    
+    // Log the results
+    logStock(`Stock validation request ${requestId} completed`, 'info', {
+      valid: invalidItems.length === 0,
+      validItemsCount: validItems.length,
+      invalidItemsCount: invalidItems.length,
+      processingTime,
+      afterOrder
+    });
+    
+    return response;
+    
   } catch (error: any) {
-    console.error('Stock validation API error:', error);
-    return NextResponse.json(
-      { error: `Server error: ${error.message}` },
+    logApi('Stock validation API error:', 'error', error);
+    
+    const response = NextResponse.json(
+      { 
+        error: `Server error: ${error.message}`,
+        timestamp: new Date().toISOString() 
+      },
       { status: 500 }
     );
+    
+    // Set cache control headers for errors
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    
+    return response;
   }
 }

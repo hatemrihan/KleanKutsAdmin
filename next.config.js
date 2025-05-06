@@ -8,6 +8,7 @@ const nextConfig = {
       'images.unsplash.com',
       'plus.unsplash.com',
       'avatars.githubusercontent.com',
+      'localhost',
     ],
   },
   typescript: {

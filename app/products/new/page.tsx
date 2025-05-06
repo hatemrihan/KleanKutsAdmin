@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import Nav from '../../sections/nav';
-
+import dynamic from 'next/dynamic';
 
 // Lazy load components with ssr disabled to prevent hydration mismatch
+const UploadSection = dynamic(() => import('../../sections/UploadSection'), { ssr: false });
 
 
 interface Category {
@@ -52,7 +53,7 @@ export default function NewProduct() {
     color: '',
     stock: 0,
     discount: 0,
-    discountType: '',
+    discountType: 'percentage', // Default to percentage
     selectedSizes: [],
     gender: '',
     selectedImages: []
@@ -62,7 +63,8 @@ export default function NewProduct() {
     name: '',
     description: ''
   });
-  const [imageUrl, setImageUrl] = useState('');
+  // Remove imageUrl state and related handler
+  // const [imageUrl, setImageUrl] = useState('');
 
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const genders = ['Men', 'Woman', 'Unisex'];
@@ -89,10 +91,16 @@ export default function NewProduct() {
     }
   };
 
-  const handleInputChange = (field: string, value: string | string[]) => {
+  const handleInputChange = (field: keyof ProductFormData, value: string | number | string[]) => {
+    // Convert numeric fields
+    const numericFields: (keyof ProductFormData)[] = ['price', 'stock', 'discount'];
+    const processedValue = numericFields.includes(field) && typeof value === 'string'
+      ? Number(value) || 0 // Convert to number, default to 0 if conversion fails
+      : value;
+
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }));
   };
 
@@ -189,15 +197,7 @@ export default function NewProduct() {
     }
   };
 
-  const handleAddImageUrl = () => {
-    if (imageUrl.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        selectedImages: [...prev.selectedImages, imageUrl.trim()]
-      }));
-      setImageUrl('');
-    }
-  };
+  // Removed handleAddImageUrl function
 
   const handleRemoveImage = (index: number) => {
     setFormData(prev => ({
@@ -335,6 +335,8 @@ export default function NewProduct() {
                         onChange={(e) => handleInputChange('price', e.target.value)}
                         placeholder="47.55"
                         className="w-full p-3 bg-gray-50 rounded-lg"
+                        min="0.01"
+                        step="0.01"
                       />
                     </div>
 
@@ -346,6 +348,7 @@ export default function NewProduct() {
                         onChange={(e) => handleInputChange('stock', e.target.value)}
                         placeholder="77"
                         className="w-full p-3 bg-gray-50 rounded-lg"
+                        min="0"
                       />
                     </div>
 
@@ -355,74 +358,44 @@ export default function NewProduct() {
                         type="number"
                         value={formData.discount}
                         onChange={(e) => handleInputChange('discount', e.target.value)}
-                        placeholder="10%"
+                        placeholder="10"
                         className="w-full p-3 bg-gray-50 rounded-lg"
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">Discount Type</label>
-                      <input
-                        type="text"
+                      <Select
                         value={formData.discountType}
-                        onChange={(e) => handleInputChange('discountType', e.target.value)}
-                        className="w-full p-3 bg-gray-50 rounded-lg"
-                      />
+                        onValueChange={(value) => handleInputChange('discountType', value)}
+                      >
+                        <SelectTrigger className="w-full p-3 bg-gray-50 rounded-lg">
+                          <SelectValue placeholder="Select discount type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage (%)</SelectItem>
+                          <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="w-full lg:w-96 space-y-8">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Product Images</h3>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Input
-                      type="url"
-                      placeholder="Enter image URL"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button 
-                      type="button"
-                      onClick={handleAddImageUrl}
-                      variant="secondary"
-                      className="w-full sm:w-auto"
-                    >
-                      Add Image
-                    </Button>
-                  </div>
+                {/* Replace manual image input with UploadSection */}
+                <UploadSection
+                  selectedImages={formData.selectedImages}
+                  setSelectedImages={(updater) => {
+                    // The updater can be a function or a new array
+                    const newImages = typeof updater === 'function'
+                      ? updater(formData.selectedImages)
+                      : updater;
+                    handleInputChange('selectedImages', newImages);
+                  }}
+                />
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-4">
-                    {formData.selectedImages.map((url, index) => (
-                      <div key={index} className="relative group aspect-square">
-                        <div className="w-full h-full relative">
-                          <Image
-                            src={url}
-                            alt={`Product image ${index + 1}`}
-                            fill
-                            className="object-cover rounded-lg"
-                            onError={() => {
-                              toast.error(`Failed to load image: ${url}`);
-                              handleRemoveImage(index);
-                            }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {formData.selectedImages.length === 0 && (
-                    <p className="text-gray-500 text-sm">No images added yet. Please add at least one image.</p>
-                  )}
-                </div>
+                {/* Old image input section removed */}
 
                 <div>
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">

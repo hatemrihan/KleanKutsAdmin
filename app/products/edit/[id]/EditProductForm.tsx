@@ -7,6 +7,17 @@ import dynamic from 'next/dynamic';
 
 const UploadSection = dynamic(() => import('../../../sections/UploadSection'), { ssr: false });
 const CategorySection = dynamic(() => import('../../../sections/CategorySection'), { ssr: false });
+const SizeVariantsManager = dynamic(() => import('../../../components/SizeVariantsManager'), { ssr: false });
+
+interface ColorVariant {
+  color: string;
+  stock: number;
+}
+
+interface SizeVariant {
+  size: string;
+  colorVariants: ColorVariant[];
+}
 
 interface Product {
   _id: string;
@@ -20,6 +31,7 @@ interface Product {
   discountType: string;
   selectedImages: string[];
   categories: string[];
+  sizeVariants?: SizeVariant[];
 }
 
 interface Category {
@@ -44,7 +56,8 @@ const initialFormData: Product = {
   discount: 0,
   discountType: 'percentage',
   selectedImages: [],
-  categories: []
+  categories: [],
+  sizeVariants: []
 };
 
 export default function EditProductForm({ id }: EditProductFormProps) {
@@ -145,13 +158,21 @@ export default function EditProductForm({ id }: EditProductFormProps) {
       return false;
     }
     
-    if (formData.stock < 0) {
-      setError('Stock cannot be negative');
+    // Check for size variants instead of selectedSizes
+    if (!formData.sizeVariants?.length) {
+      setError('At least one size variant must be added');
       return false;
     }
     
-    if (!formData.selectedSizes?.length) {
-      setError('At least one size must be selected');
+    // Check that at least one size variant has at least one color variant
+    const hasSizeWithColors = formData.sizeVariants.some(sv => sv.colorVariants && sv.colorVariants.length > 0);
+    if (!hasSizeWithColors) {
+      setError('At least one size must have color and stock information');
+      return false;
+    }
+    
+    if (!formData.selectedImages?.length) {
+      setError('At least one product image is required');
       return false;
     }
     
@@ -229,119 +250,203 @@ export default function EditProductForm({ id }: EditProductFormProps) {
   }
 
   return (
-    <form onSubmit={e => e.preventDefault()} className="max-w-4xl mx-auto p-4">
-      <h1 className="text-green-600 mb-2 text-xl">Edit Product</h1>
+    <form onSubmit={e => e.preventDefault()} className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
+      <h1 className="text-green-600 mb-6 text-2xl font-bold border-b pb-3">Edit Product</h1>
       
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6">
           {success}
         </div>
       )}
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
           {error}
         </div>
       )}
 
-      <label>Product name</label>
-      <input
-        type="text"
-        placeholder="product name"
-        value={formData.title}
-        onChange={ev => handleInputChange('title', ev.target.value)}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Product name</label>
+        <input
+          type="text"
+          placeholder="Product name"
+          value={formData.title}
+          onChange={ev => handleInputChange('title', ev.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
       
-      <label>Description</label>
-      <textarea
-        placeholder="description"
-        value={formData.description}
-        onChange={ev => handleInputChange('description', ev.target.value)}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea
+          placeholder="Product description"
+          value={formData.description}
+          onChange={ev => handleInputChange('description', ev.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 min-h-[100px]"
+        />
+      </div>
       
-      <label>Price (in USD)</label>
-      <input
-        type="number"
-        placeholder="price"
-        value={formData.price}
-        onChange={ev => handleInputChange('price', Number(ev.target.value))}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Price (in EGY L.E.)</label>
+          <input
+            type="number"
+            placeholder="Price"
+            value={formData.price}
+            onChange={ev => handleInputChange('price', Number(ev.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
 
-      <label>Stock</label>
-      <input
-        type="number"
-        placeholder="stock"
-        value={formData.stock}
-        onChange={ev => handleInputChange('stock', Number(ev.target.value))}
-      />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+          <input
+            type="number"
+            placeholder="Total stock"
+            value={formData.stock}
+            onChange={ev => handleInputChange('stock', Number(ev.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
 
-      <label>Discount</label>
-      <input
-        type="number"
-        placeholder="discount"
-        value={formData.discount}
-        onChange={ev => handleInputChange('discount', Number(ev.target.value))}
-      />
-
-      <label>Discount Type</label>
-      <select
-        value={formData.discountType}
-        onChange={ev => handleSelectChange(ev, 'discountType')}
-      >
-        <option value="percentage">Percentage</option>
-        <option value="fixed">Fixed Amount</option>
-      </select>
-
-      <label>Gender</label>
-      <select
-        value={formData.gender}
-        onChange={ev => handleSelectChange(ev, 'gender')}
-      >
-        {genders.map(gender => (
-          <option key={gender} value={gender}>
-            {gender}
-          </option>
-        ))}
-      </select>
-
-      <label>Sizes</label>
-      <div className="flex gap-2 flex-wrap">
-        {sizes.map(size => (
-          <label key={size} className="flex items-center gap-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.selectedSizes.includes(size)}
-              onChange={() => handleSizeChange(size)}
-            />
-            {size}
-          </label>
-        ))}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
+          <input
+            type="number"
+            placeholder="Discount amount"
+            value={formData.discount}
+            onChange={ev => handleInputChange('discount', Number(ev.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
       </div>
 
-      <CategorySection
-        categories={categories}
-        selectedCategories={formData.categories}
-        onCategoryChange={categories => handleInputChange('categories', categories)}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+          <select
+            value={formData.discountType}
+            onChange={ev => handleSelectChange(ev, 'discountType')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 bg-white"
+          >
+            <option value="percentage">Percentage</option>
+            <option value="fixed">Fixed Amount</option>
+          </select>
+        </div>
 
-      <UploadSection
-        selectedImages={formData.selectedImages}
-        setSelectedImages={images => handleInputChange('selectedImages', images)}
-      />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+          <select
+            value={formData.gender}
+            onChange={ev => handleSelectChange(ev, 'gender')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 bg-white"
+          >
+            {genders.map(gender => (
+              <option key={gender} value={gender}>
+                {gender}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      <div className="flex gap-2">
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Sizes</label>
+        <div className="flex gap-2 flex-wrap p-3 border border-gray-300 rounded-md bg-gray-50">
+          {sizes.map(size => (
+            <label key={size} className="flex items-center gap-1 cursor-pointer bg-white px-3 py-1 rounded-md border border-gray-200 hover:border-green-500">
+              <input
+                type="checkbox"
+                checked={formData.selectedSizes.includes(size)}
+                onChange={() => handleSizeChange(size)}
+                className="text-green-500 focus:ring-green-500"
+              />
+              {size}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Size & Color Variants</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Add specific sizes with their color variants and stock quantities for precise inventory management.
+        </p>
+        <SizeVariantsManager
+          sizeVariants={formData.sizeVariants || []}
+          onChange={(sizeVariants) => setFormData(prev => ({ ...prev, sizeVariants }))}
+          availableSizes={sizes}
+        />
+      </div>
+
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Categories</h2>
+        <CategorySection
+          categories={categories}
+          selectedCategories={formData.categories}
+          onCategoryChange={categories => handleInputChange('categories', categories)}
+        />
+      </div>
+
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Product Images</h2>
+        <UploadSection
+          selectedImages={formData.selectedImages}
+          setSelectedImages={images => handleInputChange('selectedImages', images)}
+        />
+      </div>
+
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Inventory Summary</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {formData.sizeVariants && formData.sizeVariants.length > 0 ? (
+                formData.sizeVariants.flatMap(sizeVariant => 
+                  sizeVariant.colorVariants.map((colorVariant, colorIndex) => (
+                    <tr key={`${sizeVariant.size}-${colorVariant.color}`}>
+                      {colorIndex === 0 ? (
+                        <td rowSpan={sizeVariant.colorVariants.length} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-gray-50">
+                          {sizeVariant.size}
+                        </td>
+                      ) : null}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.color}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.stock} units</td>
+                    </tr>
+                  ))
+                )
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center italic">
+                    No size or color variants added yet. Add them in the Size & Color Variants section above.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-4 mt-8">
         <button
           onClick={() => router.push('/products')}
-          className="btn-default"
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
           Cancel
         </button>
         <button
           onClick={updateProduct}
-          className="btn-primary"
+          className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
           disabled={isSaving}
         >
-          {isSaving ? 'Saving...' : 'Save'}
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </form>

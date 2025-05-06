@@ -1,13 +1,26 @@
 import mongoose, { Schema } from 'mongoose';
 
+// Schema for color variants within a size
+const colorVariantSchema = new Schema({
+    color: { type: String, required: true },
+    stock: { type: Number, default: 0, required: true }
+}, { _id: false });
+
+// Schema for size variants
+const sizeVariantSchema = new Schema({
+    size: { type: String, required: true },
+    colorVariants: [colorVariantSchema]
+}, { _id: false });
+
 const productSchema = new Schema({
     title: { type: String, required: true },
     description: String,
     price: { type: Number, required: true },
-    selectedSizes: [String],
+    sizeVariants: [sizeVariantSchema],
+    selectedSizes: [String], // Keep for backwards compatibility
     gender: String,
-    color: String,
-    stock: { type: Number, default: 0 },
+    color: String, // Keep for backwards compatibility
+    stock: { type: Number, default: 0 }, // Keep for backwards compatibility
     discount: { type: Number, default: 0 },
     discountType: String,
     selectedImages: {

@@ -12,6 +12,16 @@ interface ProductQuery {
   };
 }
 
+interface ColorVariant {
+  color: string;
+  stock: number;
+}
+
+interface SizeVariant {
+  size: string;
+  colorVariants: ColorVariant[];
+}
+
 interface ProductData {
   title: string;
   price: number;
@@ -19,6 +29,10 @@ interface ProductData {
   categories?: string[];
   description?: string;
   properties?: Record<string, string[]>;
+  sizeVariants?: SizeVariant[];
+  selectedSizes?: string[];
+  stock?: number;
+  color?: string;
 }
 
 // GET all products or single product

@@ -60,25 +60,54 @@ export async function POST(req: Request) {
       cloudinaryFormData.append('tags', 'kleankuts,product');
       
       // Upload to Cloudinary
-      const cloudinaryResponse = await fetch(CLOUDINARY_UPLOAD_URL, {
-        method: 'POST',
-        body: cloudinaryFormData
-      });
+      console.log('Uploading to Cloudinary URL:', CLOUDINARY_UPLOAD_URL);
+      console.log('Using upload preset:', CLOUDINARY_UPLOAD_PRESET);
       
-      if (!cloudinaryResponse.ok) {
-        const errorData = await cloudinaryResponse.json();
-        console.error('Cloudinary upload failed:', errorData);
+      let cloudinaryResponse;
+      try {
+        cloudinaryResponse = await fetch(CLOUDINARY_UPLOAD_URL, {
+          method: 'POST',
+          body: cloudinaryFormData
+        });
+        
+        if (!cloudinaryResponse.ok) {
+          let errorMessage = 'Unknown error';
+          try {
+            const errorData = await cloudinaryResponse.json();
+            console.error('Cloudinary upload failed with response:', errorData);
+            errorMessage = errorData.error?.message || JSON.stringify(errorData);
+          } catch (parseError) {
+            console.error('Failed to parse Cloudinary error response:', await cloudinaryResponse.text());
+            errorMessage = `Status ${cloudinaryResponse.status}: ${cloudinaryResponse.statusText}`;
+          }
+          
+          return NextResponse.json(
+            { error: `Cloudinary upload failed: ${errorMessage}` },
+            { status: 500 }
+          );
+        }
+      } catch (fetchError: any) { // Type assertion for fetchError
+        console.error('Network error during Cloudinary upload:', fetchError);
         return NextResponse.json(
-          { error: `Cloudinary upload failed: ${errorData.error?.message || 'Unknown error'}` },
+          { error: `Network error during upload: ${fetchError.message}` },
           { status: 500 }
         );
       }
       
-      const cloudinaryData = await cloudinaryResponse.json();
-      console.log('Cloudinary upload successful:', cloudinaryData.secure_url);
-      
-      // Return the Cloudinary URL
-      return NextResponse.json({ url: cloudinaryData.secure_url });
+      // If we got here, cloudinaryResponse should be defined and successful
+      try {
+        const cloudinaryData = await cloudinaryResponse.json();
+        console.log('Cloudinary upload successful:', cloudinaryData.secure_url);
+        
+        // Return the Cloudinary URL
+        return NextResponse.json({ url: cloudinaryData.secure_url });
+      } catch (jsonError: any) {
+        console.error('Error parsing Cloudinary response:', jsonError);
+        return NextResponse.json(
+          { error: `Error processing upload response: ${jsonError.message}` },
+          { status: 500 }
+        );
+      }
     } catch (uploadError: any) {
       console.error('Error uploading to Cloudinary:', uploadError);
       return NextResponse.json(

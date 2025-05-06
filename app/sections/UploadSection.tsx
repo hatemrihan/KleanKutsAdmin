@@ -62,13 +62,28 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
     setIsUploading(true);
     setUploadProgress(0);
 
+    // Limit to a reasonable number of files (e.g., 10) to prevent overwhelming the server
+    const filesToUpload = acceptedFiles.slice(0, 10);
+    
+    // Show warning if files were truncated
+    if (filesToUpload.length < acceptedFiles.length) {
+      console.warn(`Only uploading the first ${filesToUpload.length} of ${acceptedFiles.length} files`);
+    }
+
+    console.log(`Starting upload of ${filesToUpload.length} files`);
+    
     try {
       // Process one file at a time to avoid overwhelming mobile devices
-      for (const file of acceptedFiles) {
+      for (const file of filesToUpload) {
         try {
+          console.log(`Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
           const data = await uploadFile(file);
           if (data?.url) {
+            console.log(`Successfully uploaded: ${file.name} → ${data.url}`);
             setSelectedImages(prev => [...prev, data.url]);
+          } else {
+            console.error(`Missing URL in upload response for ${file.name}:`, data);
+            setError(`Failed to get URL for ${file.name}. Please try again.`);
           }
         } catch (fileError: any) {
           console.error(`Error uploading ${file.name}:`, fileError);
@@ -82,9 +97,11 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
         if (error.code === 'ECONNABORTED') {
           setError('Upload timed out. Please try with a smaller image or check your connection.');
         } else {
-          setError(error.response?.data?.error || 'Failed to upload image(s)');
+          const errorMsg = error.response?.data?.error || 'Failed to upload image(s)';
+          setError(errorMsg);
+          console.error('Upload error response:', error.response?.data);
         }
-        console.error('Upload error:', error.response?.data || error.message);
+        console.error('Upload error:', error.message);
       } else {
         setError(error.message || 'Failed to upload image(s)');
         console.error('Upload error:', error);

@@ -182,6 +182,7 @@ export default function ProductsPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm">
+            {/* Desktop Table View */}
             <div className="hidden md:block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
@@ -205,7 +206,7 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">${product.price}</div>
+                        <div className="text-sm text-gray-900">{product.price} L.E.</div>
                         {product.discount > 0 && (
                           <div className="text-sm text-green-600">
                             {product.discount}% off
@@ -245,6 +246,82 @@ export default function ProductsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            
+            {/* Mobile Card View */}
+            <div className="block md:hidden">
+              {products.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No products found</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 p-4">
+                  {products.map((product) => (
+                    <div key={product._id} className="border rounded-lg overflow-hidden shadow-sm">
+                      <div className="p-4">
+                        <div className="flex items-center mb-4">
+                          <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
+                            {product.selectedImages && product.selectedImages[0] ? (
+                              <Image 
+                                src={product.selectedImages[0]} 
+                                alt={product.title}
+                                fill
+                                className="object-cover"
+                                unoptimized={true} // For Cloudinary images
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-400 text-xs">No image</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <h3 className="font-medium text-gray-900 truncate">{product.title}</h3>
+                            <p className="text-sm text-gray-500 truncate">{product.description}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mb-4">
+                          <div>
+                            <div className="text-sm font-medium">
+                              {product.price} L.E.
+                              {product.discount > 0 && (
+                                <span className="ml-2 text-green-600 text-xs">{product.discount}% off</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-500">Stock:</span> {product.stock}
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 justify-end">
+                          <Link href={`/products/edit/${product._id}`} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full">Edit</Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" className="flex-1 w-full">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the product.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(product._id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

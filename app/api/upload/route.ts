@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
-// Cloudinary configuration
-const CLOUDINARY_CLOUD_NAME = 'YOUR_CLOUD_NAME'; // Replace with your Cloudinary cloud name
-const CLOUDINARY_UPLOAD_PRESET = 'ml_default'; // Replace with your upload preset
+// Cloudinary configuration - hardcoded for reliability in production
+const CLOUDINARY_CLOUD_NAME = 'dvcs7czio';
+const CLOUDINARY_UPLOAD_PRESET = 'kleankuts_upload';
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 export async function POST(req: Request) {
@@ -50,7 +50,14 @@ export async function POST(req: Request) {
       // Create a new FormData for Cloudinary
       const cloudinaryFormData = new FormData();
       cloudinaryFormData.append('file', base64File);
-      cloudinaryFormData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      cloudinaryFormData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET || 'kleankuts_upload');
+      
+      // Add additional parameters (only those allowed with unsigned uploads)
+      // Add folder for organization
+      cloudinaryFormData.append('folder', 'samples/ecommerce');
+      
+      // Add tags for better organization
+      cloudinaryFormData.append('tags', 'kleankuts,product');
       
       // Upload to Cloudinary
       const cloudinaryResponse = await fetch(CLOUDINARY_UPLOAD_URL, {

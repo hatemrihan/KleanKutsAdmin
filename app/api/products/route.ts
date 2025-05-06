@@ -3,6 +3,7 @@ import { Product } from "../../models/product";
 import { mongooseConnect } from "../../lib/mongoose";
 import clientPromise from '../../lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { addToBlacklist } from '../../utils/updateBlacklist';
 
 interface ProductQuery {
   deleted?: { $ne: boolean };
@@ -210,6 +211,27 @@ export async function DELETE(req: Request) {
     const client = await clientPromise;
     const db = client.db();
 
+    // First, check if the product exists and get its details
+    // We'll need this for cart cleanup
+    const product = await db.collection('products').findOne({
+      _id: new ObjectId(id)
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    // Add the product ID to the blacklist to prevent cart errors
+    try {
+      await addToBlacklist(id);
+    } catch (blacklistError) {
+      console.error('Error adding product to blacklist:', blacklistError);
+      // Continue with deletion even if blacklist update fails
+    }
+
     if (permanent) {
       // Permanent deletion
       const result = await db.collection('products').deleteOne({
@@ -224,7 +246,8 @@ export async function DELETE(req: Request) {
       }
 
       return NextResponse.json({
-        message: 'Product permanently deleted successfully'
+        message: 'Product permanently deleted successfully',
+        blacklisted: true
       });
     } else {
       // Soft delete (move to recycle bin)
@@ -246,7 +269,8 @@ export async function DELETE(req: Request) {
       }
 
       return NextResponse.json({
-        message: 'Product moved to recycle bin successfully'
+        message: 'Product moved to recycle bin successfully',
+        blacklisted: true
       });
     }
   } catch (error) {

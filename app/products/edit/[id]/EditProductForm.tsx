@@ -26,7 +26,7 @@ interface Product {
   price: number;
   selectedSizes: string[];
   gender: string;
-  stock: number;
+  stock?: number; // Now optional since it's calculated from sizeVariants
   discount: number;
   discountType: string;
   selectedImages: string[];
@@ -52,7 +52,7 @@ const initialFormData: Product = {
   price: 0,
   selectedSizes: [],
   gender: 'Unisex',
-  stock: 0,
+  // stock is now calculated from sizeVariants
   discount: 0,
   discountType: 'percentage',
   selectedImages: [],
@@ -77,6 +77,7 @@ export default function EditProductForm({ id }: EditProductFormProps) {
       setIsLoading(true);
       const response = await axios.get(`/api/products?id=${id}`);
       if (response.data) {
+        // We no longer need to set the stock field directly as it's calculated from size variants
         setFormData({
           ...initialFormData,
           ...response.data,
@@ -84,8 +85,9 @@ export default function EditProductForm({ id }: EditProductFormProps) {
           selectedImages: response.data.selectedImages || [],
           categories: response.data.categories || [],
           price: Number(response.data.price) || 0,
-          stock: Number(response.data.stock) || 0,
-          discount: Number(response.data.discount) || 0
+          discount: Number(response.data.discount) || 0,
+          // Ensure sizeVariants is properly initialized
+          sizeVariants: response.data.sizeVariants || []
         });
       }
     } catch (error) {
@@ -131,6 +133,15 @@ export default function EditProductForm({ id }: EditProductFormProps) {
 
   const handleSelectChange = (ev: React.ChangeEvent<HTMLSelectElement>, field: keyof Product) => {
     handleInputChange(field, ev.target.value);
+  };
+
+  // Calculate total stock from all size/color variants
+  const calculateTotalStock = (sizeVariants: SizeVariant[]): number => {
+    return sizeVariants.reduce((total, sizeVariant) => {
+      return total + sizeVariant.colorVariants.reduce((sizeTotal, colorVariant) => {
+        return sizeTotal + (Number(colorVariant.stock) || 0);
+      }, 0);
+    }, 0);
   };
 
   const handleSizeChange = (size: string) => {
@@ -194,10 +205,14 @@ export default function EditProductForm({ id }: EditProductFormProps) {
     // Exclude _id field to prevent MongoDB error (cannot modify immutable _id field)
     const { _id, ...formDataWithoutId } = formData;
     
+    // Calculate total stock from size variants
+    const calculatedTotalStock = calculateTotalStock(formData.sizeVariants || []);
+    
     const productData = {
       ...formDataWithoutId,
       price: Number(formData.price),
-      stock: Number(formData.stock),
+      // Use calculated stock from size variants instead of standalone stock field
+      stock: calculatedTotalStock,
       discount: Number(formData.discount),
       // Ensure size variants are properly formatted
       sizeVariants: formData.sizeVariants?.map(sv => ({
@@ -327,14 +342,11 @@ export default function EditProductForm({ id }: EditProductFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-          <input
-            type="number"
-            placeholder="Total stock"
-            value={formData.stock}
-            onChange={ev => handleInputChange('stock', Number(ev.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Total Stock</label>
+          <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+            {calculateTotalStock(formData.sizeVariants || [])}
+            <p className="text-xs text-gray-500 mt-1">Calculated from size & color variants</p>
+          </div>
         </div>
 
         <div>

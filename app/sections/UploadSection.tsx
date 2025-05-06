@@ -22,7 +22,7 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
   const uploadFile = async (file: File) => {
     // Validate file size before uploading
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
+      throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
     }
 
     // Create form data

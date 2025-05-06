@@ -151,23 +151,43 @@ export async function PUT(req: Request) {
     const client = await clientPromise;
     const db = client.db();
     
-    const result = await db.collection('products').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { ...data, updatedAt: new Date() } }
-    );
+    // Prepare update data - ensure proper handling of size variants
+    const updateData = {
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    // Log the update operation for debugging
+    console.log('Updating product with ID:', id);
+    console.log('Update data:', JSON.stringify(updateData, null, 2));
+    
+    try {
+      const result = await db.collection('products').updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
 
-    if (result.matchedCount === 0) {
+      console.log('Update result:', result);
+
+      if (result.matchedCount === 0) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ message: 'Product updated successfully' });
+    } catch (dbError: any) {
+      console.error('Database error during update:', dbError);
       return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
+        { error: `Database error: ${dbError.message}` },
+        { status: 500 }
       );
     }
-
-    return NextResponse.json({ message: 'Product updated successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in PUT /api/products:', error);
     return NextResponse.json(
-      { error: 'Failed to update product' },
+      { error: `Failed to update product: ${error.message}` },
       { status: 500 }
     );
   }

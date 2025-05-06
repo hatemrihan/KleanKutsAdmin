@@ -190,13 +190,26 @@ export default function EditProductForm({ id }: EditProductFormProps) {
     setError('');
     setSuccess('');
 
+    // Prepare the data for submission
+    const productData = {
+      ...formData,
+      price: Number(formData.price),
+      stock: Number(formData.stock),
+      discount: Number(formData.discount),
+      // Ensure size variants are properly formatted
+      sizeVariants: formData.sizeVariants?.map(sv => ({
+        size: sv.size,
+        colorVariants: sv.colorVariants?.map(cv => ({
+          color: cv.color,
+          stock: Number(cv.stock)
+        }))
+      }))
+    };
+
+    console.log('Submitting product data:', productData);
+
     try {
-      const response = await axios.put(`/api/products?id=${id}`, {
-        ...formData,
-        price: Number(formData.price),
-        stock: Number(formData.stock),
-        discount: Number(formData.discount)
-      });
+      const response = await axios.put(`/api/products?id=${id}`, productData);
 
       if (response.data?.error) {
         setError(response.data.error);
@@ -215,8 +228,20 @@ export default function EditProductForm({ id }: EditProductFormProps) {
     } catch (error) {
       console.error('Error updating product:', error);
       const axiosError = error as AxiosError<{ error: string }>;
+      
+      // Log detailed error information
+      if (axiosError.response) {
+        console.error('Response error data:', axiosError.response.data);
+        console.error('Response status:', axiosError.response.status);
+        console.error('Response headers:', axiosError.response.headers);
+      } else if (axiosError.request) {
+        console.error('Request error:', axiosError.request);
+      }
+      
       if (axiosError.response?.data?.error) {
-        setError(axiosError.response.data.error);
+        setError(`Update failed: ${axiosError.response.data.error}`);
+      } else if (axiosError.message) {
+        setError(`Update failed: ${axiosError.message}`);
       } else {
         setError('Failed to update product. Please try again.');
       }

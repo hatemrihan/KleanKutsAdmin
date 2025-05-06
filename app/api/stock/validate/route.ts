@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+interface StockInfo {
+  originalStock: number;
+  size: string;
+  color: string;
+}
+
 interface StockValidationItem {
   productId: string;
   size: string;
   color: string;
   quantity: number;
+  _stockInfo?: StockInfo;
 }
 
 export async function POST(req: NextRequest) {

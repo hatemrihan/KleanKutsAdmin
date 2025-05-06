@@ -9,8 +9,12 @@ import { Server as HTTPServer } from 'http';
 import { Server as WebSocketServer } from 'socket.io';
 import { logSync } from './logger';
 
-// Store active connections
-let io: WebSocketServer | null = null;
+// Access the global io instance initialized in server.js
+declare global {
+  var io: WebSocketServer | null;
+}
+
+// Store active connections reference
 const connectedClients = new Set<string>();
 
 // Event types for stock updates
@@ -23,64 +27,29 @@ export enum StockEventType {
 }
 
 /**
- * Initialize the WebSocket server
+ * Get reference to the WebSocket server
+ * Note: The actual initialization happens in server.js
  */
-export function initWebSocketServer(server: HTTPServer) {
-  if (io) {
-    logSync('WebSocket server already initialized', 'warn');
-    return io;
+export function getIoInstance() {
+  if (!global.io) {
+    logSync('WebSocket server not initialized yet', 'warn');
+    return null;
   }
-
-  io = new WebSocketServer(server, {
-    cors: {
-      origin: '*', // In production, restrict this to your domains
-      methods: ['GET', 'POST'],
-    },
-    path: '/api/socket',
-  });
-
-  io.on('connection', (socket) => {
-    const clientId = socket.id;
-    connectedClients.add(clientId);
-    
-    logSync(`Client connected: ${clientId}`, 'info', { 
-      totalConnections: connectedClients.size 
-    });
-
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      connectedClients.delete(clientId);
-      logSync(`Client disconnected: ${clientId}`, 'info', { 
-        totalConnections: connectedClients.size 
-      });
-    });
-
-    // Send welcome message
-    socket.emit('welcome', { 
-      message: 'Connected to KleanKuts Admin WebSocket Server',
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  logSync('WebSocket server initialized', 'info');
-  return io;
+  return global.io;
 }
 
 /**
  * Get the WebSocket server instance
  */
 export function getWebSocketServer() {
-  if (!io) {
-    logSync('WebSocket server not initialized', 'warn');
-    return null;
-  }
-  return io;
+  return getIoInstance();
 }
 
 /**
  * Emit a stock update event to all connected clients
  */
 export function emitStockUpdate(eventType: StockEventType, data: any) {
+  const io = getIoInstance();
   if (!io) {
     logSync('Cannot emit event: WebSocket server not initialized', 'error');
     return false;
@@ -99,7 +68,11 @@ export function emitStockUpdate(eventType: StockEventType, data: any) {
  * Get the number of connected clients
  */
 export function getConnectedClientsCount() {
-  return connectedClients.size;
+  const io = getIoInstance();
+  if (!io) return 0;
+  
+  // In Socket.IO v4, we can get the number of connected clients
+  return io.engine ? io.engine.clientsCount : 0;
 }
 
 /**

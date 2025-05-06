@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logSync } from '@/app/utils/logger';
-import { StockEventType, emitStockUpdate } from '@/app/utils/websocketServer';
+import { StockEventType, emitStockUpdate, getConnectedClientsCount } from '@/app/utils/websocketServer';
 
 // Enhanced WebSocket API endpoint
 // This route provides HTTP endpoints for stock synchronization
@@ -8,9 +8,9 @@ import { StockEventType, emitStockUpdate } from '@/app/utils/websocketServer';
 
 export async function GET(req: NextRequest) {
   const timestamp = new Date().toISOString();
-  const connectionCount = 0; // In a real implementation, this would come from the WebSocket server
+  const connectionCount = getConnectedClientsCount();
   
-  logSync('WebSocket status check', 'info', { timestamp });
+  logSync('WebSocket status check', 'info', { timestamp, connectionCount });
   
   const response = NextResponse.json({
     status: 'ready',

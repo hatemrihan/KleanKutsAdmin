@@ -191,8 +191,11 @@ export default function EditProductForm({ id }: EditProductFormProps) {
     setSuccess('');
 
     // Prepare the data for submission
+    // Exclude _id field to prevent MongoDB error (cannot modify immutable _id field)
+    const { _id, ...formDataWithoutId } = formData;
+    
     const productData = {
-      ...formData,
+      ...formDataWithoutId,
       price: Number(formData.price),
       stock: Number(formData.stock),
       discount: Number(formData.discount),

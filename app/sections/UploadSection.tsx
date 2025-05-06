@@ -148,7 +148,7 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
           ) : (
             <div className="text-gray-500">
               <p className="font-medium">Tap to select images</p>
-              <p className="text-sm mt-1">Supports: JPG, PNG, WebP (max 5MB)</p>
+              <p className="text-sm mt-1">Supports: JPG, PNG, WebP (max 10MB)</p>
             </div>
           )}
         </div>

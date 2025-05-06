@@ -163,6 +163,7 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
                   className="object-cover rounded-lg"
                   sizes="(max-width: 768px) 50vw, 33vw"
                   priority={index < 4} // Prioritize loading the first 4 images
+                  unoptimized={true} // Add this for Cloudinary images
                 />
                 <button
                   onClick={() => removeImage(index)}

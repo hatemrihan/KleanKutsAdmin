@@ -15,6 +15,10 @@ import dynamic from 'next/dynamic';
 
 // Lazy load components with ssr disabled to prevent hydration mismatch
 const UploadSection = dynamic(() => import('../../sections/UploadSection'), { ssr: false });
+const SizeVariantsManager = dynamic(() => import('../../components/SizeVariantsManager'), { ssr: false });
+
+// Import types
+import { SizeVariant } from '../../types/product';
 
 
 interface Category {
@@ -36,6 +40,7 @@ interface ProductFormData {
   selectedSizes: string[];
   gender: string;
   selectedImages: string[];
+  sizeVariants: SizeVariant[];
 }
 
 export default function NewProduct() {
@@ -56,7 +61,8 @@ export default function NewProduct() {
     discountType: 'percentage', // Default to percentage
     selectedSizes: [],
     gender: '',
-    selectedImages: []
+    selectedImages: [],
+    sizeVariants: []
   });
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -91,7 +97,7 @@ export default function NewProduct() {
     }
   };
 
-  const handleInputChange = (field: keyof ProductFormData, value: string | number | string[]) => {
+  const handleInputChange = (field: keyof ProductFormData, value: string | number | string[] | SizeVariant[]) => {
     // Convert numeric fields
     const numericFields: (keyof ProductFormData)[] = ['price', 'stock', 'discount'];
     const processedValue = numericFields.includes(field) && typeof value === 'string'
@@ -135,31 +141,36 @@ export default function NewProduct() {
         setIsLoading(false);
         return;
       }
-      if (formData.stock < 0) {
-        setError('Stock cannot be negative');
-        setIsLoading(false);
-        return;
-      }
       if (formData.selectedImages.length === 0) {
         setError('At least one product image is required');
         setIsLoading(false);
         return;
       }
-      if (!formData.color) {
-        setError('Please select a color');
+      
+      // Validate size variants
+      if (formData.sizeVariants.length === 0) {
+        setError('Please add at least one size variant with color and stock');
         setIsLoading(false);
         return;
       }
-      if (formData.selectedSizes.length === 0) {
-        setError('Please select at least one size');
+      
+      // Check if each size variant has at least one color variant
+      const invalidSizeVariants = formData.sizeVariants.filter(sv => sv.colorVariants.length === 0);
+      if (invalidSizeVariants.length > 0) {
+        setError(`Please add at least one color for size(s): ${invalidSizeVariants.map(sv => sv.size).join(', ')}`);
         setIsLoading(false);
         return;
       }
 
-      const response = await axios.post('/api/products', {
+      // Prepare the data for submission
+      const productData = {
         ...formData,
-        categories: [formData.category] // Ensure categories is an array
-      });
+        categories: [formData.category], // Ensure categories is an array
+        sizeVariants: formData.sizeVariants, // Include the size variants with colors and stock
+      };
+      
+      console.log('Submitting product with variants:', productData);
+      const response = await axios.post('/api/products', productData);
 
       if (response.data) {
         toast.success('Product created successfully');
@@ -285,22 +296,12 @@ export default function NewProduct() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium mb-2">Size</label>
-                        <div className="flex flex-wrap gap-2">
-                          {sizes.map((size) => (
-                            <button
-                              key={size}
-                              onClick={() => handleSizeToggle(size)}
-                              className={`px-4 py-2 rounded-lg ${
-                                formData.selectedSizes.includes(size)
-                                  ? 'bg-green-400 text-white'
-                                  : 'bg-gray-100'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          ))}
-                        </div>
+                        <label className="block text-sm font-medium mb-2">Size & Color Variants</label>
+                        <SizeVariantsManager
+                          sizeVariants={formData.sizeVariants}
+                          onChange={(newVariants) => handleInputChange('sizeVariants', newVariants)}
+                          availableSizes={sizes}
+                        />
                       </div>
 
                       <div>

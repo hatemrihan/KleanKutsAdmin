@@ -9,7 +9,10 @@ const nextConfig = {
       'plus.unsplash.com',
       'avatars.githubusercontent.com',
       'localhost',
+      'kleankutsadmin.netlify.app',
+      'kleankuts.shop',
     ],
+    unoptimized: true,
   },
   typescript: {
     // !! WARN !!

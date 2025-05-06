@@ -4,8 +4,8 @@ import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
 // Configure upload settings
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // Reduced to 3MB for mobile
-const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // Increased to 5MB
+const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
 // Ensure upload directory exists
 async function ensureUploadDirectory() {
@@ -97,14 +97,24 @@ export async function POST(req: Request) {
       await writeFile(filePath, buffer);
       console.log('File saved successfully:', filePath);
 
-      // Return URL path
+      // Return URL path - ensure it's properly formatted for the frontend
       const urlPath = `/uploads/${filename}`;
       console.log('Returning URL path:', urlPath);
       
-      return NextResponse.json({ 
-        url: urlPath,
-        message: 'File uploaded successfully' 
-      });
+      // Verify the file exists after writing
+      if (existsSync(filePath)) {
+        return NextResponse.json({ 
+          url: urlPath,
+          message: 'File uploaded successfully',
+          filename: filename
+        });
+      } else {
+        console.error('File was not found after writing:', filePath);
+        return NextResponse.json(
+          { error: 'File was saved but could not be verified. Please try again.' },
+          { status: 500 }
+        );
+      }
     } catch (fileError: any) {
       console.error('Error processing file:', fileError?.message || fileError);
       return NextResponse.json(

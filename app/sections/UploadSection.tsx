@@ -10,8 +10,8 @@ interface UploadSectionProps {
   setSelectedImages: Dispatch<SetStateAction<string[]>>;
 }
 
-// Maximum file size reduced for mobile compatibility
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+// Maximum file size limit
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function UploadSection({ selectedImages, setSelectedImages }: UploadSectionProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -22,28 +22,37 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
   const uploadFile = async (file: File) => {
     // Validate file size before uploading
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File ${file.name} is too large. Maximum size is 3MB.`);
+      throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
     }
 
     // Create form data
     const formData = new FormData();
     formData.append('file', file);
 
-    // Upload with progress tracking
-    const response = await axios.post('/api/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      },
-      timeout: 30000, // 30 second timeout
-    });
+    try {
+      // Upload with progress tracking
+      const response = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        },
+        timeout: 60000, // 60 second timeout - increased for larger files
+      });
 
-    return response.data;
+      console.log('Upload response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error in uploadFile function:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(error.response.data?.error || `Upload failed: ${error.message}`);
+      }
+      throw error;
+    }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -139,7 +148,7 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
           ) : (
             <div className="text-gray-500">
               <p className="font-medium">Tap to select images</p>
-              <p className="text-sm mt-1">Supports: JPG, PNG, WebP (max 3MB)</p>
+              <p className="text-sm mt-1">Supports: JPG, PNG, WebP (max 5MB)</p>
             </div>
           )}
         </div>

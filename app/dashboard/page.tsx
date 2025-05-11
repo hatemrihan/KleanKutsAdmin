@@ -47,6 +47,17 @@ interface DashboardStats {
   }>;
 }
 
+// Fallback data for when API call fails
+const fallbackStats: DashboardStats = {
+  totalOrders: 0,
+  totalSales: 0,
+  activeProducts: 0,
+  totalCategories: 0,
+  monthlyGoal: 100000,
+  currentMonthSales: 0,
+  recentOrders: []
+};
+
 // Orders interfaces
 interface Product {
   _id: string;
@@ -145,15 +156,52 @@ export default function Dashboard() {
       fetchOrders();
     }
   }, [activeSection]);
+  
+  // Also fetch orders immediately when component loads
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   const fetchDashboardStats = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${config.apiUrl}/dashboard`);
+      
+      // Use absolute URL for API calls
+      const apiUrl = window.location.origin + '/api/dashboard';
+      console.log('Fetching dashboard data from:', apiUrl);
+      
+      const response = await axios.get(apiUrl);
+      console.log('Dashboard data received:', response.data);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      toast.error('Failed to load dashboard data');
+      
+      // Extract more detailed error information
+      const axiosError = error as AxiosError<{ error: string }>;
+      const errorDetails = axiosError.response?.data?.error || 'Unknown error';
+      const statusCode = axiosError.response?.status;
+      
+      console.error('Error details:', {
+        message: errorDetails,
+        status: statusCode,
+        url: '/api/dashboard'
+      });
+      
+      // Try the diagnostic endpoint to get more info
+      try {
+        const diagnosticUrl = window.location.origin + '/api/diagnose';
+        console.log('Fetching diagnostic data from:', diagnosticUrl);
+        const diagResponse = await axios.get(diagnosticUrl);
+        console.log('Diagnostic data:', diagResponse.data);
+      } catch (diagError) {
+        console.error('Diagnostic endpoint error:', diagError);
+      }
+      
+      // Use fallback data instead of showing error
+      setStats(fallbackStats);
+      
+      // Still show the error toast
+      toast.error(`Failed to load dashboard data: ${errorDetails}`);
     } finally {
       setIsLoading(false);
     }
@@ -384,7 +432,58 @@ export default function Dashboard() {
         <Nav />
         <main className="flex-1 p-4 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center text-red-500">Failed to load dashboard data</div>
+            <div className="mb-6 bg-gray-100 p-1 rounded-md flex">
+              <button 
+                onClick={() => setActiveSection('dashboard')} 
+                className={`flex-1 py-2 px-4 rounded-sm text-sm font-medium ${activeSection === 'dashboard' ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-200'}`}
+              >
+                Dashboard
+              </button>
+              <button 
+                onClick={() => setActiveSection('orders')} 
+                className={`flex-1 py-2 px-4 rounded-sm text-sm font-medium ${activeSection === 'orders' ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-200'}`}
+              >
+                Orders
+              </button>
+              <button 
+                onClick={() => setActiveSection('settings')} 
+                className={`flex-1 py-2 px-4 rounded-sm text-sm font-medium ${activeSection === 'settings' ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-200'}`}
+              >
+                Settings
+              </button>
+            </div>
+            
+            {activeSection === 'dashboard' && (
+              <div className="text-center py-8">
+                <div className="text-center text-red-500">Dashboard data is not available</div>
+                <button 
+                  onClick={fetchDashboardStats} 
+                  className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
+                >
+                  Retry Loading Data
+                </button>
+              </div>
+            )}
+            
+            {activeSection === 'orders' && (
+              <div className="w-full">
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">Orders</h1>
+                <div className="bg-white rounded-lg shadow p-6">
+                  {/* Orders content - this should still work even if dashboard stats failed to load */}
+                  {/* Copy the existing orders content here */}
+                </div>
+              </div>
+            )}
+            
+            {activeSection === 'settings' && (
+              <div className="w-full">
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+                <div className="bg-white rounded-lg shadow">
+                  {/* Settings content - this should still work even if dashboard stats failed to load */}
+                  {/* Copy the existing settings content here */}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
@@ -675,7 +774,14 @@ export default function Dashboard() {
                   </div>
 
                   <div className="mt-4 text-center text-gray-500">
-                    <p>Visit the Dashboard page for more options once we fix the routing issue.</p>
+                    {filteredOrders.length === 0 && !ordersLoading && (
+                      <p>No orders found. {statusFilter !== 'all' ? 'Try changing the status filter.' : ''}</p>
+                    )}
+                    {ordersLoading && (
+                      <div className="flex justify-center items-center py-10">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

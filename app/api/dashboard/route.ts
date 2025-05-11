@@ -6,10 +6,24 @@ import { Category } from '../../models/category';
 
 export async function GET() {
   try {
-    await mongooseConnect();
+    console.log('Dashboard API called, attempting to connect to MongoDB...');
+    
+    // Try to connect to MongoDB
+    try {
+      await mongooseConnect();
+      console.log('MongoDB connection successful');
+    } catch (mongoError: any) {
+      console.error('MongoDB connection error:', mongoError);
+      return NextResponse.json(
+        { error: `MongoDB connection failed: ${mongoError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Get total orders and sales
     const orders = await Order.find({ deleted: { $ne: true } });
+    console.log(`Found ${orders.length} orders`);
+    
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, order) => {
       // Handle both totalAmount and total fields
@@ -19,9 +33,11 @@ export async function GET() {
 
     // Get active products count
     const activeProducts = await Product.countDocuments({ deleted: { $ne: true } });
+    console.log(`Found ${activeProducts} active products`);
 
     // Get total categories count
     const totalCategories = await Category.countDocuments({ deleted: { $ne: true } });
+    console.log(`Found ${totalCategories} categories`);
 
     // Calculate current month's sales
     const now = new Date();
@@ -76,6 +92,8 @@ export async function GET() {
       createdAt: order.createdAt
     }));
 
+    console.log('Dashboard data successfully fetched');
+    
     return NextResponse.json({
       totalOrders,
       totalSales,
@@ -88,8 +106,16 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: errorStack
+    });
+    
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard data' },
+      { error: `Failed to fetch dashboard data: ${errorMessage}` },
       { status: 500 }
     );
   }

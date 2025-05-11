@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       cloudinaryFormData.append('folder', 'samples/ecommerce');
       
       // Add tags for better organization
-      cloudinaryFormData.append('tags', 'kleankuts,product');
+      cloudinaryFormData.append('tags', 'elevee,product');
       
       // Upload to Cloudinary
       console.log('Uploading to Cloudinary URL:', CLOUDINARY_UPLOAD_URL);

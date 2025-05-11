@@ -144,6 +144,17 @@ export default function SizeVariantsManager({
 
     const currentSize = sizeVariants[sizeIndex];
     
+    // Initialize colorVariants if it doesn't exist
+    if (!currentSize.colorVariants) {
+      const updatedVariants = [...sizeVariants];
+      updatedVariants[sizeIndex] = {
+        ...currentSize,
+        colorVariants: []
+      };
+      onChange(updatedVariants);
+      currentSize.colorVariants = [];
+    }
+    
     // Check if color already exists for this size
     if (currentSize.colorVariants.some(cv => cv.color.toLowerCase() === colorInput.toLowerCase())) {
       setError(`Color "${colorInput}" already exists for size ${currentSize.size}`);
@@ -171,6 +182,10 @@ export default function SizeVariantsManager({
   // Remove a color variant from a size
   const removeColorVariant = (sizeIndex: number, colorIndex: number) => {
     const currentSize = sizeVariants[sizeIndex];
+    
+    // Check if colorVariants exists
+    if (!currentSize.colorVariants) return;
+    
     const updatedColorVariants = currentSize.colorVariants.filter((_, index) => index !== colorIndex);
     
     const updatedVariants = [...sizeVariants];
@@ -185,6 +200,9 @@ export default function SizeVariantsManager({
   // Update stock for a specific color variant
   const updateStock = (sizeIndex: number, colorIndex: number, newStock: number) => {
     if (newStock < 0) return;
+
+    // Check if the size variant and color variant exist
+    if (!sizeVariants[sizeIndex]?.colorVariants?.[colorIndex]) return;
 
     const updatedVariants = [...sizeVariants];
     updatedVariants[sizeIndex].colorVariants[colorIndex].stock = newStock;
@@ -272,7 +290,7 @@ export default function SizeVariantsManager({
                         {variant.size}
                       </span>
                       <span className="text-sm">
-                        {variant.colorVariants.length} {variant.colorVariants.length === 1 ? 'color' : 'colors'}
+                        {variant.colorVariants?.length || 0} {(variant.colorVariants?.length || 0) === 1 ? 'color' : 'colors'}
                       </span>
                     </span>
                     {activeSizeIndex === index && (
@@ -405,7 +423,7 @@ export default function SizeVariantsManager({
               {/* List of color variants */}
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Color Variants for {sizeVariants[activeSizeIndex].size}</h4>
-                {sizeVariants[activeSizeIndex].colorVariants.length === 0 ? (
+                {!sizeVariants[activeSizeIndex].colorVariants || sizeVariants[activeSizeIndex].colorVariants.length === 0 ? (
                   <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg bg-gray-50">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />

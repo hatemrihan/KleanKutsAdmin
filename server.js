@@ -29,7 +29,7 @@ app.prepare().then(() => {
     
     // Send welcome message
     socket.emit('welcome', { 
-      message: 'Connected to KleanKuts Admin WebSocket Server',
+      message: 'Connected to Elevee Admin WebSocket Server',
       timestamp: new Date().toISOString(),
     });
     
@@ -43,7 +43,7 @@ app.prepare().then(() => {
   global.io = io;
   
   // Start the server
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   server.listen(PORT, (err) => {
     if (err) throw err;
     console.log(`> Ready on http://localhost:${PORT}`);

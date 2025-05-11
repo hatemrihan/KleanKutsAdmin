@@ -138,6 +138,9 @@ export default function EditProductForm({ id }: EditProductFormProps) {
   // Calculate total stock from all size/color variants
   const calculateTotalStock = (sizeVariants: SizeVariant[]): number => {
     return sizeVariants.reduce((total, sizeVariant) => {
+      // Check if colorVariants exists before attempting to reduce
+      if (!sizeVariant.colorVariants) return total;
+      
       return total + sizeVariant.colorVariants.reduce((sizeTotal, colorVariant) => {
         return sizeTotal + (Number(colorVariant.stock) || 0);
       }, 0);
@@ -450,6 +453,8 @@ export default function EditProductForm({ id }: EditProductFormProps) {
             <tbody className="bg-white divide-y divide-gray-200">
               {formData.sizeVariants && formData.sizeVariants.length > 0 ? (
                 formData.sizeVariants.flatMap(sizeVariant => 
+                  // Check if colorVariants exists before mapping
+                  sizeVariant.colorVariants && sizeVariant.colorVariants.length > 0 ? 
                   sizeVariant.colorVariants.map((colorVariant, colorIndex) => (
                     <tr key={`${sizeVariant.size}-${colorVariant.color}`}>
                       {colorIndex === 0 ? (
@@ -460,7 +465,16 @@ export default function EditProductForm({ id }: EditProductFormProps) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.color}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.stock} units</td>
                     </tr>
-                  ))
+                  )) : 
+                  // If no color variants, display a row with just the size and a message
+                  [<tr key={`${sizeVariant.size}-no-colors`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-gray-50">
+                      {sizeVariant.size}
+                    </td>
+                    <td colSpan={2} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">
+                      No color variants added
+                    </td>
+                  </tr>]
                 )
               ) : (
                 <tr>

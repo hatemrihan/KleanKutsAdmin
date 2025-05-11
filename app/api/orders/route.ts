@@ -50,7 +50,7 @@ interface IncomingOrderData {
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse, request: Request) {
   // Allow both e-commerce and admin panel domains
-  const allowedOrigins = ['https://kleankuts.shop', 'https://kleankutsadmin.netlify.app'];
+  const allowedOrigins = ['https://elevee.netlify.app', 'https://eleveadmin.netlify.app'];
   const requestOrigin = request.headers.get('origin') || '';
   const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
 
@@ -76,15 +76,15 @@ async function validateApiKey(request: Request) {
     referer,
     origin,
     hasApiKey: !!request.headers.get('X-API-Key'),
-    isAdminPanel: referer.includes('kleankutsadmin.netlify.app') || 
+    isAdminPanel: referer.includes('eleveadmin.netlify.app') || 
                  referer.includes('localhost:3003') ||
-                 origin.includes('kleankutsadmin.netlify.app') ||
+                 origin.includes('eleveadmin.netlify.app') ||
                  origin.includes('localhost:3003')
   });
 
-  if (referer.includes('kleankutsadmin.netlify.app') || 
+  if (referer.includes('eleveadmin.netlify.app') || 
       referer.includes('localhost:3000') ||
-      origin.includes('kleankutsadmin.netlify.app') ||
+      origin.includes('eleveadmin.netlify.app') ||
       origin.includes('localhost:3000')) {
     return;
   }

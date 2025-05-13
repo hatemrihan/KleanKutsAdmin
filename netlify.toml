@@ -1,5 +1,5 @@
 [build]
-  command = "npm config set registry https://registry.npmjs.org/ && npm cache clean --force && npm ci --legacy-peer-deps --prefer-offline && npm run build"
+  command = "npm config set registry https://registry.npmjs.org/ && npm cache clean --force && (npm install --no-package-lock --legacy-peer-deps --prefer-offline --no-audit || npm run fallback-install) && npm run build"
   publish = ".next"
   ignore = "git diff --quiet HEAD^ HEAD ."
 
@@ -11,6 +11,10 @@
   NEXT_USE_NETLIFY_EDGE = "true"
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
   NPM_FLAGS = "--no-audit --no-fund --prefer-offline --legacy-peer-deps"
+  npm_config_package_lock_only = "false"
+  npm_config_package_lock = "false"
+  npm_config_progress = "false"
+  npm_config_audit = "false"
 
 # This is the critical part for deep links to work
 [[redirects]]

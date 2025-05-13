@@ -11,6 +11,7 @@
         "netlify-deploy": "node scripts/netlify-deploy.js",
         "validate-deploy": "node scripts/validate-deploy.js",
         "reset-install": "node scripts/reset-install.js",
+        "fallback-install": "node scripts/fallback-install.js",
         "export-static-routes": "node scripts/export-routes.js"
     },
     "dependencies": {

@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 // Helper function to add CORS headers
 function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': '*', // In production, replace with your frontend domain
+    'Access-Control-Allow-Origin': '*', // In production, replace with specific frontend domain
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -57,8 +57,33 @@ export async function GET(req: NextRequest) {
 // Add new waitlist entry
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { email } = body;
+    // Handle both JSON and form data submissions
+    let email = '';
+    let source = 'website';
+    let notes = '';
+    
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // Handle JSON request
+      const body = await req.json();
+      email = body.email;
+      source = body.source || 'website';
+      notes = body.notes || '';
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      // Handle form data
+      const formData = await req.formData();
+      email = formData.get('email')?.toString() || '';
+      source = formData.get('source')?.toString() || 'website';
+      notes = formData.get('notes')?.toString() || '';
+    } else {
+      // Try to parse URL-encoded body as a fallback
+      const text = await req.text();
+      const params = new URLSearchParams(text);
+      email = params.get('email') || '';
+      source = params.get('source') || 'website';
+      notes = params.get('notes') || '';
+    }
     
     if (!email) {
       return NextResponse.json(
@@ -81,14 +106,41 @@ export async function POST(req: NextRequest) {
     // Create new waitlist entry
     const waitlistEntry = await Waitlist.create({
       email,
-      source: body.source || 'website',
-      notes: body.notes || ''
+      source,
+      notes
     });
     
-    return NextResponse.json({
-      message: 'Successfully added to waitlist',
-      waitlistEntry
-    }, { status: 201, headers: corsHeaders() });
+    // Determine the appropriate response format based on the request content type
+    if (contentType.includes('application/json')) {
+      return NextResponse.json({
+        message: 'Successfully added to waitlist',
+        waitlistEntry
+      }, { status: 201, headers: corsHeaders() });
+    } else {
+      // For form submissions, redirect to success page or return simple HTML
+      const successHtml = `
+        <html>
+          <head>
+            <meta http-equiv="refresh" content="0;url=https://elevee.netlify.app/waitlist-success">
+            <title>Successfully Added</title>
+          </head>
+          <body>
+            <p>Successfully added to waitlist. Redirecting...</p>
+            <script>
+              window.location.href = 'https://elevee.netlify.app/waitlist-success';
+            </script>
+          </body>
+        </html>
+      `;
+      
+      return new NextResponse(successHtml, { 
+        status: 201,
+        headers: {
+          ...corsHeaders(),
+          'Content-Type': 'text/html',
+        }
+      });
+    }
   } catch (error) {
     console.error('Error adding to waitlist:', error);
     return NextResponse.json(

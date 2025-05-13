@@ -1,5 +1,5 @@
 [build]
-  command = "npm cache clean --force && npm install --legacy-peer-deps && npm run build"
+  command = "npm run netlify-deploy"
   publish = ".next"
   ignore = "git diff --quiet HEAD^ HEAD ."
 

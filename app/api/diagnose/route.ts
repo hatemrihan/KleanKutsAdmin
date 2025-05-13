@@ -1,59 +1,87 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { mongooseConnect } from '../../lib/mongoose';
+import { connectToDatabase } from '../../../lib/mongodb';
 
 export async function GET() {
+  const diagnosticInfo: any = {
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    nodeVersion: process.version,
+    mongoConnectionStatus: 'Not tested',
+    mongoVersion: mongoose.version,
+    connectionString: 'REDACTED',
+    environmentVariables: {
+      MONGODB_URI: process.env.MONGODB_URI ? 'Set (redacted)' : 'Not set',
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'Set' : 'Not set',
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'Set' : 'Not set',
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Not set',
+      CLOUDINARY_UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET ? 'Set' : 'Not set',
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL ? 'Set' : 'Not set',
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'Set' : 'Not set',
+    },
+    headers: {},
+  };
+
   try {
-    // Check environment variables
-    const envInfo = {
-      nodeEnv: process.env.NODE_ENV,
-      hasMongoUri: !!process.env.MONGODB_URI,
-      mongoUriFormat: process.env.MONGODB_URI ? 
-                     (process.env.MONGODB_URI.startsWith('mongodb://') || 
-                      process.env.MONGODB_URI.startsWith('mongodb+srv://') ? 
-                      'Valid format' : 'Invalid format') : 
-                     'Not available',
-      currentConnectionState: mongoose.connection.readyState
-    };
-    
-    console.log('Diagnostic endpoint called:', envInfo);
-    
-    // Try to connect
-    let connectionResult = 'Not attempted';
-    let connectionError = null;
+    // Test MongoDB connection
+    const client = await connectToDatabase();
+    diagnosticInfo.mongoConnectionStatus = 'Connected';
     
     try {
-      await mongooseConnect();
-      connectionResult = 'Success';
-    } catch (error: any) {
-      connectionResult = 'Failed';
-      connectionError = {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
+      // Try to get server info
+      const adminDb = client.db().admin();
+      const serverInfo = await adminDb.serverInfo();
+      diagnosticInfo.mongoServerInfo = {
+        version: serverInfo.version,
+        uptime: serverInfo.uptime,
       };
+      
+      // List databases
+      const dbList = await adminDb.listDatabases({ nameOnly: true });
+      diagnosticInfo.mongoDatabases = dbList.databases.map((db: any) => db.name);
+    } catch (dbInfoError: any) {
+      diagnosticInfo.mongoServerInfoError = dbInfoError.message;
     }
     
-    // Return diagnostic info
-    return NextResponse.json({
-      environment: envInfo,
-      connection: {
-        result: connectionResult,
-        error: connectionError,
-        readyState: mongoose.connection.readyState
-      },
-      timestamp: new Date().toISOString()
-    });
+    // Check if we can perform a basic operation
+    try {
+      const testCollection = client.db().collection('diagnostic_tests');
+      const testResult = await testCollection.insertOne({ 
+        test: 'connection', 
+        timestamp: new Date() 
+      });
+      diagnosticInfo.testWriteOperation = 'Success';
+      diagnosticInfo.testWriteId = testResult.insertedId.toString();
+      
+      // Clean up after test
+      await testCollection.deleteOne({ _id: testResult.insertedId });
+    } catch (opError: any) {
+      diagnosticInfo.testWriteOperation = 'Failed';
+      diagnosticInfo.testWriteError = opError.message;
+    }
   } catch (error: any) {
-    console.error('Diagnostic endpoint error:', error);
+    diagnosticInfo.mongoConnectionStatus = 'Failed';
+    diagnosticInfo.mongoConnectionError = error.message;
     
-    return NextResponse.json({
-      error: 'Diagnostic check failed',
-      errorDetails: {
-        message: error.message,
-        name: error.name
-      },
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
+    // Provide more detailed info about the connection string
+    if (process.env.MONGODB_URI) {
+      try {
+        const sanitizedUri = process.env.MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//USER:PASSWORD@');
+        diagnosticInfo.connectionString = sanitizedUri;
+        
+        // Check if URI has proper format
+        if (!sanitizedUri.startsWith('mongodb://') && !sanitizedUri.startsWith('mongodb+srv://')) {
+          diagnosticInfo.connectionStringAnalysis = 'Invalid URI format - should start with mongodb:// or mongodb+srv://';
+        } else if (sanitizedUri.includes('"') || sanitizedUri.includes("'")) {
+          diagnosticInfo.connectionStringAnalysis = 'URI contains quotes that need to be removed';
+        }
+      } catch (uriError) {
+        diagnosticInfo.connectionStringAnalysis = 'Error parsing connection string';
+      }
+    } else {
+      diagnosticInfo.connectionStringAnalysis = 'MONGODB_URI environment variable is not set';
+    }
   }
+
+  return NextResponse.json(diagnosticInfo);
 } 

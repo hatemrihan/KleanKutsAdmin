@@ -10,7 +10,7 @@ export async function GET() {
     
     // Try to connect to MongoDB
     try {
-      await mongooseConnect();
+    await mongooseConnect();
       console.log('MongoDB connection successful');
     } catch (mongoError: any) {
       console.error('MongoDB connection error:', mongoError);
@@ -93,7 +93,7 @@ export async function GET() {
     }));
 
     console.log('Dashboard data successfully fetched');
-    
+
     return NextResponse.json({
       totalOrders,
       totalSales,

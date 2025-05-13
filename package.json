@@ -8,6 +8,8 @@
         "start": "NODE_ENV=production node server.js",
         "lint": "next lint",
         "netlify-build": "npm cache clean --force && npm install typescript @types/node --no-save && next build",
+        "netlify-deploy": "node scripts/netlify-deploy.js",
+        "validate-deploy": "node scripts/validate-deploy.js",
         "export-static-routes": "node scripts/export-routes.js"
     },
     "dependencies": {

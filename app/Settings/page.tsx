@@ -96,17 +96,33 @@ export default function Settings() {
       });
 
       if (response.data.success) {
-        toast.success('OTP password updated successfully');
+        toast.success('Password updated successfully');
+        
+        // Important: Update localStorage with the new authentication status
+        localStorage.setItem('adminAuthenticated', 'true');
+        
+        // Clear the form
         setPasswordData({
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
+        
+        // Show additional message about logging in with new password next time
+        setTimeout(() => {
+          toast.success('You will use this new password for your next login');
+        }, 1500);
       }
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
-      console.error('Error updating OTP password:', error);
-      toast.error(axiosError.response?.data?.error || 'Failed to update OTP password');
+      console.error('Error updating password:', error);
+      
+      // Check for specific error cases
+      if (axiosError.response?.status === 400) {
+        toast.error('Current password is incorrect');
+      } else {
+        toast.error(axiosError.response?.data?.error || 'Failed to update password');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -182,15 +198,15 @@ export default function Settings() {
             {/* Password Settings */}
             <Card>
               <CardHeader>
-                <CardTitle>OTP Password Settings</CardTitle>
-                <CardDescription>Change your OTP password</CardDescription>
+                <CardTitle>Admin Password</CardTitle>
+                <CardDescription>Change your admin login password</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        Current OTP Password
+                        Current Admin Password
                       </label>
                       <Input
                         id="currentPassword"
@@ -198,13 +214,13 @@ export default function Settings() {
                         type="password"
                         value={passwordData.currentPassword}
                         onChange={handlePasswordChange}
-                        placeholder="Enter current OTP password"
+                        placeholder="Enter current admin password"
                       />
                     </div>
 
                     <div>
                       <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        New OTP Password
+                        New Admin Password
                       </label>
                       <Input
                         id="newPassword"
@@ -212,13 +228,13 @@ export default function Settings() {
                         type="password"
                         value={passwordData.newPassword}
                         onChange={handlePasswordChange}
-                        placeholder="Enter new OTP password"
+                        placeholder="Enter new admin password"
                       />
                     </div>
 
                     <div>
                       <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirm New OTP Password
+                        Confirm New Password
                       </label>
                       <Input
                         id="confirmPassword"
@@ -226,7 +242,7 @@ export default function Settings() {
                         type="password"
                         value={passwordData.confirmPassword}
                         onChange={handlePasswordChange}
-                        placeholder="Confirm new OTP password"
+                        placeholder="Confirm new admin password"
                       />
                     </div>
                   </div>
@@ -236,7 +252,7 @@ export default function Settings() {
                     className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={(e) => handlePasswordSubmit(e)}
                   >
-                    {isLoading ? 'Updating...' : 'Update OTP Password'}
+                    {isLoading ? 'Updating...' : 'Update Admin Password'}
                   </button>
                 </form>
               </CardContent>

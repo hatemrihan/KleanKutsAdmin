@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Waitlist Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .form-container {
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .test-method {
+      margin-bottom: 30px;
+    }
+    h1 {
+      color: #333;
+    }
+    h2 {
+      color: #555;
+    }
+    input, button {
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Waitlist Form Test Tool</h1>
+  <p>This tool tests different methods of submitting to the waitlist API</p>
+  
+  <div class="test-method">
+    <h2>1. Direct Form Submission (Standard HTML Form)</h2>
+    <div class="form-container">
+      <form id="direct-form" action="https://eleveadmin.netlify.app/api/waitlist" method="POST">
+        <input type="email" name="email" placeholder="Enter your email" required>
+        <input type="hidden" name="source" value="test_direct_form">
+        <button type="submit">Submit (Direct Form)</button>
+      </form>
+    </div>
+  </div>
+  
+  <div class="test-method">
+    <h2>2. Hidden iframe Form Submission</h2>
+    <div class="form-container">
+      <form id="iframe-form">
+        <input type="email" id="iframe-email" placeholder="Enter your email" required>
+        <button type="submit">Submit (iframe method)</button>
+      </form>
+      <div id="iframe-result" class="result"></div>
+    </div>
+  </div>
+  
+  <div class="test-method">
+    <h2>3. Fetch API Submission</h2>
+    <div class="form-container">
+      <form id="fetch-form">
+        <input type="email" id="fetch-email" placeholder="Enter your email" required>
+        <button type="submit">Submit (fetch API)</button>
+      </form>
+      <div id="fetch-result" class="result"></div>
+    </div>
+  </div>
+  
+  <div class="test-method">
+    <h2>4. FormData Submission</h2>
+    <div class="form-container">
+      <form id="formdata-form">
+        <input type="email" id="formdata-email" placeholder="Enter your email" required>
+        <button type="submit">Submit (FormData)</button>
+      </form>
+      <div id="formdata-result" class="result"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Hidden iframe method
+    document.getElementById('iframe-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const resultDiv = document.getElementById('iframe-result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = 'Submitting...';
+      
+      const email = document.getElementById('iframe-email').value;
+      
+      // Create hidden form and iframe
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://eleveadmin.netlify.app/api/waitlist';
+      form.style.display = 'none';
+      
+      // Add email field
+      const emailField = document.createElement('input');
+      emailField.type = 'hidden';
+      emailField.name = 'email';
+      emailField.value = email;
+      form.appendChild(emailField);
+      
+      // Add source field
+      const sourceField = document.createElement('input');
+      sourceField.type = 'hidden';
+      sourceField.name = 'source';
+      sourceField.value = 'test_iframe';
+      form.appendChild(sourceField);
+      
+      // Create iframe
+      const iframe = document.createElement('iframe');
+      iframe.name = 'submit-iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      // Set target to iframe
+      form.target = 'submit-iframe';
+      
+      // Handle iframe load
+      iframe.onload = function() {
+        resultDiv.textContent = 'Submission complete! Check your admin panel.';
+        
+        // Clean up
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
+        }, 1000);
+      };
+      
+      // Handle errors
+      iframe.onerror = function() {
+        resultDiv.textContent = 'Error in submission.';
+        document.body.removeChild(iframe);
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
+        }
+      };
+      
+      // Add form to document and submit
+      document.body.appendChild(form);
+      form.submit();
+    });
+    
+    // Fetch API method
+    document.getElementById('fetch-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('fetch-email').value;
+      const resultDiv = document.getElementById('fetch-result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = 'Submitting...';
+      
+      fetch('https://eleveadmin.netlify.app/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          source: 'test_fetch'
+        })
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Network response was not ok');
+        }
+      })
+      .then(data => {
+        resultDiv.textContent = 'Success! Response: ' + JSON.stringify(data);
+      })
+      .catch(error => {
+        resultDiv.textContent = 'Error: ' + error.message;
+        
+        // Try no-cors mode as fallback
+        resultDiv.textContent += '\nTrying no-cors mode...';
+        return fetch('https://eleveadmin.netlify.app/api/waitlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            source: 'test_fetch_nocors'
+          }),
+          mode: 'no-cors'
+        })
+        .then(() => {
+          resultDiv.textContent += '\nno-cors request sent (cannot read response)';
+        });
+      });
+    });
+    
+    // FormData method
+    document.getElementById('formdata-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('formdata-email').value;
+      const resultDiv = document.getElementById('formdata-result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = 'Submitting...';
+      
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('source', 'test_formdata');
+      
+      fetch('https://eleveadmin.netlify.app/api/waitlist', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (response.ok) {
+          try {
+            return response.json();
+          } catch (e) {
+            return { message: 'Success (no JSON response)' };
+          }
+        } else {
+          throw new Error('Network response was not ok');
+        }
+      })
+      .then(data => {
+        resultDiv.textContent = 'Success! Response: ' + JSON.stringify(data);
+      })
+      .catch(error => {
+        resultDiv.textContent = 'Error: ' + error.message;
+      });
+    });
+  </script>
+</body>
+</html> 

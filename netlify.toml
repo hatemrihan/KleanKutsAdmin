@@ -1,5 +1,5 @@
 [build]
-  command = "npm run netlify-deploy"
+  command = "npm config set registry https://registry.npmjs.org/ && npm cache clean --force && npm ci --legacy-peer-deps --prefer-offline && npm run build"
   publish = ".next"
   ignore = "git diff --quiet HEAD^ HEAD ."
 
@@ -10,8 +10,7 @@
   NODE_ENV = "production"
   NEXT_USE_NETLIFY_EDGE = "true"
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
-
-# No plugins - override the default Next.js plugin
+  NPM_FLAGS = "--no-audit --no-fund --prefer-offline --legacy-peer-deps"
 
 # This is the critical part for deep links to work
 [[redirects]]

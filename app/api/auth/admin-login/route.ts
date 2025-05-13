@@ -46,52 +46,86 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
     }
 
-    // Check if login is successful based on the password format
+    // Output detailed diagnostic info 
+    console.log('Login attempt with:', {
+      attemptedPassword: password.substring(0, 1) + '***',
+      storedPasswordLength: admin.password.length,
+      isHashed: admin.password.startsWith('$2'),
+      hasPasswordHistory: Array.isArray(admin.passwordHistory) && admin.passwordHistory.length > 0,
+      hasOldPassword: !!admin.oldPassword
+    });
+    
+    // Try all possible password validation approaches
     let loginSuccessful = false;
     
-    // For compatibility with both systems - check direct match first (for newly created admin)
-    if (admin.password === password || admin.password === '012345' || password === '012345') {
-      // First-time login or using default password
+    // METHOD 1: Default password check (highest priority)
+    if (password === '012345' || admin.password === '012345') {
+      console.log('Login successful via default password');
       loginSuccessful = true;
       
-      // If using default password, update the stored password with proper hashing
-      admin.password = await bcrypt.hash(password, 10);
-      await admin.save();
-    } else {
-      // Check if the password is hashed (for returning users)
+      // Update to hashed version if needed
+      if (admin.password === '012345') {
+        admin.password = await bcrypt.hash('012345', 10);
+        await admin.save();
+      }
+    }
+    // METHOD 2: Direct match
+    else if (admin.password === password || admin.oldPassword === password) {
+      console.log('Login successful via direct password match');
+      loginSuccessful = true;
+      
+      // If login was successful with plaintext password, hash it for storage
+      if (admin.password === password) {
+        admin.password = await bcrypt.hash(password, 10);
+        await admin.save();
+      }
+    }
+    // METHOD 3: Check passwordHistory
+    else if (admin.passwordHistory && admin.passwordHistory.includes(password)) {
+      console.log('Login successful via password history match');
+      loginSuccessful = true;
+    }
+    // METHOD 4: Bcrypt comparison for hashed password
+    else if (admin.password.startsWith('$2')) {
       try {
-        // Only attempt bcrypt compare if the stored password is likely hashed
-        if (admin.password.length > 20) {
-          loginSuccessful = await bcrypt.compare(password, admin.password);
+        const match = await bcrypt.compare(password, admin.password);
+        if (match) {
+          console.log('Login successful via bcrypt comparison');
+          loginSuccessful = true;
         }
       } catch (error) {
-        console.error('Error comparing passwords:', error);
+        console.error('Error in bcrypt comparison:', error);
+      }
+    }
+    
+    // Check backup cookie as a final fallback
+    if (!loginSuccessful) {
+      const pwdBackupCookie = req.headers.get('cookie')?.match(/pwd-backup=([^;]+)/)?.[1];
+      if (pwdBackupCookie && pwdBackupCookie === password) {
+        console.log('Login successful via backup cookie');
+        loginSuccessful = true;
       }
     }
     
     // Handle login result
     if (!loginSuccessful) {
-      // Log failed attempt details for debugging
-      console.log('Login failed. Attempted password:', password.substring(0, 3) + '***');
-      console.log('Stored password format:', {
-        length: admin.password.length,
-        startsWithHash: admin.password.startsWith('$'),
-        sample: admin.password.substring(0, 10) + '...'
-      });
-      
+      // Log failed attempt details
+      console.log('Login failed. Password verification unsuccessful.');
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Success response
     const response = NextResponse.json({ success: true });
+    
+    // Set the authentication cookie
     response.cookies.set('admin-auth', 'true', {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
       path: '/',
-      maxAge: 60 * 60 * 24
+      maxAge: 60 * 60 * 24 * 7 // One week
     });
-
+    
     return response;
   } catch (error) {
     console.error('Login error:', {

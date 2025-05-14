@@ -44,6 +44,37 @@ const AmbassadorSchema = new Schema({
     type: String,
     required: true // why they want to be an ambassador
   },
+  // Application data from form submission
+  application: {
+    fullName: String,
+    phoneNumber: String,
+    email: String,
+    instagramHandle: String,
+    tiktokHandle: String,
+    otherSocialMedia: String,
+    personalStyle: String,
+    soldBefore: String,
+    promotionPlan: String,
+    investmentOption: String,
+    contentComfort: String,
+    instagramFollowers: String,
+    tiktokFollowers: String,
+    otherFollowers: String,
+    targetAudience: String,
+    otherAudience: String,
+    motivation: String,
+    hasCamera: String,
+    attendEvents: String,
+    agreeToTerms: String,
+    additionalInfo: String,
+    questions: String
+  },
+  // Application tracking
+  applicationDate: Date,
+  applicationRef: String,
+  reviewDate: Date,
+  reviewedBy: String,
+  reviewNotes: String,
   // Statistics
   sales: { 
     type: Number, 
@@ -122,6 +153,35 @@ interface AmbassadorDocument extends mongoose.Document {
   discountPercent: number;
   commissionRate: number;
   reason: string;
+  application?: {
+    fullName: string;
+    phoneNumber: string;
+    email: string;
+    instagramHandle: string;
+    tiktokHandle: string;
+    otherSocialMedia: string;
+    personalStyle: string;
+    soldBefore: string;
+    promotionPlan: string;
+    investmentOption: string;
+    contentComfort: string;
+    instagramFollowers: string;
+    tiktokFollowers: string;
+    otherFollowers: string;
+    targetAudience: string;
+    otherAudience: string;
+    motivation: string;
+    hasCamera: string;
+    attendEvents: string;
+    agreeToTerms: string;
+    additionalInfo: string;
+    questions: string;
+  };
+  applicationDate?: Date;
+  applicationRef?: string;
+  reviewDate?: Date;
+  reviewedBy?: string;
+  reviewNotes?: string;
   sales: number;
   earnings: number;
   referrals: number;

@@ -15,6 +15,7 @@ interface Ambassador {
   referralCode: string;
   referralLink: string;
   couponCode: string;
+  discountPercent: number;
   commissionRate: number;
   reason: string;
   sales: number;
@@ -50,6 +51,7 @@ export default function AmbassadorDetailsPage() {
     status: '',
     commissionRate: 0,
     couponCode: '',
+    discountPercent: 0,
   });
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -78,6 +80,7 @@ export default function AmbassadorDetailsPage() {
         status: data.ambassador.status,
         commissionRate: data.ambassador.commissionRate * 100, // Convert to percentage
         couponCode: data.ambassador.couponCode || '',
+        discountPercent: data.ambassador.discountPercent || 10,
       });
     } catch (err) {
       console.error('Error fetching ambassador details:', err);
@@ -91,7 +94,7 @@ export default function AmbassadorDetailsPage() {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: name === 'commissionRate' ? parseFloat(value) : value,
+      [name]: name === 'commissionRate' || name === 'discountPercent' ? parseFloat(value) : value,
     });
   };
 
@@ -297,6 +300,26 @@ export default function AmbassadorDetailsPage() {
                           Leave empty to use default referral code
                         </p>
                       </div>
+                      
+                      <div>
+                        <label htmlFor="discountPercent" className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount Percentage (%)
+                        </label>
+                        <input
+                          type="number"
+                          id="discountPercent"
+                          name="discountPercent"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={formData.discountPercent}
+                          onChange={handleInputChange}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black sm:text-sm"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Discount applied when customers use this coupon code
+                        </p>
+                      </div>
                     </div>
                     
                     <div className="flex gap-3 mt-6">
@@ -314,6 +337,7 @@ export default function AmbassadorDetailsPage() {
                             status: ambassador.status,
                             commissionRate: ambassador.commissionRate * 100,
                             couponCode: ambassador.couponCode || '',
+                            discountPercent: ambassador.discountPercent || 10,
                           });
                         }}
                         className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
@@ -385,10 +409,15 @@ export default function AmbassadorDetailsPage() {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-500">Coupon Code</div>
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap items-center gap-3">
                           <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
                             {ambassador.couponCode || ambassador.referralCode || 'Not generated yet'}
                           </code>
+                          {ambassador.discountPercent && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {ambassador.discountPercent}% discount
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div>

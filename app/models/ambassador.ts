@@ -32,6 +32,10 @@ const AmbassadorSchema = new Schema({
     unique: true,
     sparse: true
   },
+  discountPercent: {
+    type: Number,
+    default: 10 // Default 10% discount for coupon codes
+  },
   commissionRate: {
     type: Number,
     default: 0.10 // 10% by default
@@ -115,6 +119,7 @@ interface AmbassadorDocument extends mongoose.Document {
   referralCode?: string;
   referralLink?: string;
   couponCode?: string;
+  discountPercent: number;
   commissionRate: number;
   reason: string;
   sales: number;

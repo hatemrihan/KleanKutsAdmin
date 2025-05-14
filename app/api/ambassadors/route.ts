@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    const { id, status, couponCode } = await request.json();
+    const { id, status, couponCode, discountPercent } = await request.json();
     
     if (!id || !status) {
       return NextResponse.json(
@@ -61,8 +61,15 @@ export async function POST(request: NextRequest) {
     const updateData: any = { status };
     
     // If approving and coupon code provided, update it
-    if (status === 'approved' && couponCode) {
-      updateData.couponCode = couponCode;
+    if (status === 'approved') {
+      if (couponCode) {
+        updateData.couponCode = couponCode;
+      }
+      
+      // Update discount percent if provided
+      if (discountPercent !== undefined) {
+        updateData.discountPercent = discountPercent;
+      }
     }
     
     const ambassador = await Ambassador.findByIdAndUpdate(

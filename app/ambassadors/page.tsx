@@ -12,6 +12,7 @@ interface Ambassador {
   email: string;
   status: 'pending' | 'approved' | 'rejected';
   referralCode: string;
+  discountPercent: number;
   sales: number;
   earnings: number;
   referrals: number;
@@ -24,6 +25,12 @@ export default function AmbassadorsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvalData, setApprovalData] = useState({
+    id: '',
+    couponCode: '',
+    discountPercent: 10,
+  });
 
   useEffect(() => {
     fetchAmbassadors(activeTab);
@@ -52,6 +59,17 @@ export default function AmbassadorsPage() {
   };
 
   const handleUpdateStatus = async (id: string, newStatus: 'approved' | 'rejected') => {
+    if (newStatus === 'approved') {
+      // Open approval modal for customizing coupon code and discount
+      setApprovalData({
+        id,
+        couponCode: '',
+        discountPercent: 10,
+      });
+      setIsApproving(true);
+      return;
+    }
+    
     try {
       const response = await fetch('/api/ambassadors', {
         method: 'POST',
@@ -74,6 +92,43 @@ export default function AmbassadorsPage() {
       console.error('Error updating ambassador status:', err);
       setError('Failed to update status. Please try again.');
     }
+  };
+  
+  const handleApprovalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/ambassadors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: approvalData.id,
+          status: 'approved',
+          couponCode: approvalData.couponCode,
+          discountPercent: approvalData.discountPercent,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve ambassador');
+      }
+      
+      // Reset state and refresh the list
+      setIsApproving(false);
+      fetchAmbassadors(activeTab);
+    } catch (err) {
+      console.error('Error approving ambassador:', err);
+      setError('Failed to approve ambassador. Please try again.');
+    }
+  };
+
+  const handleApprovalInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setApprovalData({
+      ...approvalData,
+      [name]: name === 'discountPercent' ? parseInt(value, 10) : value,
+    });
   };
 
   // Format date string
@@ -159,6 +214,66 @@ export default function AmbassadorsPage() {
             </div>
           )}
           
+          {/* Approval modal */}
+          {isApproving && (
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Approve Ambassador</h3>
+                <form onSubmit={handleApprovalSubmit}>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="couponCode" className="block text-sm font-medium text-gray-700 mb-1">
+                        Custom Coupon Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="couponCode"
+                        name="couponCode"
+                        value={approvalData.couponCode}
+                        onChange={handleApprovalInputChange}
+                        placeholder="Leave blank to use referral code"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="discountPercent" className="block text-sm font-medium text-gray-700 mb-1">
+                        Discount Percentage (%)
+                      </label>
+                      <input
+                        type="number"
+                        id="discountPercent"
+                        name="discountPercent"
+                        min="0"
+                        max="100"
+                        value={approvalData.discountPercent}
+                        onChange={handleApprovalInputChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black sm:text-sm"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Discount applied when customers use this ambassador's coupon code
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsApproving(false)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          
           {/* Loading state */}
           {isLoading ? (
             <div className="flex justify-center py-12">
@@ -199,6 +314,9 @@ export default function AmbassadorsPage() {
                             Referral Code
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Discount
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Stats
                           </th>
                         </>
@@ -235,6 +353,11 @@ export default function AmbassadorsPage() {
                               <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
                                 {ambassador.referralCode || 'N/A'}
                               </code>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm">
+                                {ambassador.discountPercent || 10}%
+                              </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex flex-col text-xs">

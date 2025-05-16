@@ -171,6 +171,24 @@ export default function WaitlistPage() {
     document.body.removeChild(link);
   };
   
+  const exportToTxt = () => {
+    // Create a string with just the emails, one per line
+    const emailsString = waitlistEntries.map(entry => entry.email).join('\n');
+    
+    // Create and download file
+    const blob = new Blob([emailsString], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `waitlist-emails-${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
   const filteredEntries = waitlistEntries.filter(entry => {
     return entry.email.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -187,7 +205,10 @@ export default function WaitlistPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Waitlist Management</h1>
-            <Button onClick={exportToCSV}>Export to CSV</Button>
+            <div className="flex space-x-2">
+              <Button onClick={exportToTxt} variant="outline">Export Emails (.txt)</Button>
+              <Button onClick={exportToCSV}>Export to CSV</Button>
+            </div>
           </div>
           
           <Card className="mb-6">

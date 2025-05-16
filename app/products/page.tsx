@@ -26,6 +26,7 @@ import {
 } from "../components/ui/select";
 import Nav from '../sections/nav';
 import { Input } from '../components/ui/input';
+import { DarkModePanel, DarkModeInput, DarkModeStatus } from '../components/ui/dark-mode-wrapper';
 
 interface Product {
   _id: string;
@@ -57,8 +58,8 @@ const ProductImage = ({ src, alt }: { src: string; alt: string }) => {
 
   if (error || !src) {
     return (
-      <div className="flex-shrink-0 h-24 w-24 bg-gray-200 rounded-lg flex items-center justify-center">
-        <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex-shrink-0 h-24 w-24 bg-gray-200 dark:bg-black rounded-lg flex items-center justify-center">
+        <svg className="h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </div>
@@ -134,196 +135,282 @@ export default function ProductsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      <div className="flex justify-center items-center min-h-screen dark:bg-black">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 dark:border-green-400"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-red-600">{error}</div>
+      <div className="flex justify-center items-center min-h-screen dark:bg-black">
+        <div className="text-red-600 dark:text-red-400">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-4 lg:p-8 bg-gray-50 dark:bg-black">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your product inventory</p>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <Input
-                type="search"
-                placeholder="Search products..."
-                className="w-full sm:w-[300px]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div className="relative w-full sm:w-[300px]">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <DarkModeInput
+                  type="search"
+                  placeholder="Search products..."
+                  className="pl-10 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
               <Select value={selectedMonth} onValueChange={handleMonthChange}>
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-full sm:w-[120px] dark:bg-black dark:border-gray-700 dark:text-gray-100">
                   <SelectValue placeholder="Month" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="dark:bg-black dark:border-gray-700">
                   {months.map((month) => (
-                    <SelectItem key={month} value={month}>
+                    <SelectItem key={month} value={month} className="dark:text-gray-100 dark:focus:bg-gray-900">
                       {month}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Link href="/products/new" className="w-full sm:w-auto">
-                <Button className="w-full">Add Product</Button>
+                <Button className="w-full bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Product
+                </Button>
               </Link>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm">
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => (
-                    <tr key={product._id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <ProductImage src={product.selectedImages[0]} alt={product.title} />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{product.title}</div>
-                            <div className="text-sm text-gray-500">{product.description}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{product.price} L.E.</div>
-                        {product.discount > 0 && (
-                          <div className="text-sm text-green-600">
-                            {product.discount}% off
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{product.stock}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2">
-                          <Link href={`/products/edit/${product._id}`}>
-                            <Button variant="outline" size="sm">Edit</Button>
-                          </Link>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">Delete</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the product.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(product._id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </td>
+          {products.length === 0 ? (
+            <DarkModePanel className="rounded-lg shadow-sm p-8 text-center">
+              <svg className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No products found</h3>
+              <p className="mt-1 text-gray-500 dark:text-gray-400">Get started by adding your first product.</p>
+              <Link href="/products/new" className="mt-6 inline-block">
+                <Button className="bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Product
+                </Button>
+              </Link>
+            </DarkModePanel>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block bg-white dark:bg-black rounded-lg shadow-sm overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categories</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Mobile Card View */}
-            <div className="block md:hidden">
-              {products.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No products found</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 p-4">
-                  {products.map((product) => (
-                    <div key={product._id} className="border rounded-lg overflow-hidden shadow-sm">
-                      <div className="p-4">
-                        <div className="flex items-center mb-4">
-                          <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
-                            {product.selectedImages && product.selectedImages[0] ? (
-                              <Image 
-                                src={product.selectedImages[0]} 
-                                alt={product.title}
-                                fill
-                                className="object-cover"
-                                unoptimized={true} // For Cloudinary images
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-gray-400 text-xs">No image</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="ml-4 flex-1">
-                            <h3 className="font-medium text-gray-900 truncate">{product.title}</h3>
-                            <p className="text-sm text-gray-500 truncate">{product.description}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center mb-4">
-                          <div>
-                            <div className="text-sm font-medium">
-                              {product.price} L.E.
-                              {product.discount > 0 && (
-                                <span className="ml-2 text-green-600 text-xs">{product.discount}% off</span>
-                              )}
+                  </thead>
+                  <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
+                    {products
+                      .filter(product => 
+                        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        product.description.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((product) => (
+                      <tr key={product._id} className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <ProductImage src={product.selectedImages[0]} alt={product.title} />
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{product.title}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{product.description}</div>
                             </div>
                           </div>
-                          <div className="text-sm">
-                            <span className="text-gray-500">Stock:</span> {product.stock}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-gray-100 font-medium">{product.price.toLocaleString()} L.E.</div>
+                          {product.discount > 0 && (
+                            <div className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-block mt-1">
+                              {product.discount}% off
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
+                            {product.stock} in stock
                           </div>
-                        </div>
-                        
-                        <div className="flex gap-2 justify-end">
-                          <Link href={`/products/edit/${product._id}`} className="flex-1">
-                            <Button variant="outline" size="sm" className="w-full">Edit</Button>
-                          </Link>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm" className="flex-1 w-full">Delete</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the product.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(product._id)}>
+                          <div className="mt-1">
+                            {product.stock > 10 ? (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+                                In Stock
+                              </span>
+                            ) : product.stock > 0 ? (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
+                                Low Stock
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400">
+                                Out of Stock
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-wrap gap-1">
+                            {product.categories?.length > 0 ? (
+                              product.categories.map((categoryId, index) => (
+                                <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+                                  {categoryId}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400 text-sm">No categories</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-3">
+                            <Link href={`/products/${product._id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                              Edit
+                            </Link>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
                                   Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="dark:bg-black dark:border-gray-700">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="dark:text-gray-100">Delete Product</AlertDialogTitle>
+                                  <AlertDialogDescription className="dark:text-gray-400">
+                                    Are you sure you want to delete this product? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="dark:bg-black dark:text-white dark:hover:bg-black/80">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(product._id)} 
+                                    className="bg-red-600 hover:bg-red-700 dark:bg-red-900 dark:hover:bg-red-800"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {products
+                  .filter(product => 
+                    product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    product.description.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((product) => (
+                  <div key={product._id} className="bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start">
+                      <ProductImage src={product.selectedImages[0]} alt={product.title} />
+                      <div className="ml-4 flex-1">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{product.title}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{product.description}</div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {product.categories?.length > 0 ? (
+                            product.categories.map((categoryId, index) => (
+                              <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+                                {categoryId}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">No categories</span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                    <div className="mt-4 flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{product.price.toLocaleString()} L.E.</div>
+                        {product.discount > 0 && (
+                          <div className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-block mt-1">
+                            {product.discount}% off
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {product.stock} in stock
+                        </div>
+                        <div className="mt-1">
+                          {product.stock > 10 ? (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+                              In Stock
+                            </span>
+                          ) : product.stock > 0 ? (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
+                              Low Stock
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400">
+                              Out of Stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-4">
+                      <Link href={`/products/${product._id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm">
+                        Edit
+                      </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm">
+                            Delete
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="dark:bg-black dark:border-gray-700">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="dark:text-gray-100">Delete Product</AlertDialogTitle>
+                            <AlertDialogDescription className="dark:text-gray-400">
+                              Are you sure you want to delete this product? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="dark:bg-black dark:text-white dark:hover:bg-black/80">Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDelete(product._id)} 
+                              className="bg-red-600 hover:bg-red-700 dark:bg-red-900 dark:hover:bg-red-800"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>

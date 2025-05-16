@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       case 'order_completed':
         await handleOrderCompletion(data as OrderData);
         break;
-        
+      
       default:
         console.warn(`Unhandled notification type: ${type}`);
         // Still acknowledge receipt
@@ -100,9 +100,9 @@ async function handleAmbassadorApplication(data: ApplicationData) {
   const { email, name, applicationRef, formData } = data;
   
   try {
-    // Check if application already exists
+  // Check if application already exists
     const existingAmbassador = await Ambassador.findOne({ email });
-    
+  
     if (existingAmbassador) {
       // Update existing application data
       existingAmbassador.application = formData;
@@ -111,19 +111,19 @@ async function handleAmbassadorApplication(data: ApplicationData) {
       existingAmbassador.status = 'pending';
       await existingAmbassador.save();
     } else {
-      // Create new ambassador application
+  // Create new ambassador application
       const ambassador = new Ambassador({
-        name,
-        email,
+    name,
+    email,
         userId: `temp-${Date.now()}`,
-        status: 'pending',
+    status: 'pending',
         reason: formData?.motivation || 'Application via form',
         application: formData,
-        applicationDate: new Date(),
+    applicationDate: new Date(),
         applicationRef: applicationRef
       });
       
-      await ambassador.save();
+  await ambassador.save();
     }
     
     // Notify admins about the new application
@@ -149,9 +149,9 @@ async function logApplicationError(data: ApplicationData) {
     message: `Error processing application: ${data.message || 'Unknown error'}`,
     type: 'application_error',
     data
-  });
-}
-
+    });
+  }
+  
 // Process order notifications with ambassador codes
 async function handleOrderCompletion(data: OrderData) {
   const { orderId, referralCode, amount } = data;
@@ -161,37 +161,37 @@ async function handleOrderCompletion(data: OrderData) {
     const ambassador = await Ambassador.findOne({ 
       referralCode: referralCode 
     });
-    
-    if (!ambassador) {
+  
+  if (!ambassador) {
       console.warn(`No ambassador found for referral code: ${referralCode}`);
-      return;
-    }
-    
-    // Calculate commission
-    const commission = amount * ambassador.commissionRate;
-    
+    return;
+  }
+  
+  // Calculate commission
+  const commission = amount * ambassador.commissionRate;
+  
     // Update ambassador statistics
     ambassador.sales += amount;
     ambassador.earnings += commission;
     ambassador.orders += 1;
     ambassador.paymentsPending += commission;
-    
-    // Add to recent orders
-    ambassador.recentOrders.push({
-      orderId,
-      orderDate: new Date(),
-      amount,
-      commission,
-      isPaid: false
-    });
-    
+  
+  // Add to recent orders
+  ambassador.recentOrders.push({
+    orderId,
+    orderDate: new Date(),
+    amount,
+    commission,
+    isPaid: false
+  });
+  
     // Keep only the most recent orders (limit to 20)
     if (ambassador.recentOrders.length > 20) {
       ambassador.recentOrders = ambassador.recentOrders.slice(-20);
     }
     
-    await ambassador.save();
-    
+  await ambassador.save();
+  
     // Notify admin
     await sendAdminNotification({
       title: 'New Ambassador Sale',

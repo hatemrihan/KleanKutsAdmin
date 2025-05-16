@@ -7,7 +7,7 @@ export async function getCategories() {
     try {
         await mongooseConnect();
         const categories = await Category.find({ deleted: { $ne: true } })
-            .sort({ createdAt: -1 });
+            .sort({ displayOrder: 1, createdAt: -1 });
         return { success: true, data: categories };
     } catch (error) {
         console.error('Error fetching categories:', error);
@@ -42,13 +42,40 @@ export async function createCategory(data: CategoryRequest) {
             return { success: false, error: 'Category with this name already exists' };
         }
 
-        // Create category
+        // Create category with enhanced fields
         const category = await Category.create({
             name: data.name.trim(),
             slug,
             description: data.description?.trim(),
+            headline: data.headline?.trim(),
+            subheadline: data.subheadline?.trim(),
+            displayOrder: data.displayOrder || 0,
+            callToAction: {
+                text: data.callToAction?.text || 'EXPLORE',
+                link: data.callToAction?.link || ''
+            },
+            customStyles: {
+                textColor: data.customStyles?.textColor || '#000000',
+                backgroundColor: data.customStyles?.backgroundColor || '',
+                overlayOpacity: data.customStyles?.overlayOpacity || 0
+            },
+            isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
             parent: data.parent || null,
             image: data.image || null,
+            mobileImage: data.mobileImage || null,
+            additionalImages: data.additionalImages || [],
+            desktopDescription: data.desktopDescription?.trim() || '',
+            mobileDescription: data.mobileDescription?.trim() || '',
+            layout: {
+                desktop: {
+                    imagePosition: data.layout?.desktop?.imagePosition || 'center',
+                    textAlignment: data.layout?.desktop?.textAlignment || 'center'
+                },
+                mobile: {
+                    imagePosition: data.layout?.mobile?.imagePosition || 'center',
+                    textAlignment: data.layout?.mobile?.textAlignment || 'center'
+                }
+            },
             properties: data.properties || {},
             deleted: false
         });
@@ -134,7 +161,7 @@ export async function updateCategory(id: string, data: Partial<CategoryRequest>)
     }
 }
 
-export async function deleteCategory(id: string, permanent: boolean = false) {
+export async function deleteCategory(id: string, permanent: boolean = true) {
     try {
         await mongooseConnect();
 
@@ -143,6 +170,7 @@ export async function deleteCategory(id: string, permanent: boolean = false) {
             if (!result) {
                 return { success: false, error: 'Category not found' };
             }
+            return { success: true, message: 'Category permanently deleted' };
         } else {
             const result = await Category.findByIdAndUpdate(id, {
                 deleted: true,
@@ -151,9 +179,8 @@ export async function deleteCategory(id: string, permanent: boolean = false) {
             if (!result) {
                 return { success: false, error: 'Category not found' };
             }
+            return { success: true, message: 'Category marked as deleted' };
         }
-
-        return { success: true, message: 'Category deleted successfully' };
     } catch (error) {
         console.error('Error deleting category:', error);
         return { success: false, error: 'Failed to delete category' };

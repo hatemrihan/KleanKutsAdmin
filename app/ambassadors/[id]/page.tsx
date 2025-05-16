@@ -34,6 +34,29 @@ interface Ambassador {
   }[];
   createdAt: string;
   updatedAt: string;
+  application?: {
+    fullName?: string;
+    phoneNumber?: string;
+    email?: string;
+    instagramHandle?: string;
+    tiktokHandle?: string;
+    otherSocialMedia?: string;
+    personalStyle?: string;
+    soldBefore?: string;
+    promotionPlan?: string;
+    investmentOption?: string;
+    contentComfort?: string;
+    instagramFollowers?: string;
+    tiktokFollowers?: string;
+    otherFollowers?: string;
+    targetAudience?: string;
+    otherAudience?: string;
+    motivation?: string;
+    hasCamera?: string;
+    attendEvents?: string;
+    additionalInfo?: string;
+    questions?: string;
+  };
 }
 
 export default function AmbassadorDetailsPage() {
@@ -478,6 +501,123 @@ export default function AmbassadorDetailsPage() {
                         <div className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(ambassador.paymentsPaid || 0)}</div>
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Application Details */}
+                  <div className="px-6 py-5 border-b border-gray-200">
+                    <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Application Details</h3>
+                    {ambassador.application ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Full Name</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.fullName || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Phone Number</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.phoneNumber || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Email</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.email || ambassador.email}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Instagram Handle</div>
+                          <div className="mt-1 text-sm text-gray-900">
+                            {ambassador.application.instagramHandle ? (
+                              <a 
+                                href={`https://instagram.com/${ambassador.application.instagramHandle.replace('@', '')}`} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                {ambassador.application.instagramHandle}
+                              </a>
+                            ) : 'Not provided'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">TikTok Handle</div>
+                          <div className="mt-1 text-sm text-gray-900">
+                            {ambassador.application.tiktokHandle ? (
+                              <a 
+                                href={`https://tiktok.com/@${ambassador.application.tiktokHandle.replace('@', '')}`} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                {ambassador.application.tiktokHandle}
+                              </a>
+                            ) : 'Not provided'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Other Social Media</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.otherSocialMedia || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Personal Style</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.personalStyle || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Sold Products Before</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.soldBefore || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">How They Plan to Promote</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.promotionPlan || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Investment Option</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.investmentOption || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Content Creation Comfort</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.contentComfort || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Instagram Followers</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.instagramFollowers || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">TikTok Followers</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.tiktokFollowers || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Other Platform Followers</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.otherFollowers || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Target Audience</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.targetAudience || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Other Audience Details</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.otherAudience || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Motivation</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.motivation || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Has Camera Equipment</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.hasCamera || 'Not provided'}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">Can Attend Events</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.attendEvents || 'Not provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Additional Information</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.additionalInfo || 'None provided'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-sm font-medium text-gray-500">Questions</div>
+                          <div className="mt-1 text-sm text-gray-900">{ambassador.application.questions || 'None provided'}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">No detailed application information available.</div>
+                    )}
                   </div>
                   
                   {/* Recent orders */}

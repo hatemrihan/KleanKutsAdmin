@@ -19,6 +19,10 @@ const AmbassadorSchema = new Schema({
     enum: ['pending', 'approved', 'rejected'], 
     default: 'pending' 
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
   referralCode: { 
     type: String,
     unique: true,
@@ -147,6 +151,7 @@ interface AmbassadorDocument extends mongoose.Document {
   name: string;
   userId: string;
   status: 'pending' | 'approved' | 'rejected';
+  isActive: boolean;
   referralCode?: string;
   referralLink?: string;
   couponCode?: string;

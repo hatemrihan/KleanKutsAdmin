@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 // Lazy load components with ssr disabled to prevent hydration mismatch
 const UploadSection = dynamic(() => import('../../sections/UploadSection'), { ssr: false });
 const SizeVariantsManager = dynamic(() => import('../../components/SizeVariantsManager'), { ssr: false });
+const ProductContentFields = dynamic(() => import('../../components/ProductContentFields'), { ssr: false });
 
 // Import types
 import { SizeVariant } from '../../types/product';
@@ -41,6 +42,10 @@ interface ProductFormData {
   gender: string;
   selectedImages: string[];
   sizeVariants: SizeVariant[];
+  materials: string[];
+  sizeGuide: string;
+  packaging: string;
+  shippingReturns: string;
 }
 
 export default function NewProduct() {
@@ -62,7 +67,11 @@ export default function NewProduct() {
     selectedSizes: [],
     gender: '',
     selectedImages: [],
-    sizeVariants: []
+    sizeVariants: [],
+    materials: [],
+    sizeGuide: '',
+    packaging: '',
+    shippingReturns: ''
   });
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -260,7 +269,7 @@ export default function NewProduct() {
                     />
                   )}
                   <div>
-                    <p className="font-medium">Kenzy</p>
+                    <p className="font-medium">Seif</p>
                     <p className="text-sm text-gray-500">Manager</p>
                   </div>
                 </div>
@@ -534,6 +543,20 @@ export default function NewProduct() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Admin-Only Product Content</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                These fields are managed by admins and will be displayed on the product page. Customers cannot edit these fields.
+              </p>
+              <ProductContentFields
+                materials={formData.materials}
+                sizeGuide={formData.sizeGuide}
+                packaging={formData.packaging}
+                shippingReturns={formData.shippingReturns}
+                onChange={(field, value) => handleInputChange(field as keyof ProductFormData, value)}
+              />
             </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8">

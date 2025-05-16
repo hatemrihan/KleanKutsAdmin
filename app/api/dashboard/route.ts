@@ -3,6 +3,7 @@ import { mongooseConnect } from '../../lib/mongoose';
 import { Order } from '../../models/order';
 import { Product } from '../../models/product';
 import { Category } from '../../models/category';
+import { Setting } from '../../models/setting';
 
 export async function GET() {
   try {
@@ -46,35 +47,51 @@ export async function GET() {
       .filter(order => new Date(order.createdAt) >= startOfMonth)
       .reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0);
 
-    // Set monthly goal (you can adjust this value)
-    const monthlyGoal = 100000; // Updated to 100,000 L.E monthly goal
+    // Get monthly goal from settings or use default
+    let monthlyGoal = 100000; // Default value
+    const goalSetting = await Setting.findOne({ key: 'monthlyGoal' });
+    if (goalSetting && goalSetting.value) {
+      monthlyGoal = parseInt(goalSetting.value, 10) || monthlyGoal;
+    }
 
-    // Get monthly data for the last 6 months
-    const monthlyData = await Order.aggregate([
-      {
-        $match: {
-          deleted: { $ne: true },
-          createdAt: {
-            $gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
-          }
-        }
-      },
-      {
-        $group: {
-          _id: { $month: '$createdAt' },
-          total: { 
-            $sum: { 
-              $cond: [
-                { $ifNull: ['$totalAmount', false] },
-                '$totalAmount',
-                { $ifNull: ['$total', 0] }
-              ]
-            }
-          },
-          count: { $sum: 1 }
-        }
+    // Get monthly data for the last 12 months
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(now.getMonth() - i);
+      return { 
+        month: d.getMonth(),
+        year: d.getFullYear(),
+        name: monthNames[d.getMonth()]
+      };
+    }).reverse();
+
+    // Initialize monthly data with zeros
+    const monthlyData = last12Months.map(month => ({
+      name: month.name,
+      sales: 0,
+      year: month.year,
+      month: month.month
+    }));
+
+    // Aggregate orders by month and year
+    for (const order of orders) {
+      if (!order.createdAt) continue;
+      
+      const orderDate = new Date(order.createdAt);
+      const orderMonth = orderDate.getMonth();
+      const orderYear = orderDate.getFullYear();
+      const orderAmount = order.totalAmount || order.total || 0;
+      
+      // Find the matching month in our data
+      const monthIndex = monthlyData.findIndex(m => 
+        m.month === orderMonth && m.year === orderYear
+      );
+      
+      if (monthIndex !== -1) {
+        monthlyData[monthIndex].sales += orderAmount;
       }
-    ]);
+    }
 
     // Get recent orders with proper customer name handling
     const recentOrders = await Order.find({ deleted: { $ne: true } })

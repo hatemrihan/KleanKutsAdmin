@@ -66,18 +66,27 @@ export async function GET(req: NextRequest) {
     let query: ProductQuery = { deleted: { $ne: true } };
     
     if (month) {
-      // Add month filtering
-      const monthIndex = new Date(`${month} 1, 2024`).getMonth();
-      const startDate = new Date(2024, monthIndex, 1);
-      const endDate = new Date(2024, monthIndex + 1, 0);
+      // Map month name to month index (Jan=0, Feb=1, etc.)
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthIndex = monthNames.indexOf(month);
       
-      query = {
-        ...query,
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
+      if (monthIndex !== -1) {
+        const currentYear = new Date().getFullYear();
+        const startDate = new Date(currentYear, monthIndex, 1);
+        const endDate = new Date(currentYear, monthIndex + 1, 0); // Last day of the month
+        
+        console.log(`Filtering products for ${month} ${currentYear}:`, startDate, 'to', endDate);
+        
+        query = {
+          ...query,
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate
+          }
+        };
+      } else {
+        console.log(`Invalid month: ${month}`);
+      }
     }
     
     const products = await Product.find(query).sort({ createdAt: -1 });

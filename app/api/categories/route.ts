@@ -9,6 +9,7 @@ interface CategoryQuery {
     $gte: Date;
     $lte: Date;
   };
+  isActive?: boolean;
 }
 
 // GET all categories or single category
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const month = searchParams.get('month');
+    const activeOnly = searchParams.get('active') === 'true';
     
     // If ID is provided, get single category
     if (id) {
@@ -32,22 +34,37 @@ export async function GET(req: NextRequest) {
     // Otherwise get all categories
     let query: CategoryQuery = { deleted: { $ne: true } };
     
-    if (month) {
-      // Add month filtering
-      const monthIndex = new Date(`${month} 1, 2024`).getMonth();
-      const startDate = new Date(2024, monthIndex, 1);
-      const endDate = new Date(2024, monthIndex + 1, 0);
-      
-      query = {
-        ...query,
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
+    // Filter by active status if requested
+    if (activeOnly) {
+      query.isActive = true;
     }
     
-    const categories = await Category.find(query).sort({ createdAt: -1 });
+    if (month) {
+      // Map month name to month index (Jan=0, Feb=1, etc.)
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthIndex = monthNames.indexOf(month);
+      
+      if (monthIndex !== -1) {
+        const currentYear = new Date().getFullYear();
+        const startDate = new Date(currentYear, monthIndex, 1);
+        const endDate = new Date(currentYear, monthIndex + 1, 0); // Last day of the month
+        
+        console.log(`Filtering categories for ${month} ${currentYear}:`, startDate, 'to', endDate);
+        
+        query = {
+          ...query,
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate
+          }
+        };
+      } else {
+        console.log(`Invalid month: ${month}`);
+      }
+    }
+    
+    // Sort by displayOrder (if it exists) and then by createdAt in descending order
+    const categories = await Category.find(query).sort({ displayOrder: 1, createdAt: -1 });
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Error in GET /api/categories:', error);

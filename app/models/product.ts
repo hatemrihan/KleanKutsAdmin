@@ -37,7 +37,47 @@ const productSchema = new Schema({
     deleted: { type: Boolean, default: false },
     deletedAt: Date,
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    name: {
+        type: String,
+        required: true
+    },
+    images: {
+        type: [String],
+        default: []
+    },
+    mainImage: {
+        type: String
+    },
+    category: {
+        type: Schema.Types.ObjectId,
+        ref: 'Category'
+    },
+    featured: {
+        type: Boolean,
+        default: false
+    },
+    stockInfo: [{
+        size: String,
+        color: String,
+        quantity: Number
+    }],
+    materials: {
+        type: [String],
+        default: []
+    },
+    sizeGuide: {
+        type: String,
+        default: ''
+    },
+    packaging: {
+        type: String,
+        default: ''
+    },
+    shippingReturns: {
+        type: String,
+        default: ''
+    }
 });
 
 // Add a method to get full image URLs
@@ -51,6 +91,53 @@ productSchema.methods.getImageUrls = function() {
     });
 };
 
-// Ensure the model hasn't been compiled before
-export const Product = mongoose.models?.Product || mongoose.model('Product', productSchema);
+// Update timestamp before saving
+productSchema.pre('save', function(next) {
+    this.updatedAt = new Date();
+    next();
+});
+
+// For TypeScript compatibility
+interface ProductDocument extends mongoose.Document {
+    title: string;
+    description: string;
+    price: number;
+    sizeVariants: {
+        size: string;
+        colorVariants: {
+            color: string;
+            stock: number;
+        }[];
+    }[];
+    selectedSizes: string[];
+    gender: string;
+    color: string;
+    stock: number;
+    discount: number;
+    discountType: string;
+    selectedImages: string[];
+    categories: mongoose.Types.ObjectId[];
+    deleted: boolean;
+    deletedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    name: string;
+    images: string[];
+    mainImage?: string;
+    category?: mongoose.Types.ObjectId;
+    featured: boolean;
+    stockInfo: {
+        size: string;
+        color: string;
+        quantity: number;
+    }[];
+    materials: string[];
+    sizeGuide: string;
+    packaging: string;
+    shippingReturns: string;
+}
+
+// Prevent duplicate model compilation error in development
+export const Product = mongoose.models.Product || 
+    mongoose.model<ProductDocument>('Product', productSchema);
 

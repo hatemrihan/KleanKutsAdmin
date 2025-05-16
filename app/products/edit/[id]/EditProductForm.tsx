@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 const UploadSection = dynamic(() => import('../../../sections/UploadSection'), { ssr: false });
 const CategorySection = dynamic(() => import('../../../sections/CategorySection'), { ssr: false });
 const SizeVariantsManager = dynamic(() => import('../../../components/SizeVariantsManager'), { ssr: false });
+const ProductContentFields = dynamic(() => import('../../../components/ProductContentFields'), { ssr: false });
 
 interface ColorVariant {
   color: string;
@@ -32,6 +33,10 @@ interface Product {
   selectedImages: string[];
   categories: string[];
   sizeVariants?: SizeVariant[];
+  materials?: string[];
+  sizeGuide?: string;
+  packaging?: string;
+  shippingReturns?: string;
 }
 
 interface Category {
@@ -57,7 +62,11 @@ const initialFormData: Product = {
   discountType: 'percentage',
   selectedImages: [],
   categories: [],
-  sizeVariants: []
+  sizeVariants: [],
+  materials: [],
+  sizeGuide: '',
+  packaging: '',
+  shippingReturns: ''
 };
 
 export default function EditProductForm({ id }: EditProductFormProps) {
@@ -486,6 +495,17 @@ export default function EditProductForm({ id }: EditProductFormProps) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Admin-Only Product Content</h2>
+        <ProductContentFields
+          materials={formData.materials || []}
+          sizeGuide={formData.sizeGuide || ''}
+          packaging={formData.packaging || ''}
+          shippingReturns={formData.shippingReturns || ''}
+          onChange={(field, value) => handleInputChange(field as keyof Product, value)}
+        />
       </div>
 
       <div className="flex justify-end gap-4 mt-8">

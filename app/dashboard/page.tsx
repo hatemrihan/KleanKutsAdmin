@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Nav from "../sections/nav";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import axios, { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
 import { config } from '../../config';
@@ -27,7 +27,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
-import { useRouter } from 'next/navigation';
 import { Card as CardUI, CardContent as CardContentUI, CardDescription, CardHeader as CardHeaderUI, CardTitle as CardTitleUI } from "../components/ui/card";
 import { DarkModePanel, DarkModeStatus, DarkModeText } from "../components/ui/dark-mode-wrapper";
 
@@ -120,7 +119,6 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -204,42 +202,25 @@ export default function Dashboard() {
       
       const response = await axios.get(apiUrl);
       console.log('Dashboard data received:', response.data);
-      setStats(response.data);
       
-      // Set monthly goal from API response if available
-      if (response.data?.monthlyGoal) {
+      // IMPORTANT: Update monthly goal from API first, then set stats
+      // This ensures the goal is updated before any stats components are rendered
+      if (response.data && typeof response.data.monthlyGoal === 'number') {
         setMonthlyGoal(response.data.monthlyGoal);
+        console.log('Updated monthly goal from API:', response.data.monthlyGoal);
       }
+      
+      // Set dashboard stats after monthly goal is updated
+      setStats(response.data);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       
-      // Extract more detailed error information
-      const axiosError = error as AxiosError<{ error: string }>;
-      const errorDetails = axiosError.response?.data?.error || 'Unknown error';
-      const statusCode = axiosError.response?.status;
-      
-      console.error('Error details:', {
-        message: errorDetails,
-        status: statusCode,
-        url: '/api/dashboard'
-      });
-      
-      // Try the diagnostic endpoint to get more info
-      try {
-        const diagnosticUrl = window.location.origin + '/api/diagnose';
-        console.log('Fetching diagnostic data from:', diagnosticUrl);
-        const diagResponse = await axios.get(diagnosticUrl);
-        console.log('Diagnostic data:', diagResponse.data);
-      } catch (diagError) {
-        console.error('Diagnostic endpoint error:', diagError);
-      }
-      
       // Use fallback data instead of showing error
-      setStats(fallbackStats);
       setMonthlyGoal(fallbackStats.monthlyGoal);
+      setStats(fallbackStats);
       
-      // Still show the error toast
-      toast.error(`Failed to load dashboard data: ${errorDetails}`);
+      // Show error toast
+      toast.error('Failed to load dashboard data');
     } finally {
       setIsLoading(false);
     }
@@ -303,8 +284,14 @@ export default function Dashboard() {
     try {
       setIsSavingGoal(true);
       
+      console.log('Updating monthly goal to:', monthlyGoal);
+      
       // Make API call to update the monthly goal
-      await axios.post('/api/dashboard/update-goal', { monthlyGoal });
+      const response = await axios.post('/api/dashboard/update-goal', { monthlyGoal });
+      console.log('Update goal response:', response.data);
+      
+      // Fetch updated dashboard stats to reflect the new goal
+      await fetchDashboardStats();
       
       toast.success('Monthly sales goal updated successfully');
       setIsEditingGoal(false);
@@ -608,11 +595,23 @@ export default function Dashboard() {
       );
     }
 
-    // Calculate percentage of monthly goal
+    // Calculate percentage of monthly goal - use the current monthlyGoal state which is guaranteed to be updated
     const goalPercentage = Math.min(Math.round((stats.currentMonthSales / monthlyGoal) * 100), 100);
+    console.log('Current month sales:', stats.currentMonthSales, 'Monthly goal:', monthlyGoal, 'Percentage:', goalPercentage);
 
+    // Add CSS variables for dark mode support
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 
+        [--graph-stroke:#000] 
+        [--graph-fill:rgba(0,0,0,0.3)] 
+        [--tooltip-bg:#fff]
+        [--tooltip-text:#000]
+        [--tooltip-border:#ccc]
+        dark:[--graph-stroke:#fff] 
+        dark:[--graph-fill:rgba(255,255,255,0.3)]
+        dark:[--tooltip-bg:#000]
+        dark:[--tooltip-text:#fff]
+        dark:[--tooltip-border:#333]">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Orders Card */}
@@ -640,15 +639,15 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <button 
-                onClick={() => router.push('/orders')}
+              <a 
+                href="/orders"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 View Real Orders
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
 
@@ -681,15 +680,15 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <button 
-                onClick={() => router.push('/categories')}
+              <a 
+                href="/categories"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 Manage Categories
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
 
@@ -717,15 +716,15 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <button 
-                onClick={() => router.push('/products')}
+              <a
+                href="/products"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 Manage Products
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
           
@@ -741,15 +740,15 @@ export default function Dashboard() {
                   {siteStatus.active ? 'ACTIVE' : 'MAINTENANCE MODE'}
                 </div>
               </div>
-              <button 
-                onClick={() => router.push('/settings')}
+              <a
+                href="/settings"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 Manage Settings
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
 
@@ -779,15 +778,15 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <button 
-                onClick={() => router.push('/dashboard/waitlist')}
+              <a
+                href="/dashboard/waitlist"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 View Waitlist
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
 
@@ -822,15 +821,15 @@ export default function Dashboard() {
                   {pendingAmbassadorsCount} pending application{pendingAmbassadorsCount !== 1 ? 's' : ''}
                 </div>
               )}
-              <button 
-                onClick={() => router.push('/ambassadors')}
+              <a
+                href="/ambassadors"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 Manage Ambassadors
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
-              </button>
+              </a>
             </CardContentUI>
           </CardUI>
         </div>
@@ -938,14 +937,43 @@ export default function Dashboard() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#00000020" className="dark:stroke-[#FFFFFF20]" />
-                  <XAxis dataKey="name" stroke="#000000" className="dark:stroke-white" />
-                  <YAxis stroke="#000000" className="dark:stroke-white" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="var(--graph-stroke, #000)" 
+                    tick={{ fill: 'var(--graph-stroke, #000)' }}
+                  />
+                  <YAxis 
+                    stroke="var(--graph-stroke, #000)" 
+                    tick={{ fill: 'var(--graph-stroke, #000)' }}
+                    domain={[0, monthlyGoal]} 
+                  />
                   <Tooltip 
                     formatter={(value) => [`L.E ${value}`, 'Sales']} 
-                    contentStyle={{ backgroundColor: '#ffffff', color: '#000000' }}
                     wrapperClassName="dark:bg-black dark:text-white dark:border-white/20"
+                    contentStyle={{
+                      backgroundColor: 'var(--tooltip-bg, #fff)',
+                      color: 'var(--tooltip-text, #000)',
+                      border: '1px solid var(--tooltip-border, #ccc)'
+                    }}
                   />
-                  <Area type="monotone" dataKey="sales" stroke="#000000" fill="#000000" fillOpacity={0.3} className="dark:stroke-white dark:fill-white" />
+                  <defs>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="rgba(0,0,0,0.8)" className="dark:stop-color-white" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="rgba(0,0,0,0.2)" className="dark:stop-color-white" stopOpacity={0.2} />
+                    </linearGradient>
+                  </defs>
+                  <Area 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#000000" 
+                    fill="url(#colorSales)" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    style={{
+                      stroke: 'var(--graph-stroke, #000)',
+                      fill: 'var(--graph-fill, rgba(0,0,0,0.3))'
+                    }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -985,12 +1013,12 @@ export default function Dashboard() {
                         <td className="px-4 py-2 text-black/70 dark:text-white/70">{new Date(order.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-2 text-right font-medium text-black dark:text-white">L.E {order.total.toLocaleString()}</td>
                         <td className="px-4 py-2 text-right">
-                          <button
-                            onClick={() => router.push(`/orders/${order._id}`)}
-                            className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-                          >
-                            View
-                          </button>
+                                        <a
+                href={`/orders/${order._id}`}
+                className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+              >
+                View
+              </a>
                         </td>
                       </tr>
                     ))
@@ -1006,15 +1034,15 @@ export default function Dashboard() {
             </div>
             {stats.recentOrders.length > 0 && (
               <div className="mt-4 text-center">
-                <button
-                  onClick={() => router.push('/orders')}
-                  className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
-                >
-                  View All Orders
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                  </svg>
-                </button>
+                              <a
+                href="/orders"
+                className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
+              >
+                View All Orders
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+              </a>
               </div>
             )}
           </CardContentUI>
@@ -1035,18 +1063,18 @@ export default function Dashboard() {
             >
               Dashboard
             </div>
-            <button 
-              onClick={() => router.push('/orders')} 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+            <a 
+              href="/orders" 
+              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
             >
               Orders
-            </button>
-            <button 
-              onClick={() => router.push('/settings')} 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+            </a>
+            <a 
+              href="/settings" 
+              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
             >
               Settings
-            </button>
+            </a>
           </div>
 
           {/* Content based on active section */}

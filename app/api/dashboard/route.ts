@@ -49,25 +49,32 @@ export async function GET() {
 
     // Get monthly goal from settings or use default
     let monthlyGoal = 100000; // Default value
-    const goalSetting = await Setting.findOne({ key: 'monthlyGoal' });
-    if (goalSetting && goalSetting.value) {
-      monthlyGoal = parseInt(goalSetting.value, 10) || monthlyGoal;
+    try {
+      const goalSetting = await Setting.findOne({ key: 'monthlyGoal' });
+      if (goalSetting && goalSetting.value) {
+        monthlyGoal = parseInt(goalSetting.value, 10) || monthlyGoal;
+        console.log('Retrieved monthly goal from database:', monthlyGoal);
+      } else {
+        console.log('No monthly goal found in database, using default:', monthlyGoal);
+      }
+    } catch (settingError) {
+      console.error('Error retrieving monthly goal:', settingError);
+      console.log('Using default monthly goal:', monthlyGoal);
     }
 
-    // Get monthly data for the last 12 months
+    // Get monthly data for all 12 months of the current year in correct order
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const last12Months = Array.from({ length: 12 }, (_, i) => {
-      const d = new Date();
-      d.setMonth(now.getMonth() - i);
-      return { 
-        month: d.getMonth(),
-        year: d.getFullYear(),
-        name: monthNames[d.getMonth()]
-      };
-    }).reverse();
+    const currentYear = now.getFullYear();
+    
+    // Create array with all 12 months in standard order
+    const allMonths = monthNames.map((name, index) => ({
+      month: index,
+      year: currentYear,
+      name: name
+    }));
 
     // Initialize monthly data with zeros
-    const monthlyData = last12Months.map(month => ({
+    const monthlyData = allMonths.map(month => ({
       name: month.name,
       sales: 0,
       year: month.year,

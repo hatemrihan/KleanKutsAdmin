@@ -85,11 +85,8 @@ async function validateApiKey(request: Request) {
   });
 
   if (referer.includes('eleveadmin.netlify.app') || 
-      
-      origin.includes('eleveadmin.netlify.app')
-      {
+      origin.includes('eleveadmin.netlify.app')) {
     return;
-}
   }
 
   const apiKey = request.headers.get('X-API-Key');

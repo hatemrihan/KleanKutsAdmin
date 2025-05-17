@@ -39,31 +39,9 @@ export default function SettingsPage() {
   });
   const [currentSaving, setCurrentSaving] = useState<string | null>(null);
 
-  // Add this useEffect to ensure the page works in deployed 'use client'
-
-import { useEffect } from 'react'
-import fetchSiteStatus from '@/lib/fetchSiteStatus' // adjust path as needed
-
-export default function Page() {
-const router = useRouter();
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-
-      const run = async () => {
-        try {
-          const status = await fetchSiteStatus();
-          console.log('Site status:', status);
-        } catch (err) {
-          console.error('Failed to fetch site status:', err);
-        }
-      };
-
-      run();
-    }
-  }, [router]); // optional dependency if you want to re-run when route changes
-
+    fetchSiteStatus();
+  }, []);
 
   const fetchSiteStatus = async () => {
     try {

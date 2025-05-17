@@ -7,8 +7,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to dashboard page by default
-    if (typeof window !== 'undefined') {
+    // Only redirect to dashboard when homepage is explicitly visited
+    if (typeof window !== 'undefined' && window.location.pathname === '/') {
       // Set a flag to indicate authentication
       localStorage.setItem('adminAuthenticated', 'true');
       router.push('/dashboard');

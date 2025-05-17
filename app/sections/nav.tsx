@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ThemeToggle from '../components/ThemeToggle';
@@ -33,6 +33,8 @@ const Nav = () => {
   const topLineRef = useRef<HTMLDivElement>(null);
   const bottomLineRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  const router = useRouter();
 
   // Fetch site status when component mounts
   useEffect(() => {
@@ -531,12 +533,12 @@ const Nav = () => {
                     localStorage.removeItem('adminAuthenticated');
                     localStorage.removeItem('admin-auth');
                     
-                    // Redirect to login page
-                    window.location.href = '/';
+                    // Redirect to login page - using router.push instead of window.location
+                    router.push('/');
                   } catch (error) {
                     console.error('Logout failed:', error);
                     // Still try to redirect even if the API call fails
-                    window.location.href = '/';
+                    router.push('/');
                   }
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 dark:bg-red-700 rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"

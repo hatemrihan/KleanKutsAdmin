@@ -89,22 +89,7 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const router = useRouter();
-
-  useEffect(() => {
-    // Force client-side rendering for this page
-    const path = window.location.pathname;
-    if (path === '/orders' && typeof window !== 'undefined') {
-      // Check authentication
-      const isAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
-      if (!isAuthenticated) {
-        // Instead of redirecting, we'll set a default admin authentication
-        localStorage.setItem('adminAuthenticated', 'true');
-        // No need to redirect anymore
-        // router.push('/');
-      }
-    }
-  }, [router]);
+  
 
   const fetchOrders = async () => {
     try {

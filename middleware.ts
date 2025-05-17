@@ -11,8 +11,6 @@ export const config = {
     '/dashboard/:path*',
     '/products/:path*',
     '/categories/:path*',
-    '/orders/:path*',
-    '/settings/:path*',
     '/api/:path*'
   ]
 }; 

@@ -79,15 +79,15 @@ async function validateApiKey(request: Request) {
     origin,
     hasApiKey: !!request.headers.get('X-API-Key'),
     isAdminPanel: referer.includes('eleveadmin.netlify.app') || 
-                 referer.includes('localhost:3003') ||
-                 origin.includes('eleveadmin.netlify.app') ||
-                 origin.includes('localhost:3003')
+                 
+                 origin.includes('eleveadmin.netlify.app') 
+                
   });
 
   if (referer.includes('eleveadmin.netlify.app') || 
-      referer.includes('localhost:3000') ||
-      origin.includes('eleveadmin.netlify.app') ||
-      origin.includes('localhost:3000')) {
+      
+      origin.includes('eleveadmin.netlify.app')
+      {
     return;
   }
 

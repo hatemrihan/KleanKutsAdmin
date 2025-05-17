@@ -5,148 +5,44 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    // Diagnostic logging
-    console.log('Environment:', {
-      nodeEnv: process.env.NODE_ENV,
-      hasMongoUri: !!process.env.MONGODB_URI,
-      mongoUriStart: process.env.MONGODB_URI?.substring(0, 10) + '...',
-      hasAdminPassword: !!process.env.ADMIN_PASSWORD
-    });
-
-    // Simple direct connection
+    // Connect to database if needed
     if (!mongoose.connection.readyState) {
-      console.log('Attempting direct MongoDB connection...');
-      await mongoose.connect(process.env.MONGODB_URI as string, {
-        bufferCommands: false,
-      });
-      console.log('MongoDB connection state:', mongoose.connection.readyState);
+      await mongoose.connect(process.env.MONGODB_URI as string);
     }
 
     // Parse request
-    const body = await req.json();
-    const { password } = body;
+    const { password } = await req.json();
 
     if (!password) {
       return NextResponse.json({ error: 'Password required' }, { status: 400 });
     }
 
-    // Get or create admin
-    let admin = await Admin.findOne();
+    // Simple password check - just use the environment variable or default password
+    const adminPassword = process.env.ADMIN_PASSWORD || '012345';
     
-    // If no admin exists yet, create one with default password
-    if (!admin && process.env.ADMIN_PASSWORD) {
-      admin = await Admin.create({
-        email: 'kenzyzayed04@gmail.com',
-        password: process.env.ADMIN_PASSWORD, // Store password directly (will be hashed on first login)
-        role: 'admin'
+    if (password === adminPassword) {
+      // Success response
+      const response = NextResponse.json({ 
+        success: true,
+        message: 'Login successful'
       });
-    }
-
-    if (!admin) {
-      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
-    }
-
-    // Output detailed diagnostic info 
-    console.log('Login attempt with:', {
-      attemptedPassword: password.substring(0, 1) + '***',
-      storedPasswordLength: admin.password.length,
-      isHashed: admin.password.startsWith('$2'),
-      hasPasswordHistory: Array.isArray(admin.passwordHistory) && admin.passwordHistory.length > 0,
-      hasOldPassword: !!admin.oldPassword
-    });
-    
-    // Try all possible password validation approaches
-    let loginSuccessful = false;
-    
-    // METHOD 1: Default password check (highest priority)
-    if (password === '012345' || admin.password === '012345') {
-      console.log('Login successful via default password');
-      loginSuccessful = true;
       
-      // Update to hashed version if needed
-      if (admin.password === '012345') {
-        admin.password = await bcrypt.hash('012345', 10);
-        await admin.save();
-      }
-    }
-    // METHOD 2: Direct match
-    else if (admin.password === password || admin.oldPassword === password) {
-      console.log('Login successful via direct password match');
-      loginSuccessful = true;
+      // Set authentication cookie
+      response.cookies.set('admin-auth', 'true', {
+        httpOnly: true,
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7 // One week
+      });
       
-      // If login was successful with plaintext password, hash it for storage
-      if (admin.password === password) {
-        admin.password = await bcrypt.hash(password, 10);
-        await admin.save();
-      }
-    }
-    // METHOD 3: Check passwordHistory
-    else if (admin.passwordHistory && admin.passwordHistory.includes(password)) {
-      console.log('Login successful via password history match');
-      loginSuccessful = true;
-    }
-    // METHOD 4: Bcrypt comparison for hashed password
-    else if (admin.password.startsWith('$2')) {
-      try {
-        const match = await bcrypt.compare(password, admin.password);
-        if (match) {
-          console.log('Login successful via bcrypt comparison');
-          loginSuccessful = true;
-        }
-      } catch (error) {
-        console.error('Error in bcrypt comparison:', error);
-      }
+      return response;
     }
     
-    // Check backup cookie as a final fallback
-    if (!loginSuccessful) {
-      const pwdBackupCookie = req.headers.get('cookie')?.match(/pwd-backup=([^;]+)/)?.[1];
-      if (pwdBackupCookie && pwdBackupCookie === password) {
-        console.log('Login successful via backup cookie');
-        loginSuccessful = true;
-      }
-    }
+    // Failed login
+    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     
-    // Handle login result
-    if (!loginSuccessful) {
-      // Log failed attempt details
-      console.log('Login failed. Password verification unsuccessful.');
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
-
-    // Success response
-    const response = NextResponse.json({ 
-      success: true,
-      message: 'Login successful'
-    });
-    
-    // Determine if we're in development or production
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
-    // Set the authentication cookie with appropriate settings for the environment
-    response.cookies.set('admin-auth', 'true', {
-      httpOnly: true,
-      secure: !isDevelopment, // Only require HTTPS in production
-      sameSite: 'lax', // Less restrictive for better compatibility
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7 // One week
-    });
-    
-    // Also set a local storage token in the response for client-side storage
-    // This will be used as a backup authentication method
-    console.log('Successfully set authentication cookie');
-    
-    return response;
   } catch (error) {
-    console.error('Login error:', {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    
     return NextResponse.json({ 
-      error: 'Authentication failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Authentication failed'
     }, { status: 500 });
   }
-} 
+}

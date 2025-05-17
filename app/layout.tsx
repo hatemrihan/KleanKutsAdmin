@@ -27,7 +27,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-background transition-colors duration-300`}>
         <Providers>
           <ThemeInitializer />
-          <main className="lg:pl-64 min-h-screen transition-all duration-300">
+          <main className="lg:pl-64 min-h-screen transition-all duration-300 pb-20 lg:pb-0">
             <div className="p-4 md:p-8">
               {children}
             </div>

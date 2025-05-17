@@ -2,6 +2,7 @@ import { mongooseConnect } from "../mongoose";
 import { Category } from "../../models/category";
 import { CategoryRequest } from "../../types/category";
 import { NextResponse } from "next/server";
+import { processCategoryImage } from "../../utils/imageUtils";
 
 export async function getCategories() {
     try {
@@ -42,6 +43,12 @@ export async function createCategory(data: CategoryRequest) {
             return { success: false, error: 'Category with this name already exists' };
         }
 
+        // Process image URLs through our utility function
+        const processedImage = data.image ? processCategoryImage(data.image) : null;
+        const processedMobileImage = data.mobileImage ? processCategoryImage(data.mobileImage) : null;
+        const processedFeaturedImage = data.featuredImage ? processCategoryImage(data.featuredImage) : null;
+        const processedAdditionalImages = data.additionalImages?.map(img => processCategoryImage(img)) || [];
+
         // Create category with enhanced fields
         const category = await Category.create({
             name: data.name.trim(),
@@ -50,6 +57,7 @@ export async function createCategory(data: CategoryRequest) {
             headline: data.headline?.trim(),
             subheadline: data.subheadline?.trim(),
             displayOrder: data.displayOrder || 0,
+            order: data.order || 0,
             callToAction: {
                 text: data.callToAction?.text || 'EXPLORE',
                 link: data.callToAction?.link || ''
@@ -61,9 +69,11 @@ export async function createCategory(data: CategoryRequest) {
             },
             isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
             parent: data.parent || null,
-            image: data.image || null,
-            mobileImage: data.mobileImage || null,
-            additionalImages: data.additionalImages || [],
+            parentCategory: data.parentCategory || data.parent || null,
+            image: processedImage,
+            featuredImage: processedFeaturedImage,
+            mobileImage: processedMobileImage,
+            additionalImages: processedAdditionalImages,
             desktopDescription: data.desktopDescription?.trim() || '',
             mobileDescription: data.mobileDescription?.trim() || '',
             layout: {
@@ -132,10 +142,31 @@ export async function updateCategory(id: string, data: Partial<CategoryRequest>)
             data.slug = data.name.toLowerCase().replace(/\s+/g, '-');
         }
 
+        // Process images if they are being updated
+        const updateData = { ...data };
+        
+        if (updateData.image) {
+            updateData.image = processCategoryImage(updateData.image);
+        }
+        
+        if (updateData.mobileImage) {
+            updateData.mobileImage = processCategoryImage(updateData.mobileImage);
+        }
+        
+        if (updateData.featuredImage) {
+            updateData.featuredImage = processCategoryImage(updateData.featuredImage);
+        }
+        
+        if (updateData.additionalImages && updateData.additionalImages.length > 0) {
+            updateData.additionalImages = updateData.additionalImages.map(img => 
+                processCategoryImage(img)
+            );
+        }
+
         const updatedCategory = await Category.findByIdAndUpdate(
             id,
             { 
-                ...data,
+                ...updateData,
                 updatedAt: new Date()
             },
             { new: true }

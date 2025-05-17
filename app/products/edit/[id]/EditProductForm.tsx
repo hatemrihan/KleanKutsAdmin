@@ -4,6 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
 import dynamic from 'next/dynamic';
+import { 
+  DarkModePanel, 
+  DarkModeInput, 
+  DarkModeText, 
+  DarkModeLabel,
+  DarkModeButton,
+  DarkModeStatus,
+  DarkModeTable,
+  DarkModeTableHeader,
+  DarkModeTableRow,
+  DarkModeTableCell
+} from '../../../components/ui/dark-mode-wrapper';
 
 const UploadSection = dynamic(() => import('../../../sections/UploadSection'), { ssr: false });
 const CategorySection = dynamic(() => import('../../../sections/CategorySection'), { ssr: false });
@@ -181,7 +193,7 @@ export default function EditProductForm({ id }: EditProductFormProps) {
       return false;
     }
     
-    // Check for size variants instead of selectedSizes
+    // Check for size variants
     if (!formData.sizeVariants?.length) {
       setError('At least one size variant must be added');
       return false;
@@ -220,11 +232,16 @@ export default function EditProductForm({ id }: EditProductFormProps) {
     // Calculate total stock from size variants
     const calculatedTotalStock = calculateTotalStock(formData.sizeVariants || []);
     
+    // Extract selected sizes from the size variants
+    const selectedSizes = formData.sizeVariants?.map(sv => sv.size) || [];
+    
     const productData = {
       ...formDataWithoutId,
+      name: formData.title, // Required by the model
       price: Number(formData.price),
       // Use calculated stock from size variants instead of standalone stock field
       stock: calculatedTotalStock,
+      selectedSizes, // Update based on the size variants
       discount: Number(formData.discount),
       // Ensure size variants are properly formatted
       sizeVariants: formData.sizeVariants?.map(sv => ({
@@ -282,104 +299,109 @@ export default function EditProductForm({ id }: EditProductFormProps) {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      <div className="flex justify-center items-center min-h-screen dark:bg-black">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black dark:border-white"></div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !formData._id) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-red-500">{error}</div>
+      <div className="flex justify-center items-center min-h-screen dark:bg-black">
+        <div className="text-red-500 dark:text-red-400">{error}</div>
       </div>
     );
   }
 
   if (!formData) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-red-500">Product not found</div>
+      <div className="flex justify-center items-center min-h-screen dark:bg-black">
+        <div className="text-red-500 dark:text-red-400">Product not found</div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={e => e.preventDefault()} className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h1 className="text-green-600 mb-6 text-2xl font-bold border-b pb-3">Edit Product</h1>
+    <form onSubmit={e => e.preventDefault()} className="max-w-5xl mx-auto p-4 sm:p-6 dark:bg-black">
+      <h1 className="text-black dark:text-white mb-6 text-2xl font-bold border-b border-gray-200 dark:border-gray-800 pb-3">Edit Product</h1>
       
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6">
+        <div className="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded relative mb-6">
           {success}
         </div>
       )}
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+        <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-6">
           {error}
         </div>
       )}
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Product name</label>
-        <input
+        <DarkModeLabel htmlFor="title">Product name</DarkModeLabel>
+        <DarkModeInput
+          id="title"
           type="text"
           placeholder="Product name"
           value={formData.title}
           onChange={ev => handleInputChange('title', ev.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+          className="w-full"
         />
       </div>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <DarkModeLabel htmlFor="description">Description</DarkModeLabel>
         <textarea
+          id="description"
           placeholder="Product description"
           value={formData.description}
           onChange={ev => handleInputChange('description', ev.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 min-h-[100px]"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-black dark:text-white focus:outline-none focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[100px]"
         />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Price (in EGY L.E.)</label>
-          <input
+          <DarkModeLabel htmlFor="price">Price (in EGY L.E.)</DarkModeLabel>
+          <DarkModeInput
+            id="price"
             type="number"
             placeholder="Price"
             value={formData.price}
             onChange={ev => handleInputChange('price', Number(ev.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+            className="w-full"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Total Stock</label>
-          <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+          <DarkModeLabel htmlFor="totalStock">Total Stock</DarkModeLabel>
+          <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-black/50 text-black dark:text-white">
             {calculateTotalStock(formData.sizeVariants || [])}
-            <p className="text-xs text-gray-500 mt-1">Calculated from size & color variants</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Calculated from size & color variants</p>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
-          <input
+          <DarkModeLabel htmlFor="discount">Discount</DarkModeLabel>
+          <DarkModeInput
+            id="discount"
             type="number"
             placeholder="Discount amount"
             value={formData.discount}
             onChange={ev => handleInputChange('discount', Number(ev.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+            className="w-full"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+          <DarkModeLabel htmlFor="discountType">Discount Type</DarkModeLabel>
           <select
+            id="discountType"
             value={formData.discountType}
             onChange={ev => handleSelectChange(ev, 'discountType')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-black dark:text-white focus:outline-none focus:ring-blue-500 dark:focus:ring-blue-400"
           >
             <option value="percentage">Percentage</option>
             <option value="fixed">Fixed Amount</option>
@@ -387,11 +409,12 @@ export default function EditProductForm({ id }: EditProductFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+          <DarkModeLabel htmlFor="gender">Gender</DarkModeLabel>
           <select
+            id="gender"
             value={formData.gender}
             onChange={ev => handleSelectChange(ev, 'gender')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-black dark:text-white focus:outline-none focus:ring-blue-500 dark:focus:ring-blue-400"
           >
             {genders.map(gender => (
               <option key={gender} value={gender}>
@@ -402,26 +425,9 @@ export default function EditProductForm({ id }: EditProductFormProps) {
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Sizes</label>
-        <div className="flex gap-2 flex-wrap p-3 border border-gray-300 rounded-md bg-gray-50">
-          {sizes.map(size => (
-            <label key={size} className="flex items-center gap-1 cursor-pointer bg-white px-3 py-1 rounded-md border border-gray-200 hover:border-green-500">
-              <input
-                type="checkbox"
-                checked={formData.selectedSizes.includes(size)}
-                onChange={() => handleSizeChange(size)}
-                className="text-green-500 focus:ring-green-500"
-              />
-              {size}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Size & Color Variants</h2>
-        <p className="text-sm text-gray-600 mb-4">
+      <DarkModePanel className="mb-6 p-6">
+        <h2 className="text-lg font-semibold mb-4 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-800 pb-2">Size & Color Variants</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Add specific sizes with their color variants and stock quantities for precise inventory management.
         </p>
         <SizeVariantsManager
@@ -429,76 +435,74 @@ export default function EditProductForm({ id }: EditProductFormProps) {
           onChange={(sizeVariants) => setFormData(prev => ({ ...prev, sizeVariants }))}
           availableSizes={sizes}
         />
-      </div>
+      </DarkModePanel>
 
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Categories</h2>
+      <DarkModePanel className="mb-6 p-6">
+        <h2 className="text-lg font-semibold mb-4 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-800 pb-2">Categories</h2>
         <CategorySection
           categories={categories}
           selectedCategories={formData.categories}
           onCategoryChange={categories => handleInputChange('categories', categories)}
         />
-      </div>
+      </DarkModePanel>
 
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Product Images</h2>
+      <DarkModePanel className="mb-6 p-6">
+        <h2 className="text-lg font-semibold mb-4 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-800 pb-2">Product Images</h2>
         <UploadSection
           selectedImages={formData.selectedImages}
           setSelectedImages={images => handleInputChange('selectedImages', images)}
         />
-      </div>
+      </DarkModePanel>
 
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">Inventory Summary</h2>
+      <DarkModePanel className="mb-6 p-6">
+        <h2 className="text-lg font-semibold mb-4 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-800 pb-2">Inventory Summary</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <DarkModeTable>
+            <DarkModeTableHeader>
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Size</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Color</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Stock</th>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            </DarkModeTableHeader>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {formData.sizeVariants && formData.sizeVariants.length > 0 ? (
                 formData.sizeVariants.flatMap(sizeVariant => 
-                  // Check if colorVariants exists before mapping
                   sizeVariant.colorVariants && sizeVariant.colorVariants.length > 0 ? 
                   sizeVariant.colorVariants.map((colorVariant, colorIndex) => (
-                    <tr key={`${sizeVariant.size}-${colorVariant.color}`}>
+                    <DarkModeTableRow key={`${sizeVariant.size}-${colorVariant.color}`}>
                       {colorIndex === 0 ? (
-                        <td rowSpan={sizeVariant.colorVariants.length} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-gray-50">
+                        <DarkModeTableCell rowSpan={sizeVariant.colorVariants.length} className="whitespace-nowrap text-sm font-medium bg-gray-50 dark:bg-black/30">
                           {sizeVariant.size}
-                        </td>
+                        </DarkModeTableCell>
                       ) : null}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.color}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{colorVariant.stock} units</td>
-                    </tr>
+                      <DarkModeTableCell className="whitespace-nowrap text-sm">{colorVariant.color}</DarkModeTableCell>
+                      <DarkModeTableCell className="whitespace-nowrap text-sm">{colorVariant.stock} units</DarkModeTableCell>
+                    </DarkModeTableRow>
                   )) : 
-                  // If no color variants, display a row with just the size and a message
-                  [<tr key={`${sizeVariant.size}-no-colors`}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-gray-50">
+                  [<DarkModeTableRow key={`${sizeVariant.size}-no-colors`}>
+                    <DarkModeTableCell className="whitespace-nowrap text-sm font-medium bg-gray-50 dark:bg-black/30">
                       {sizeVariant.size}
-                    </td>
-                    <td colSpan={2} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">
+                    </DarkModeTableCell>
+                    <td colSpan={2} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 italic">
                       No color variants added
                     </td>
-                  </tr>]
+                  </DarkModeTableRow>]
                 )
               ) : (
-                <tr>
-                  <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center italic">
+                <DarkModeTableRow>
+                  <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center italic">
                     No size or color variants added yet. Add them in the Size & Color Variants section above.
                   </td>
-                </tr>
+                </DarkModeTableRow>
               )}
             </tbody>
-          </table>
+          </DarkModeTable>
         </div>
-      </div>
+      </DarkModePanel>
 
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Admin-Only Product Content</h2>
+      <DarkModePanel className="mb-6 p-6">
+        <h2 className="text-lg font-semibold mb-4 text-black dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Admin-Only Product Content</h2>
         <ProductContentFields
           materials={formData.materials || []}
           sizeGuide={formData.sizeGuide || ''}
@@ -506,18 +510,18 @@ export default function EditProductForm({ id }: EditProductFormProps) {
           shippingReturns={formData.shippingReturns || ''}
           onChange={(field, value) => handleInputChange(field as keyof Product, value)}
         />
-      </div>
+      </DarkModePanel>
 
-      <div className="flex justify-end gap-4 mt-8">
+      <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8">
         <button
           onClick={() => router.push('/products')}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          className="px-4 py-2 bg-white dark:bg-black text-black dark:text-white border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400"
         >
           Cancel
         </button>
         <button
           onClick={updateProduct}
-          className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50"
           disabled={isSaving}
         >
           {isSaving ? 'Saving...' : 'Save Changes'}

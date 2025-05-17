@@ -153,16 +153,20 @@ export function DarkModeTableRow({
 
 export function DarkModeTableCell({ 
   children, 
-  className 
-}: { 
+  className,
+  ...props
+}: React.TdHTMLAttributes<HTMLTableCellElement> & { 
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <td className={cn(
-      "px-4 py-3 text-gray-900 dark:text-white", 
-      className
-    )}>
+    <td 
+      className={cn(
+        "px-4 py-3 text-gray-900 dark:text-white", 
+        className
+      )}
+      {...props}
+    >
       {children}
     </td>
   );
@@ -171,16 +175,24 @@ export function DarkModeTableCell({
 // Label component
 export function DarkModeLabel({ 
   children, 
-  className 
+  className,
+  htmlFor,
+  ...props 
 }: { 
   children: React.ReactNode;
   className?: string;
+  htmlFor?: string;
+  [key: string]: any;
 }) {
   return (
-    <label className={cn(
-      "block text-sm font-medium text-gray-700 dark:text-white/70 mb-1", 
-      className
-    )}>
+    <label 
+      htmlFor={htmlFor}
+      className={cn(
+        "block text-sm font-medium text-gray-700 dark:text-white/70 mb-1", 
+        className
+      )}
+      {...props}
+    >
       {children}
     </label>
   );

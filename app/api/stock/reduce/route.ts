@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
-import { logStock, logApi } from '@/app/utils/logger';
-import { StockEventType, emitStockUpdate, emitStockReduction } from '@/app/utils/websocketServer';
-
-interface StockInfo {
-  originalStock: number;
-  size: string;
-  color: string;
-}
+import { logStock } from '@/app/utils/logger';
+import { StockEventType, emitStockReduction } from '@/app/utils/websocketServer';
+import { reduceInventory } from '@/app/lib/inventory/service';
 
 interface StockReductionItem {
   productId: string;
   size: string;
   color: string;
   quantity: number;
-  _stockInfo?: StockInfo;
 }
 
 export async function POST(req: NextRequest) {
@@ -43,10 +35,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Connect to database
-    const { db } = await connectToDatabase();
-    const productsCollection = db.collection('products');
     
     // Process each item
     const results = [];
@@ -61,83 +49,29 @@ export async function POST(req: NextRequest) {
       }
       
       try {
-        // Find the product
-        const product = await productsCollection.findOne({ 
-          _id: new ObjectId(productId) 
+        // Use our unified inventory service
+        const transactionId = `stock_${requestId}_${productId}_${size}_${color}`;
+        const updateResult = await reduceInventory({
+          productId,
+          size,
+          color,
+          quantity,
+          transactionId
         });
         
-        if (!product) {
-          errors.push({ item, error: 'Product not found' });
+        if (!updateResult.success) {
+          logStock(`Failed to update stock for product ${productId}`, 'error', updateResult.error);
+          errors.push({ item, error: updateResult.error });
           continue;
         }
-        
-        // Find the size variant
-        const sizeVariant = product.sizeVariants?.find(
-          (sv: any) => sv.size === size
-        );
-        
-        if (!sizeVariant) {
-          errors.push({ item, error: 'Size variant not found' });
-          continue;
-        }
-        
-        // Find the color variant
-        const colorVariant = sizeVariant.colorVariants?.find(
-          (cv: any) => cv.color === color
-        );
-        
-        if (!colorVariant) {
-          errors.push({ item, error: 'Color variant not found' });
-          continue;
-        }
-        
-        // Check if there's enough stock
-        if (colorVariant.stock < quantity) {
-          errors.push({ 
-            item, 
-            error: 'Insufficient stock', 
-            available: colorVariant.stock 
-          });
-          continue;
-        }
-        
-        // Update the stock
-        logStock(`Reducing stock for product ${productId}, size ${size}, color ${color} by ${quantity}`, 'info');
-        
-        const updateResult = await productsCollection.updateOne(
-          { 
-            _id: new ObjectId(productId),
-            "sizeVariants.size": size,
-            "sizeVariants.colorVariants.color": color
-          },
-          { 
-            $inc: { 
-              "sizeVariants.$[sizeElem].colorVariants.$[colorElem].stock": -quantity 
-            } 
-          },
-          {
-            arrayFilters: [
-              { "sizeElem.size": size },
-              { "colorElem.color": color }
-            ]
-          }
-        );
-        
-        if (updateResult.modifiedCount === 0) {
-          logStock(`Failed to update stock for product ${productId}`, 'error');
-          errors.push({ item, error: 'Failed to update stock' });
-          continue;
-        }
-        
-        const newStock = colorVariant.stock - quantity;
         
         // Emit WebSocket event for real-time updates
         try {
-          emitStockReduction(productId, size, color, newStock);
+          emitStockReduction(productId, size, color, updateResult.newQuantity);
           logStock(`Emitted stock reduction event for product ${productId}`, 'info', {
             size,
             color,
-            newStock,
+            newStock: updateResult.newQuantity,
             afterOrder
           });
         } catch (wsError) {
@@ -150,7 +84,7 @@ export async function POST(req: NextRequest) {
           size,
           color,
           quantity,
-          newStock,
+          newStock: updateResult.newQuantity,
           status: 'success',
           timestamp: new Date().toISOString()
         });

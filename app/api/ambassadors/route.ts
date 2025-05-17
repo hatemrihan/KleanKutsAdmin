@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { Ambassador } from '@/app/models/ambassador';
+import { Ambassador, fixAllAmbassadorsActive } from '@/app/models/ambassador';
+import { connectToDatabase } from '@/lib/mongoose';
 
 // Mock data for testing and development
 const mockAmbassadors = [
@@ -52,24 +53,37 @@ const mockAmbassadors = [
   }
 ];
 
-// GET /api/ambassadors - Get all ambassadors
+// GET /api/ambassadors - Get all ambassadors with optional status filter
 export async function GET(request: NextRequest) {
   try {
-    // Ensure MongoDB connection
-    if (!mongoose.connection.readyState) {
-      await mongoose.connect(process.env.MONGODB_URI as string, {
-        bufferCommands: false,
-      });
+    await connectToDatabase();
+    
+    // Check for any ambassadors missing the isActive field and fix them
+    try {
+      await fixAllAmbassadorsActive();
+    } catch (error) {
+      console.error('Error fixing ambassador active status:', error);
+      // Continue processing - don't fail the request if this fails
     }
     
-    // Get status filter from URL params if it exists
-    const { searchParams } = new URL(request.url);
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     
-    // Build query based on status filter
-    const query = status ? { status } : {};
+    // Build filter based on query parameters
+    const filter: any = {};
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      filter.status = status;
+    }
     
-    const ambassadors = await Ambassador.find(query).sort({ createdAt: -1 });
+    // Query for ambassadors
+    const ambassadors = await Ambassador.find(filter).sort({ createdAt: -1 });
+    
+    if (!ambassadors || ambassadors.length === 0) {
+      console.log('No ambassadors found with filter:', filter);
+    } else {
+      console.log(`Found ${ambassadors.length} ambassadors`);
+    }
     
     return NextResponse.json({ ambassadors }, { status: 200 });
   } catch (error) {

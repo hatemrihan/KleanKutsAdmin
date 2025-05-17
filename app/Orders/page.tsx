@@ -26,6 +26,7 @@ import {
 } from "../components/ui/alert-dialog";
 import { useRouter } from 'next/navigation';
 import { DarkModePanel, DarkModeInput, DarkModeStatus } from '../components/ui/dark-mode-wrapper';
+import PaymentScreenshotViewer from '../components/PaymentScreenshotViewer';
 
 interface Product {
   _id: string;
@@ -55,6 +56,9 @@ interface Order {
   products: OrderProduct[];
   totalAmount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentMethod?: 'cod' | 'instapay';
+  transactionScreenshot?: string;
+  paymentVerified?: boolean;
   notes?: string;
   orderDate: string;
   createdAt: string;
@@ -114,6 +118,16 @@ export default function OrdersPage() {
         // Skip invalid orders
         if (!order) return null;
 
+        // Debug payment method and screenshots
+        if (order.paymentMethod || order.transactionScreenshot) {
+          console.log('DEBUG Order payment data:', {
+            id: order._id,
+            paymentMethod: order.paymentMethod,
+            hasScreenshot: !!order.transactionScreenshot,
+            screenshotUrl: order.transactionScreenshot
+          });
+        }
+
         // Create a default customer object
         const defaultCustomer = {
           name: 'Unknown Customer',
@@ -133,6 +147,8 @@ export default function OrdersPage() {
               address: order.address || defaultCustomer.address
             },
             totalAmount: Number(order.total || order.totalAmount) || 0,
+            paymentMethod: order.paymentMethod || 'cod',
+            transactionScreenshot: order.transactionScreenshot || null,
             products: Array.isArray(order.products) ? order.products.map((product: any) => ({
               productId: product.id || product.productId || '',
               name: product.name || 'Unknown Product',
@@ -165,6 +181,13 @@ export default function OrdersPage() {
 
         // Ensure totalAmount is a number
         order.totalAmount = Number(order.totalAmount || order.total) || 0;
+        
+        // Ensure payment fields are preserved
+        order.paymentMethod = order.paymentMethod || 'cod';
+        // Make sure we preserve the transactionScreenshot if it exists
+        if (order.transactionScreenshot) {
+          console.log('Found transaction screenshot URL:', order.transactionScreenshot);
+        }
 
         return order;
       }).filter(Boolean); // Remove any null orders
@@ -230,6 +253,12 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Helper function to check if payment method is instapay (case insensitive)
+  const isInstaPay = (method?: string): boolean => {
+    if (!method) return false;
+    return method.toLowerCase().includes('instapay');
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen dark:bg-black">
@@ -290,10 +319,12 @@ export default function OrdersPage() {
                 <thead>
                   <tr>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -363,6 +394,23 @@ export default function OrdersPage() {
                               <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
                             </SelectContent>
                           </Select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                              {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'Cash on Delivery'}
+                            </span>
+                            
+                            {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
+                              <PaymentScreenshotViewer 
+                                screenshotUrl={order.transactionScreenshot} 
+                                paymentMethod={order.paymentMethod}
+                              />
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'No date'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <AlertDialog>
@@ -447,6 +495,22 @@ export default function OrdersPage() {
                           </ul>
                         </div>
                       )}
+
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        <strong className="dark:text-gray-300">Payment:</strong>{' '}
+                        <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                          {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'Cash on Delivery'}
+                        </span>
+                        
+                        {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
+                          <div className="mt-1">
+                            <PaymentScreenshotViewer 
+                              screenshotUrl={order.transactionScreenshot} 
+                              paymentMethod={order.paymentMethod}
+                            />
+                          </div>
+                        )}
+                      </div>
 
                       <div className="flex justify-between items-center">
                         <Select

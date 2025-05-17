@@ -4,6 +4,7 @@ export interface CategoryRequest {
   headline?: string;
   subheadline?: string;
   displayOrder?: number;
+  order?: number;
   callToAction?: {
     text: string;
     link: string;
@@ -15,8 +16,10 @@ export interface CategoryRequest {
   };
   isActive?: boolean;
   parent?: string;
+  parentCategory?: string;
   image?: string;
   mobileImage?: string;
+  featuredImage?: string;
   additionalImages?: string[];
   desktopDescription?: string;
   mobileDescription?: string;

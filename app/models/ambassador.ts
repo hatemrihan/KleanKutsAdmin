@@ -142,6 +142,12 @@ AmbassadorSchema.pre('save', function(next) {
     // Generate full referral link
     this.referralLink = `https://elevee.netlify.app?ref=${this.referralCode}`;
   }
+  
+  // Ensure isActive exists
+  if (typeof this.isActive === 'undefined') {
+    this.isActive = true;
+  }
+  
   next();
 });
 
@@ -203,6 +209,23 @@ interface AmbassadorDocument extends mongoose.Document {
   }[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Helper function to fix missing isActive field on all ambassadors
+export async function fixAllAmbassadorsActive() {
+  if (mongoose.models.Ambassador) {
+    try {
+      const result = await mongoose.models.Ambassador.updateMany(
+        { isActive: { $exists: false } },
+        { $set: { isActive: true } }
+      );
+      console.log('Fixed isActive field for ambassadors:', result);
+      return result;
+    } catch (error) {
+      console.error('Error fixing ambassador active status:', error);
+      throw error;
+    }
+  }
 }
 
 // Prevent duplicate model compilation error in development

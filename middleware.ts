@@ -12,12 +12,16 @@ export async function middleware(request: NextRequest) {
   // Get the admin auth cookie
   const adminAuth = request.cookies.get('admin-auth');
   
-  // For deployments, also check localStorage if cookie isn't present
-  // Skip the auth check for now to debug the routing issue
-  if (isAdminRoute && !adminAuth?.value) {
-    // Instead of redirecting, let's continue the request for debugging
-    // return NextResponse.redirect(new URL('/', request.url));
-    return NextResponse.next();
+  // Check if path is a public API route that doesn't need authentication
+  const isPublicApiRoute = request.nextUrl.pathname.startsWith('/api/') && 
+                           (request.nextUrl.pathname.includes('/login') ||
+                            request.nextUrl.pathname.includes('/public'));
+  
+  // If it's an admin route and there's no auth cookie, redirect to login
+  // Except for API routes which are handled separately
+  if (isAdminRoute && !adminAuth?.value && !isPublicApiRoute) {
+    // Redirect to the login page
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();
@@ -29,6 +33,7 @@ export const config = {
     '/products/:path*',
     '/categories/:path*',
     '/orders/:path*',
-    '/settings/:path*'
+    '/settings/:path*',
+    '/api/:path*'
   ]
 }; 

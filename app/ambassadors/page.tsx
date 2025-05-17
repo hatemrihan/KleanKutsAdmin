@@ -76,12 +76,78 @@ export default function AmbassadorsPage() {
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(`/api/ambassadors/${id}`, { isActive: !currentStatus });
-      toast.success(`Ambassador ${currentStatus ? 'deactivated' : 'activated'} successfully`);
-      fetchAmbassadors();
+      // Only show confirmation for deactivation
+      if (currentStatus && !confirm('Are you sure you want to deactivate this ambassador?')) {
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      const response = await axios.patch(`/api/ambassadors/${id}`, { isActive: !currentStatus });
+      
+      if (response.data.success) {
+        toast.success(`Ambassador ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+        fetchAmbassadors(); // Refresh the entire list
+      } else {
+        toast.error(response.data.error || 'Failed to update ambassador status');
+      }
     } catch (err) {
       console.error('Error toggling ambassador status:', err);
       toast.error('Failed to update ambassador status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveAmbassador = async (id: string) => {
+    try {
+      if (!confirm('Are you sure you want to approve this ambassador?')) {
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      const response = await axios.patch(`/api/ambassadors/${id}`, { 
+        status: 'approved'
+      });
+      
+      if (response.data.success) {
+        toast.success('Ambassador approved successfully');
+        fetchAmbassadors(); // Refresh the entire list
+      } else {
+        toast.error(response.data.error || 'Failed to approve ambassador');
+      }
+    } catch (err) {
+      console.error('Error approving ambassador:', err);
+      toast.error('Failed to approve ambassador');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleRejectAmbassador = async (id: string) => {
+    try {
+      if (!confirm('Are you sure you want to reject this ambassador?')) {
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      const response = await axios.patch(`/api/ambassadors/${id}`, { 
+        status: 'rejected'
+      });
+      
+      if (response.data.success) {
+        toast.success('Ambassador rejected successfully');
+        fetchAmbassadors(); // Refresh the entire list
+      } else {
+        toast.error(response.data.error || 'Failed to reject ambassador');
+      }
+    } catch (err) {
+      console.error('Error rejecting ambassador:', err);
+      toast.error('Failed to reject ambassador');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -160,79 +226,104 @@ export default function AmbassadorsPage() {
               </Link>
             </DarkModePanel>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {Array.isArray(filteredAmbassadors) && filteredAmbassadors.map((ambassador: Ambassador) => (
                 <DarkModePanel key={ambassador._id} className="rounded-lg shadow-sm overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-4 items-center">
-                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl">
+                  <div className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                      <div className="flex gap-3 items-center">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl">
                           {ambassador.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{ambassador.name}</h3>
-                          <p className="text-sm text-gray-500 dark:text-white/70">{ambassador.email}</p>
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-base md:text-lg">{ambassador.name}</h3>
+                          <p className="text-xs md:text-sm text-gray-500 dark:text-white/70">{ambassador.email}</p>
                         </div>
                       </div>
-                      <DarkModeStatus
-                        status={ambassador.isActive ? 'success' : 'warning'}
-                      >
-                        {ambassador.isActive ? 'Active' : 'Inactive'}
-                      </DarkModeStatus>
+                      <div className="flex flex-row sm:flex-col gap-1 mt-2 sm:mt-0">
+                        <DarkModeStatus
+                          status={ambassador.status === 'approved' ? 'success' : ambassador.status === 'rejected' ? 'error' : 'warning'}
+                          className="text-xs"
+                        >
+                          {ambassador.status.charAt(0).toUpperCase() + ambassador.status.slice(1)}
+                        </DarkModeStatus>
+                        <DarkModeStatus
+                          status={(ambassador.isActive === undefined || ambassador.isActive) ? 'success' : 'warning'}
+                          className="text-xs"
+                        >
+                          {(ambassador.isActive === undefined || ambassador.isActive) ? 'Active' : 'Inactive'}
+                        </DarkModeStatus>
+                      </div>
                     </div>
                     
-                    <div className="mt-4">
-                      <div className="text-sm space-y-2">
+                    <div className="mt-3 md:mt-4">
+                      <div className="text-xs md:text-sm space-y-2">
                         <div className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-gray-500 dark:text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          <span className="text-gray-700 dark:text-white/90">{ambassador.phone || 'No phone'}</span>
+                          <span className="text-gray-700 dark:text-white/90 text-xs md:text-sm">{ambassador.phone || 'No phone'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-gray-500 dark:text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                           </svg>
-                          <span className="text-blue-600 dark:text-blue-400">{ambassador.code}</span>
+                          <span className="text-blue-600 dark:text-blue-400 text-xs md:text-sm">{ambassador.code}</span>
                         </div>
                       </div>
                       
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        <DarkModeText className="text-sm">Commission Rate:</DarkModeText>
-                        <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate}%</span>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <DarkModeText className="text-xs md:text-sm">Commission Rate:</DarkModeText>
+                        <span className="text-xs md:text-sm font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate}%</span>
                       </div>
                       
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                        <div className="font-medium mb-2 text-gray-900 dark:text-white">Performance</div>
-                        <div className="flex gap-6">
+                      <div className="mt-3 pt-3 md:mt-4 md:pt-4 border-t border-gray-200 dark:border-white/10">
+                        <div className="font-medium mb-2 text-sm md:text-base text-gray-900 dark:text-white">Performance</div>
+                        <div className="flex gap-4 md:gap-6">
                           <div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{ambassador.ordersCount || 0}</div>
+                            <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{ambassador.ordersCount || 0}</div>
                             <div className="text-xs text-gray-500 dark:text-white/70">Total Orders</div>
                           </div>
                           <div>
-                            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">L.E. {(ambassador.totalEarnings || 0).toFixed(2)}</div>
+                            <div className="text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-400">L.E. {(ambassador.totalEarnings || 0).toFixed(2)}</div>
                             <div className="text-xs text-gray-500 dark:text-white/70">Total Earnings</div>
                           </div>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-4 md:mt-6 flex flex-wrap justify-end gap-2 md:gap-3">
+                      {ambassador.status === 'pending' && (
+                        <>
+                          <button 
+                            onClick={() => handleApproveAmbassador(ambassador._id)}
+                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 text-xs md:text-sm font-medium"
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleRejectAmbassador(ambassador._id)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xs md:text-sm font-medium"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
                       <button 
-                        onClick={() => handleToggleActive(ambassador._id, ambassador.isActive)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+                        onClick={() => handleToggleActive(ambassador._id, ambassador.isActive === undefined ? true : ambassador.isActive)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs md:text-sm font-medium"
                       >
-                        {ambassador.isActive ? 'Deactivate' : 'Activate'}
+                        {(ambassador.isActive === undefined || ambassador.isActive) ? 'Deactivate' : 'Activate'}
                       </button>
                       <Link 
                         href={`/ambassadors/${ambassador._id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs md:text-sm font-medium"
                       >
                         Edit
                       </Link>
                       <button 
                         onClick={() => handleDelete(ambassador._id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xs md:text-sm font-medium"
                       >
                         Delete
                       </button>

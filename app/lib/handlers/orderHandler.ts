@@ -61,7 +61,18 @@ export async function getOrders() {
     await mongooseConnect();
     const orders = await Order.find({ deleted: { $ne: true } })
       .sort({ createdAt: -1 })
+      .select('-__v') // Exclude only the __v field to ensure we get all other fields
       .lean();
+    
+    // Log the first order to check if transactionScreenshot is included
+    if (orders.length > 0) {
+      console.log('Sample order from MongoDB:', JSON.stringify({
+        _id: orders[0]._id,
+        paymentMethod: orders[0].paymentMethod,
+        transactionScreenshot: orders[0].transactionScreenshot,
+        hasScreenshot: !!orders[0].transactionScreenshot
+      }));
+    }
     
     return orders;
   } catch (error) {

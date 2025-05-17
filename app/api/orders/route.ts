@@ -23,6 +23,8 @@ interface OrderData {
   notes?: string;
   products: OrderProduct[];
   total: number;
+  paymentMethod?: string;
+  transactionScreenshot?: string;
 }
 
 interface UpdateOrderData {
@@ -170,6 +172,9 @@ export async function POST(request: Request) {
       totalAmount: orderData.total,
       notes: orderData.notes || '',
       status: 'pending',
+      paymentMethod: orderData.paymentMethod || 'cod',
+      transactionScreenshot: orderData.transactionScreenshot || null,
+      paymentVerified: orderData.paymentMethod === 'instapay' ? false : true,
       orderDate: new Date()
     };
 
@@ -178,6 +183,29 @@ export async function POST(request: Request) {
     // Create new order
     const newOrder = await Order.create(orderToCreate);
     console.log('Order saved to database:', JSON.stringify(newOrder, null, 2));
+
+    // Always trigger inventory reduction when an order is created
+    try {
+      console.log('Triggering inventory update for new order:', newOrder._id.toString());
+      
+      // Call inventory update API - use absolute URL to avoid nextUrl issue
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/inventory/update-from-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: newOrder._id.toString()
+        }),
+      });
+      
+      const updateResult = await response.json();
+      console.log('Inventory update result:', updateResult);
+    } catch (error) {
+      console.error('Failed to trigger inventory update:', error);
+      // Continue with the order creation even if inventory update fails
+    }
 
     return corsHeaders(NextResponse.json(newOrder, { status: 201 }), request);
   } catch (error) {

@@ -99,6 +99,10 @@ const Nav = () => {
     if (currentPath === '/products' || currentPath === '/categories') {
       activeLinks.add('/dashboard');
     }
+    if (currentPath === '/dashboard/inventory') {
+      activeLinks.add('/dashboard');
+      activeLinks.add('/products');
+    }
     if (currentPath === '/orders') {
       activeLinks.add('/dashboard');
       activeLinks.add('/products');
@@ -107,6 +111,9 @@ const Nav = () => {
       activeLinks.add('/dashboard');
     }
     if (currentPath === '/ambassadors' || currentPath.startsWith('/ambassadors/')) {
+      activeLinks.add('/dashboard');
+    }
+    if (currentPath === '/admin/newsletter') {
       activeLinks.add('/dashboard');
     }
     
@@ -132,6 +139,15 @@ const Nav = () => {
         </svg>
       ),
     },
+    // {
+    //   label: 'Inventory',
+    //   href: '/dashboard/inventory',
+    //   icon: (
+    //     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+    //     </svg>
+    //   ),
+    // },
     {
       label: 'Categories',
       href: '/categories',
@@ -165,6 +181,15 @@ const Nav = () => {
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M19 11H5" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Subscribers',
+      href: '/admin/newsletter',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       ),
     },
@@ -471,10 +496,7 @@ const Nav = () => {
               </div>
             </div>
             <button
-              onClick={() => {
-                // Show confirmation dialog
-                setShowLogoutConfirm(true);
-              }}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -500,9 +522,25 @@ const Nav = () => {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  localStorage.removeItem('adminAuthenticated');
-                  window.location.href = '/';
+                onClick={async () => {
+                  try {
+                    // Call the logout API endpoint
+                    await fetch('/api/auth/logout', {
+                      method: 'GET',
+                      credentials: 'include'
+                    });
+                    
+                    // Clear all auth-related local storage items
+                    localStorage.removeItem('adminAuthenticated');
+                    localStorage.removeItem('admin-auth');
+                    
+                    // Redirect to login page
+                    window.location.href = '/';
+                  } catch (error) {
+                    console.error('Logout failed:', error);
+                    // Still try to redirect even if the API call fails
+                    window.location.href = '/';
+                  }
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 dark:bg-red-700 rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
               >

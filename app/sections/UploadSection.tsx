@@ -130,13 +130,13 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-semibold mb-6">Upload Images</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+      <h2 className="text-xl font-semibold mb-6 text-black dark:text-white">Product Images</h2>
       {error && (
-        <div className="mb-4 p-3 text-red-500 text-sm bg-red-50 rounded border border-red-200">
+        <div className="mb-4 p-3 text-red-500 text-sm bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
           {error}
           <button 
-            className="ml-2 text-red-700 font-medium" 
+            className="ml-2 text-red-700 dark:text-red-400 font-medium" 
             onClick={() => setError('')}
           >
             Dismiss
@@ -147,23 +147,25 @@ export default function UploadSection({ selectedImages, setSelectedImages }: Upl
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-            ${isDragActive ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-green-400'}`}
+            ${isDragActive 
+              ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700' 
+              : 'border-gray-300 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-700'}`}
         >
           <input {...getInputProps()} />
           {isUploading ? (
-            <div className="text-gray-500">
+            <div className="text-gray-500 dark:text-gray-400">
               <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent rounded-full mr-2" />
               Uploading... {uploadProgress > 0 && `${uploadProgress}%`}
               {uploadProgress > 0 && (
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-2">
+                  <div className="bg-blue-500 dark:bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
                 </div>
               )}
             </div>
           ) : isDragActive ? (
-            <p className="text-green-500">Drop the files here</p>
+            <p className="text-blue-500 dark:text-blue-400">Drop the files here</p>
           ) : (
-            <div className="text-gray-500">
+            <div className="text-gray-500 dark:text-gray-400">
               <p className="font-medium">Tap to select images</p>
               <p className="text-sm mt-1">Supports: JPG, PNG, WebP (max 10MB)</p>
             </div>

@@ -4,12 +4,15 @@ const CategorySchema = new Schema({
     name: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        trim: true
     },
     slug: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        lowercase: true,
+        trim: true
     },
     description: {
         type: String,
@@ -24,6 +27,10 @@ const CategorySchema = new Schema({
         default: ''
     },
     displayOrder: {
+        type: Number,
+        default: 0
+    },
+    order: {
         type: Number,
         default: 0
     },
@@ -45,9 +52,18 @@ const CategorySchema = new Schema({
         ref: 'Category',
         default: null
     },
+    parentCategory: {
+        type: Schema.Types.ObjectId,
+        ref: 'Category',
+        default: null
+    },
     image: {
         type: String,
         default: null
+    },
+    featuredImage: {
+        type: String,
+        default: ''
     },
     mobileImage: {
         type: String,

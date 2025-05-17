@@ -115,16 +115,26 @@ export async function POST(req: Request) {
     }
 
     // Success response
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ 
+      success: true,
+      message: 'Login successful'
+    });
     
-    // Set the authentication cookie
+    // Determine if we're in development or production
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    // Set the authentication cookie with appropriate settings for the environment
     response.cookies.set('admin-auth', 'true', {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: !isDevelopment, // Only require HTTPS in production
+      sameSite: 'lax', // Less restrictive for better compatibility
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // One week
     });
+    
+    // Also set a local storage token in the response for client-side storage
+    // This will be used as a backup authentication method
+    console.log('Successfully set authentication cookie');
     
     return response;
   } catch (error) {

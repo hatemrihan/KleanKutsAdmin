@@ -25,6 +25,13 @@ const OrderSchema = new Schema({
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
+  paymentMethod: {
+    type: String,
+    enum: ['instapay', 'InstaPay', 'INSTAPAY', 'cod', 'COD', 'cash', 'Cash on Delivery'],
+    default: 'cod'
+  },
+  transactionScreenshot: { type: String },
+  paymentVerified: { type: Boolean, default: false },
   notes: { type: String },
   orderDate: { type: Date, default: Date.now },
   deleted: { type: Boolean, default: false },

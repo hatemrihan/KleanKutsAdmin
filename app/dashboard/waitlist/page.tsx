@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import {
   Table,
@@ -61,10 +61,29 @@ export default function WaitlistPage() {
   const [editEntry, setEditEntry] = useState<WaitlistEntry | null>(null);
   const [notes, setNotes] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     fetchWaitlistEntries();
   }, [statusFilter]);
+  
+  useEffect(() => {
+    // Add click-outside handler for the export dropdown
+    function handleClickOutside(event: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setExportDropdownOpen(false);
+      }
+    }
+    
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   const fetchWaitlistEntries = async () => {
     setIsLoading(true);
@@ -201,131 +220,175 @@ export default function WaitlistPage() {
   return (
     <div className="flex min-h-screen">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-4 lg:p-8 bg-gray-50 dark:bg-black">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Waitlist Management</h1>
-            <div className="flex space-x-2">
-              <Button onClick={exportToTxt} variant="outline">Export Emails (.txt)</Button>
-              <Button onClick={exportToCSV}>Export to CSV</Button>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Waitlist Management</h1>
+            <div className="relative w-full sm:w-auto" ref={exportDropdownRef}>
+              <Button 
+                onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+                className="w-full sm:w-auto dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10"
+              >
+                Export Options
+                <svg className={`ml-2 w-4 h-4 transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </Button>
+              {exportDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-black shadow-lg rounded-md border dark:border-white dark:border-opacity-20 z-10">
+                  <button 
+                    onClick={() => {
+                      exportToTxt();
+                      setExportDropdownOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
+                  >
+                    Export Emails (.txt)
+                  </button>
+                  <button 
+                    onClick={() => {
+                      exportToCSV();
+                      setExportDropdownOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
+                  >
+                    Export to CSV
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
-          <Card className="mb-6">
+          <Card className="mb-6 dark:bg-black dark:border-white dark:border-opacity-20">
             <CardHeader className="pb-2">
-              <CardTitle>Waitlist Overview</CardTitle>
+              <CardTitle className="dark:text-white">Waitlist Overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 items-end">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Search by Email
                   </label>
                   <Input
                     placeholder="Search emails..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full"
+                    className="w-full dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:placeholder-white dark:placeholder-opacity-50"
                   />
                 </div>
                 
                 <div className="w-full md:w-48">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Status Filter
                   </label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="contacted">Contacted</SelectItem>
-                      <SelectItem value="subscribed">Subscribed</SelectItem>
+                    <SelectContent className="dark:bg-black dark:border-white dark:border-opacity-20">
+                      <SelectItem value="all" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">All Statuses</SelectItem>
+                      <SelectItem value="pending" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Pending</SelectItem>
+                      <SelectItem value="contacted" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Contacted</SelectItem>
+                      <SelectItem value="subscribed" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Subscribed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
-                <Button onClick={fetchWaitlistEntries} className="w-full md:w-auto">
+                <Button 
+                  onClick={fetchWaitlistEntries} 
+                  className="w-full md:w-auto dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10"
+                >
                   Refresh
                 </Button>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="dark:bg-black dark:border-white dark:border-opacity-20">
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="flex justify-center items-center py-20">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 dark:border-white"></div>
                 </div>
               ) : filteredEntries.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">
+                <div className="text-center py-20 text-gray-500 dark:text-white dark:opacity-70">
                   No waitlist entries found
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Date Added</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Notes</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                      <TableRow className="dark:border-white dark:border-opacity-20">
+                        <TableHead className="dark:text-white">Email</TableHead>
+                        <TableHead className="dark:text-white hidden md:table-cell">Date Added</TableHead>
+                        <TableHead className="dark:text-white">Status</TableHead>
+                        <TableHead className="dark:text-white hidden sm:table-cell">Source</TableHead>
+                        <TableHead className="dark:text-white hidden lg:table-cell">Notes</TableHead>
+                        <TableHead className="text-right dark:text-white">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredEntries.map((entry) => (
-                        <TableRow key={entry._id}>
-                          <TableCell className="font-medium">{entry.email}</TableCell>
-                          <TableCell>{formatDate(entry.createdAt)}</TableCell>
-                          <TableCell>
+                        <TableRow key={entry._id} className="dark:border-white dark:border-opacity-20 dark:hover:bg-white dark:hover:bg-opacity-5">
+                          <TableCell className="font-medium dark:text-white truncate max-w-[150px] md:max-w-none">
+                            <div className="md:hidden text-xs text-gray-500 dark:text-white dark:opacity-70 mb-1">Email:</div>
+                            {entry.email}
+                          </TableCell>
+                          <TableCell className="dark:text-white dark:opacity-70 hidden md:table-cell">
+                            {formatDate(entry.createdAt)}
+                          </TableCell>
+                          <TableCell className="dark:text-white">
+                            <div className="md:hidden text-xs text-gray-500 dark:text-white dark:opacity-70 mb-1">Status:</div>
                             <Select 
                               value={entry.status} 
                               onValueChange={(value) => updateEntryStatus(entry._id, value)}
                             >
-                              <SelectTrigger className="w-32">
+                              <SelectTrigger className="w-full sm:w-32 dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="contacted">Contacted</SelectItem>
-                                <SelectItem value="subscribed">Subscribed</SelectItem>
+                              <SelectContent className="dark:bg-black dark:border-white dark:border-opacity-20">
+                                <SelectItem value="pending" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Pending</SelectItem>
+                                <SelectItem value="contacted" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Contacted</SelectItem>
+                                <SelectItem value="subscribed" className="dark:text-white dark:focus:bg-white dark:focus:bg-opacity-10">Subscribed</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
-                          <TableCell>{entry.source}</TableCell>
-                          <TableCell>
+                          <TableCell className="dark:text-white dark:opacity-70 hidden sm:table-cell">
+                            {entry.source}
+                          </TableCell>
+                          <TableCell className="dark:text-white dark:opacity-70 hidden lg:table-cell">
                             <div className="max-w-xs truncate">
                               {entry.notes || 'No notes'}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
+                            <div className="flex flex-col sm:flex-row justify-end gap-2">
                               <Button 
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => handleEditClick(entry)}
+                                className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10"
                               >
                                 Edit Notes
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm">Delete</Button>
+                                  <Button variant="destructive" size="sm" className="dark:bg-red-900 dark:hover:bg-red-800 dark:text-white">Delete</Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="dark:bg-black dark:border-white dark:border-opacity-20 w-[95vw] max-w-md mx-auto">
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
+                                    <AlertDialogTitle className="dark:text-white">Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription className="dark:text-white dark:opacity-70 break-words">
                                       This action cannot be undone. This will permanently delete the
                                       waitlist entry for {entry.email}.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => deleteEntry(entry._id)}>
+                                  <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                    <AlertDialogCancel className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 w-full sm:w-auto">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteEntry(entry._id)}
+                                      className="bg-red-600 hover:bg-red-700 dark:bg-red-900 dark:hover:bg-red-800 w-full sm:w-auto"
+                                    >
                                       Delete
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
@@ -345,10 +408,10 @@ export default function WaitlistPage() {
       </main>
       
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="dark:bg-black dark:border-white dark:border-opacity-20 w-[95vw] max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle>Edit Notes</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-white">Edit Notes</DialogTitle>
+            <DialogDescription className="dark:text-white dark:opacity-70">
               {editEntry && `Add notes for ${editEntry.email}`}
             </DialogDescription>
           </DialogHeader>
@@ -359,14 +422,24 @@ export default function WaitlistPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={5}
               placeholder="Add notes about this waitlist subscriber..."
+              className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:placeholder-white dark:placeholder-opacity-50"
             />
           </div>
           
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+          <DialogFooter className="mt-4 flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={saveNotes}>Save Notes</Button>
+            <Button 
+              onClick={saveNotes}
+              className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 w-full sm:w-auto"
+            >
+              Save Notes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

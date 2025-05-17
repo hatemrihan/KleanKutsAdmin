@@ -89,6 +89,7 @@ async function validateApiKey(request: Request) {
       origin.includes('eleveadmin.netlify.app')
       {
     return;
+}
   }
 
   const apiKey = request.headers.get('X-API-Key');

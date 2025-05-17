@@ -43,13 +43,7 @@ export default function SettingsPage() {
   useEffect(() => {
     // Force client-side rendering for this page
     const path = window.location.pathname;
-    if (path === '/settings' && typeof window !== 'undefined') {
-      // Check authentication
-      const isAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
-      if (!isAuthenticated) {
-        // Instead of redirecting, we'll set a default admin authentication
-        localStorage.setItem('adminAuthenticated', 'true');
-      }
+  
     }
     
     // Fetch the current site status

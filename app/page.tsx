@@ -1,6 +1,5 @@
 'use client';
 import Interface from './sections/Interface';
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {

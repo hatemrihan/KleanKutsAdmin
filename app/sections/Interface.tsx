@@ -22,6 +22,15 @@ export default function Interface() {
     // Check if already authenticated
     const checkAuth = async () => {
       try {
+        // Bypass auth check for Orders and Settings pages
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname;
+          if (path.startsWith('/orders') || path.startsWith('/settings')) {
+            console.log('Bypassing auth check for', path);
+            return; // Don't redirect or check auth for these pages
+          }
+        }
+
         // Check if there's an admin-auth value in localStorage
         let localAuth = false;
         

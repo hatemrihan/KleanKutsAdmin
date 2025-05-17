@@ -39,16 +39,31 @@ export default function SettingsPage() {
   });
   const [currentSaving, setCurrentSaving] = useState<string | null>(null);
 
-  // Add this useEffect to ensure the page works in deployed environment
+  // Add this useEffect to ensure the page works in deployed 'use client'
+
+import { useEffect } from 'react'
+import fetchSiteStatus from '@/lib/fetchSiteStatus' // adjust path as needed
+
+export default function Page() {
+const router = useRouter();
+
   useEffect(() => {
-    // Force client-side rendering for this page
-    const path = window.location.pathname;
-  
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+
+      const run = async () => {
+        try {
+          const status = await fetchSiteStatus();
+          console.log('Site status:', status);
+        } catch (err) {
+          console.error('Failed to fetch site status:', err);
+        }
+      };
+
+      run();
     }
-    
-    // Fetch the current site status
-    fetchSiteStatus();
-  }, [router]);
+  }, [router]); // optional dependency if you want to re-run when route changes
+
 
   const fetchSiteStatus = async () => {
     try {

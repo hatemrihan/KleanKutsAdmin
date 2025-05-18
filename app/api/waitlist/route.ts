@@ -53,22 +53,36 @@ export async function GET(req: NextRequest) {
     const waitlistEntries = await Waitlist.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
-      .skip(skip);
+      .skip(skip)
+      .lean();  // Convert to plain JS objects
       
     const total = await Waitlist.countDocuments(query);
     
     logInfo('Successfully fetched waitlist entries', { total, count: waitlistEntries.length });
+    
+    // Set no-cache headers in the response
     return NextResponse.json({
-      waitlistEntries,
+      waitlistEntries: waitlistEntries || [],  // Ensure we always return an array
       total,
       limit,
       skip
-    }, { headers: corsHeaders() });
+    }, { 
+      headers: {
+        ...corsHeaders(),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      } 
+    });
   } catch (error) {
     logError('Error fetching waitlist entries', error);
     return NextResponse.json(
-      { error: 'Failed to fetch waitlist entries' },
-      { status: 500, headers: corsHeaders() }
+      { error: 'Failed to fetch waitlist entries', waitlistEntries: [] },
+      { status: 500, headers: { 
+        ...corsHeaders(),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' 
+      }}
     );
   }
 }

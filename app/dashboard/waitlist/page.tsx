@@ -89,8 +89,19 @@ export default function WaitlistPage() {
     setIsLoading(true);
     try {
       const queryParams = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
-      const response = await axios.get(`/api/waitlist${queryParams}`);
-      setWaitlistEntries(response.data.waitlistEntries);
+      // Add cache-busting timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const cacheParam = `${queryParams ? '&' : '?'}t=${timestamp}`;
+      const response = await axios.get(`/api/waitlist${queryParams}${cacheParam}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      console.log('Fetched waitlist data:', response.data);
+      setWaitlistEntries(response.data.waitlistEntries || []);
     } catch (error) {
       console.error('Error fetching waitlist entries:', error);
       toast.error('Failed to load waitlist entries');

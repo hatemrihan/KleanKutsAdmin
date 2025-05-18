@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../lib/mongoose';
 import { Settings } from '../../../models/settings';
 
+// CORS headers to allow requests from the e-commerce site
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://elevee.netlify.app',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400', // 24 hours
+};
+
+// Helper to add CORS headers to all responses
+const responseWithCors = (data: any, status = 200) => {
+  return NextResponse.json(data, { 
+    status, 
+    headers: corsHeaders
+  });
+};
+
 // GET pixel settings
 export async function GET(req: NextRequest) {
   try {
@@ -18,12 +34,12 @@ export async function GET(req: NextRequest) {
     
     console.log('Fetched pixel settings:', response);
     
-    return NextResponse.json(response);
+    return responseWithCors(response);
   } catch (error) {
     console.error('Error in GET /api/settings/pixel:', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to fetch pixel settings' },
-      { status: 500 }
+      500
     );
   }
 }
@@ -38,16 +54,16 @@ export async function PUT(req: NextRequest) {
     
     // Validate
     if (pixelId === undefined) {
-      return NextResponse.json(
+      return responseWithCors(
         { error: 'Pixel ID is required' },
-        { status: 400 }
+        400
       );
     }
     
     if (typeof isEnabled !== 'boolean') {
-      return NextResponse.json(
+      return responseWithCors(
         { error: 'isEnabled must be a boolean' },
-        { status: 400 }
+        400
       );
     }
     
@@ -65,15 +81,15 @@ export async function PUT(req: NextRequest) {
     
     console.log('Updated pixel settings:', result);
     
-    return NextResponse.json({
+    return responseWithCors({
       pixelId: result.value.pixelId,
       isEnabled: result.value.isEnabled
     });
   } catch (error) {
     console.error('Error in PUT /api/settings/pixel:', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to update pixel settings' },
-      { status: 500 }
+      500
     );
   }
 }
@@ -81,4 +97,12 @@ export async function PUT(req: NextRequest) {
 // POST - alias for PUT for convenience
 export async function POST(req: NextRequest) {
   return PUT(req);
+}
+
+// OPTIONS handler for CORS preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204, // No content
+    headers: corsHeaders
+  });
 } 

@@ -1035,7 +1035,7 @@ export default function Dashboard() {
             {stats.recentOrders.length > 0 && (
               <div className="mt-4 text-center">
                               <a
-                href="/orders"
+                href="/test"
                 className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
               >
                 View All Orders
@@ -1064,13 +1064,13 @@ export default function Dashboard() {
               Dashboard
             </div>
             <a 
-              href="/orders" 
+              href="/test" 
               className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
             >
               Orders
             </a>
             <a 
-              href="/settings" 
+              href="/test-settings" 
               className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
             >
               Settings

@@ -10,8 +10,8 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
-// GET endpoint to retrieve current site status for the e-commerce site
-export async function GET(request: NextRequest) {
+// GET endpoint to retrieve current site status for the e-commerce site to check
+export async function GET() {
   try {
     // Ensure MongoDB connection
     if (!mongoose.connection.readyState) {
@@ -23,30 +23,26 @@ export async function GET(request: NextRequest) {
     // Get the site status setting
     const siteSetting = await Setting.findOne({ key: 'site_status' });
     
-    // If setting doesn't exist, assume site is active
-    if (!siteSetting) {
-      console.log('[API] No site_status found, returning default active status');
+    // If setting doesn't exist or site is active, return active status
+    if (!siteSetting || siteSetting.value.active) {
       return NextResponse.json({
-        active: true,
-        message: 'Site is currently active',
-      }, { status: 200, headers: corsHeaders });
+        status: 'active',
+        message: siteSetting?.value?.message || 'Site is currently active'
+      }, { status: 200 });
     }
     
-    console.log('[API] Returning site status:', siteSetting.value);
-    return NextResponse.json(siteSetting.value, { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+    // If site is in maintenance mode, return inactive status
+    return NextResponse.json({
+      status: 'inactive',
+      message: siteSetting.value.message || 'Site is under maintenance'
+    }, { status: 200 });
     
   } catch (error) {
-    console.error('[API] Error getting site status:', error);
-    // Default to active if there's an error, to prevent blocking the site unnecessarily
+    console.error('Error getting site status:', error);
+    // Default to active if there's an error (safer than blocking all users)
     return NextResponse.json(
-      { 
-        active: true,
-        message: 'Site is active (error checking status)',
-      },
-      { status: 200, headers: corsHeaders }
+      { status: 'active', message: 'Site is currently active' },
+      { status: 200 }
     );
   }
 }

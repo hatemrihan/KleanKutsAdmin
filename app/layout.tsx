@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'KA Admin Dashboard',
-  description: 'Admin dashboard for KA brand',
+  title: 'EleveAdmin Dashboard',
+  description: 'Admin dashboard for Eleve Egypt brand',
   icons: {
     icon: '/icon.svg',
   },

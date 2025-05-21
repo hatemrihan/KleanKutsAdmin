@@ -1,56 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mongooseConnect } from '../../../lib/mongoose';
-import { Setting } from '../../../models/setting';
+import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongoose';
+
+// Define a schema for the settings
+const SettingsSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: mongoose.Schema.Types.Mixed, required: true },
+  lastUpdated: { type: Date, default: Date.now }
+});
+
+// Get the model (or create it if it doesn't exist)
+const Settings = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Updating monthly goal...');
-    await mongooseConnect();
+    await connectToDatabase();
     
-    // Parse the request body
-    const body = await request.json();
-    const { monthlyGoal } = body;
+    const data = await request.json();
+    const { monthlyGoal } = data;
     
-    console.log('Received goal update request:', { monthlyGoal });
-    
-    // Validate the monthly goal
-    if (typeof monthlyGoal !== 'number' || monthlyGoal < 0) {
-      console.error('Invalid monthly goal value:', monthlyGoal);
+    if (typeof monthlyGoal !== 'number' || isNaN(monthlyGoal) || monthlyGoal < 0) {
       return NextResponse.json(
-        { error: 'Monthly goal must be a positive number' },
+        { success: false, error: 'Monthly goal must be a valid positive number' },
         { status: 400 }
       );
     }
     
-    // Find or create the monthly goal setting
-    let setting = await Setting.findOne({ key: 'monthlyGoal' });
+    console.log('Updating monthly goal to:', monthlyGoal);
     
-    if (setting) {
-      // Update existing setting
-      console.log('Updating existing monthly goal setting from', setting.value, 'to', monthlyGoal);
-      setting.value = monthlyGoal.toString();
-      await setting.save();
-    } else {
-      // Create new setting
-      console.log('Creating new monthly goal setting with value', monthlyGoal);
-      await Setting.create({
-        key: 'monthlyGoal',
-        value: monthlyGoal.toString(),
-        description: 'Monthly sales goal in L.E'
-      });
-    }
+    // Update or create the monthly goal setting
+    const updatedSettings = await Settings.findOneAndUpdate(
+      { key: 'monthlyGoal' },
+      { 
+        value: monthlyGoal,
+        lastUpdated: new Date()
+      },
+      { 
+        upsert: true, // Create if doesn't exist
+        new: true // Return the updated document
+      }
+    );
     
-    console.log('Monthly goal successfully updated to', monthlyGoal);
+    console.log('Updated settings:', updatedSettings);
     
     return NextResponse.json({
       success: true,
-      monthlyGoal
+      monthlyGoal,
+      message: 'Monthly goal updated successfully'
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error updating monthly goal:', errorMessage);
+    console.error('Error updating monthly goal:', error);
     return NextResponse.json(
-      { error: 'Failed to update monthly goal', details: errorMessage },
+      { success: false, error: 'Failed to update monthly goal' },
       { status: 500 }
     );
   }

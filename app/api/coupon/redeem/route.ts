@@ -38,17 +38,19 @@ export async function POST(request: NextRequest) {
     const normalizedCode = code.trim().toUpperCase();
     
     // Try to find an ambassador with this coupon code (case-insensitive)
+    // Also check that ambassador is active (isActive: true)
     let ambassador = await Ambassador.findOne({
       $or: [
-        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' },
-        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' }
+        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true },
+        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true }
       ]
     });
     
-    // If not found or not approved, return error
+    // If not found, not approved, or not active, return error
     if (!ambassador) {
+      console.log(`Invalid or inactive ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
       const response = NextResponse.json(
-        { error: 'Invalid ambassador code' },
+        { error: 'Invalid or inactive ambassador code' },
         { status: 400 }
       );
       
@@ -59,6 +61,8 @@ export async function POST(request: NextRequest) {
       
       return response;
     }
+    
+    console.log(`Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
     
     // Calculate commission
     const commission = orderAmount * ambassador.commissionRate;

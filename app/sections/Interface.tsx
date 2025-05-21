@@ -22,53 +22,28 @@ export default function Interface() {
     // Check if already authenticated
     const checkAuth = async () => {
       try {
-        // Bypass auth check for Orders and Settings pages
-        if (typeof window !== 'undefined') {
-          const path = window.location.pathname;
-          if (path.startsWith('/orders') || path.startsWith('/settings')) {
-            console.log('Bypassing auth check for', path);
-            return; // Don't redirect or check auth for these pages
-          }
-        }
-
-        // Check if there's an admin-auth value in localStorage
-        let localAuth = false;
+        // Check if authenticated via cookie
+        const response = await axios.get('/api/auth/check', {
+          withCredentials: true
+        });
         
-        // Safe check for localStorage (might not be available in SSR)
-        if (typeof window !== 'undefined') {
-          localAuth = localStorage.getItem('admin-auth') === 'true';
-          
-          // If we have local storage auth but no cookie auth, clear localStorage
-          // This will prevent automatic re-login after logout
-          try {
-            const response = await axios.get('/api/auth/check', {
-              withCredentials: true
-            });
-            
-            if (response.data.authenticated) {
-              // We're already authenticated via cookie, proceed to dashboard
-              router.push('/dashboard');
-            } else if (localAuth) {
-              // We have localStorage auth but no cookie auth
-              // Clear localStorage to prevent automatic re-login
-              localStorage.removeItem('admin-auth');
-              localStorage.removeItem('adminAuthenticated');
-              console.log('Cleared local storage auth because no valid cookie found');
-            }
-          } catch (error) {
-            // API error, assume not authenticated
-            // Clear any localStorage auth to be safe
-            if (localAuth) {
-              localStorage.removeItem('admin-auth');
-              localStorage.removeItem('adminAuthenticated');
-              console.log('Cleared local storage auth due to API error');
-            }
-            console.log('Not authenticated, showing login screen');
+        if (response.data.authenticated) {
+          // We're already authenticated via cookie, proceed to dashboard
+          router.push('/dashboard');
+        } else {
+          // Not authenticated, clear any localStorage data
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('admin-auth');
+            localStorage.removeItem('adminAuthenticated');
           }
         }
       } catch (error) {
-        // Not authenticated, stay on login page
         console.log('Not authenticated, showing login screen');
+        // Clear any localStorage auth to be safe
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('admin-auth');
+          localStorage.removeItem('adminAuthenticated');
+        }
       }
     };
     
@@ -96,9 +71,6 @@ export default function Interface() {
       if (response.data.success) {
         console.log('Login successful, preparing to redirect...');
         toast.success('Login successful! Redirecting...');
-        
-        // Store authentication in local storage as a backup
-        localStorage.setItem('admin-auth', 'true');
         
         // Small delay to ensure cookie is set
         setTimeout(() => {
@@ -165,28 +137,26 @@ export default function Interface() {
                   <p className="text-sm text-red-500 dark:text-red-400 text-center">{error}</p>
                 )}
               </div>
-              <Button 
-                type="submit" 
-                className="w-full h-12 bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-blue-700 transition-colors text-white dark:text-black text-lg"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>Verifying...</span>
-                  </div>
-                ) : (
-                  'ACCESS DASHBOARD'
-                )}
-              </Button>
+              
+              <div className="pt-2">
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-lg"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Authenticating..." : "Login"}
+                </Button>
+              </div>
             </CardContent>
           </form>
         </Card>
       </div>
-      {mounted && <Toaster position="top-center" richColors closeButton />}
+      
+      <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+        <p>For assistance, please contact technical support.</p>
+      </div>
+
+      <Toaster position="top-center" richColors />
     </div>
   );
 }

@@ -146,9 +146,6 @@ export default function NewProduct() {
       if (formData.price <= 0) {
         throw new Error('Price must be greater than 0');
       }
-      if (!formData.category) {
-        throw new Error('Please select a category');
-      }
       if (formData.selectedImages.length === 0) {
         throw new Error('At least one product image is required');
       }
@@ -196,7 +193,8 @@ export default function NewProduct() {
         name: formData.title, // Required by the model
         stock: totalStock, // Set calculated stock
         selectedSizes, // Update selected sizes based on variants
-        categories: [formData.category], // Ensure categories is an array
+        gender: formData.gender, // Ensure gender is explicitly included
+        categories: formData.category ? [formData.category] : [], // Make categories optional
         sizeVariants: formData.sizeVariants.map(sv => ({
           size: sv.size,
           colorVariants: sv.colorVariants.map(cv => ({

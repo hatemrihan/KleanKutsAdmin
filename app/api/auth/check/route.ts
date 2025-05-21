@@ -2,31 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for the admin-auth cookie
-    const adminAuth = request.cookies.get('admin-auth');
+    // Check if the admin-auth cookie exists and is valid
+    const adminAuthCookie = request.cookies.get('admin-auth');
     
-    // Return authentication status
-    if (adminAuth?.value === 'true') {
-      return NextResponse.json({ 
+    if (adminAuthCookie && adminAuthCookie.value === 'true') {
+      return NextResponse.json({
         authenticated: true,
-        method: 'cookie'
+        source: 'cookie'
       });
     }
     
     // Not authenticated
-    return NextResponse.json({ 
-      authenticated: false 
-    }, { 
-      status: 401 
+    return NextResponse.json({
+      authenticated: false
     });
-    
   } catch (error) {
     console.error('Auth check error:', error);
-    return NextResponse.json({ 
-      error: 'Error checking authentication status',
-      authenticated: false
-    }, { 
-      status: 500 
-    });
+    return NextResponse.json({
+      authenticated: false,
+      error: 'Authentication check failed'
+    }, { status: 500 });
   }
 } 

@@ -87,7 +87,36 @@ export default function AmbassadorsPage() {
       
       if (response.data.success) {
         toast.success(`Ambassador ${currentStatus ? 'deactivated' : 'activated'} successfully`);
-        fetchAmbassadors(); // Refresh the entire list
+        
+        // Refresh the ambassador list
+        fetchAmbassadors();
+        
+        // Add extra logging to help with debugging
+        console.log(`Ambassador ${id} status toggled from ${currentStatus ? 'active' : 'inactive'} to ${!currentStatus ? 'active' : 'inactive'}`);
+        
+        // Add a small delay to make sure the database update completes
+        setTimeout(() => {
+          // Notify the e-commerce store to update its coupon cache
+          try {
+            // This is an optional ping to the store to refresh its coupon data
+            // It's fine if this fails or if the endpoint doesn't exist
+            fetch(process.env.NEXT_PUBLIC_STORE_URL + '/api/hooks/refresh-coupons', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Auth': process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
+              },
+              body: JSON.stringify({ 
+                trigger: 'ambassador_toggle',
+                ambassadorId: id, 
+                isActive: !currentStatus 
+              })
+            }).catch(e => console.log('Store notification optional, can safely ignore:', e));
+          } catch (notifyErr) {
+            // Ignore errors from this optional enhancement
+            console.log('Store notification is optional, not critical for functionality');
+          }
+        }, 1000);
       } else {
         toast.error(response.data.error || 'Failed to update ambassador status');
       }

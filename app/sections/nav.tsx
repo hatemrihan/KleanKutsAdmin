@@ -47,36 +47,22 @@ const Nav = () => {
 
     if (isMobileMenuOpen) {
       // Animate hamburger to X
-      // First translateY
-      topLineRef.current.style.transform = 'translateY(4px)';
-      bottomLineRef.current.style.transform = 'translateY(-4px)';
-      
-      // Then rotate after a small delay
-      setTimeout(() => {
-        if (topLineRef.current && bottomLineRef.current) {
-          topLineRef.current.style.transform = 'translateY(4px) rotate(45deg)';
-          bottomLineRef.current.style.transform = 'translateY(-4px) rotate(-45deg)';
-        }
-      }, 150);
+      topLineRef.current.style.transform = 'translateY(4px) rotate(45deg)';
+      bottomLineRef.current.style.transform = 'translateY(-4px) rotate(-45deg)';
 
       // Animate menu in
-      mobileMenuRef.current.style.height = '100%';
+      mobileMenuRef.current.style.height = '100vh';
+      mobileMenuRef.current.style.opacity = '1';
+      document.body.style.overflow = 'hidden'; // Prevent scrolling while menu is open
     } else {
       // Animate X to hamburger
-      // First remove rotation
-      topLineRef.current.style.transform = 'translateY(4px) rotate(0deg)';
-      bottomLineRef.current.style.transform = 'translateY(-4px) rotate(0deg)';
-      
-      // Then reset translateY after a small delay
-      setTimeout(() => {
-        if (topLineRef.current && bottomLineRef.current) {
-          topLineRef.current.style.transform = 'translateY(0)';
-          bottomLineRef.current.style.transform = 'translateY(0)';
-        }
-      }, 150);
+      topLineRef.current.style.transform = 'translateY(0) rotate(0)';
+      bottomLineRef.current.style.transform = 'translateY(0) rotate(0)';
 
       // Animate menu out
       mobileMenuRef.current.style.height = '0';
+      mobileMenuRef.current.style.opacity = '0';
+      document.body.style.overflow = ''; // Re-enable scrolling
     }
   }, [isMobileMenuOpen]);
 
@@ -224,8 +210,8 @@ const Nav = () => {
         {/* Mobile Menu Overlay - Full-screen menu that appears on click */}
         <div 
           ref={mobileMenuRef}
-          className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-white dark:bg-black dark:text-white transition-all duration-700"
-          style={{ height: '0' }}
+          className="fixed top-0 left-0 w-full h-0 overflow-auto z-40 bg-white dark:bg-black dark:text-white transition-all duration-500"
+          style={{ height: '0', opacity: '0' }}
         >
           <div className="mt-16 flex flex-col">
             {/* Site Status Indicator for Mobile */}
@@ -539,6 +525,8 @@ const Nav = () => {
                     console.error('Logout failed:', error);
                     // Still try to redirect even if the API call fails
                     router.push('/');
+                  } finally {
+                    setShowLogoutConfirm(false);
                   }
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 dark:bg-red-700 rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"

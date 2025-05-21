@@ -27,11 +27,13 @@ export async function POST(req: Request) {
         message: 'Login successful'
       });
       
-      // Set authentication cookie
+      // Set authentication cookie - secure and HTTP-only
       response.cookies.set('admin-auth', 'true', {
         httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24 * 7 // One week
+        maxAge: 60 * 60 * 24 * 1 // One day expiration for security
       });
       
       return response;

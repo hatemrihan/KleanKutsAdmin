@@ -33,57 +33,52 @@ export async function OPTIONS() {
 }
 
 // Get all waitlist entries
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    logInfo('Processing GET request', { url: req.url });
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const skip = parseInt(searchParams.get('skip') || '0');
-    
-    logInfo('Connecting to database');
     await connectToDatabase();
     
-    let query = {};
-    if (status) {
-      query = { status };
+    // Check if we have the Waitlist model
+    const Waitlist = mongoose.models.Waitlist;
+    
+    if (!Waitlist) {
+      console.error('Waitlist model not found - trying direct collection access');
+      
+      // Try direct collection access as a fallback
+      const db = mongoose.connection.db;
+      if (db) {
+        // Try different collection names that might have waitlist data
+        const collections = ['waitlists', 'waitlist', 'subscribers'];
+        
+        for (const collName of collections) {
+          try {
+            const collection = db.collection(collName);
+            // Skip if collection doesn't exist
+            if (!collection) continue;
+            
+            const waitlistEntries = await collection.find({}).limit(100).toArray();
+            console.log(`Found ${waitlistEntries.length} waitlist entries in ${collName} collection`);
+            
+            if (waitlistEntries.length > 0) {
+              return NextResponse.json(waitlistEntries);
+            }
+          } catch (err) {
+            console.error(`Error checking ${collName} collection:`, err);
+          }
+        }
+      }
+      
+      // If we get here, no waitlist entries found
+      return NextResponse.json([]);
     }
     
-    logInfo('Fetching waitlist entries', { query, limit, skip });
-    const waitlistEntries = await Waitlist.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip(skip)
-      .lean();  // Convert to plain JS objects
-      
-    const total = await Waitlist.countDocuments(query);
+    // Use the Waitlist model to get entries
+    const waitlistEntries = await Waitlist.find({}).sort({ createdAt: -1 }).limit(100).lean();
+    console.log(`Found ${waitlistEntries.length} waitlist entries using Waitlist model`);
     
-    logInfo('Successfully fetched waitlist entries', { total, count: waitlistEntries.length });
-    
-    // Set no-cache headers in the response
-    return NextResponse.json({
-      waitlistEntries: waitlistEntries || [],  // Ensure we always return an array
-      total,
-      limit,
-      skip
-    }, { 
-      headers: {
-        ...corsHeaders(),
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'Surrogate-Control': 'no-store'
-      } 
-    });
+    return NextResponse.json(waitlistEntries);
   } catch (error) {
-    logError('Error fetching waitlist entries', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch waitlist entries', waitlistEntries: [] },
-      { status: 500, headers: { 
-        ...corsHeaders(),
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' 
-      }}
-    );
+    console.error('Error fetching waitlist entries:', error);
+    return NextResponse.json({ error: 'Failed to fetch waitlist entries' }, { status: 500 });
   }
 }
 

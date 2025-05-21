@@ -163,6 +163,8 @@ export default function Dashboard() {
     fetchSiteStatus();
     fetchWaitlistCount();
     fetchAmbassadorsCount();
+    fetchProductsAndCategoriesCounts();
+    fetchRealSalesData();
   }, []);
   
   // Refresh dashboard stats when switching back to dashboard section
@@ -184,12 +186,23 @@ export default function Dashboard() {
     fetchOrders();
   }, []);
 
+  // Set up intervals for auto-refresh
   useEffect(() => {
+    // Refresh waitlist count every minute
     const waitlistInterval = setInterval(() => {
       fetchWaitlistCount();
     }, 60000); // 60 seconds
     
-    return () => clearInterval(waitlistInterval);
+    // Refresh real sales data every 3 minutes
+    const salesDataInterval = setInterval(() => {
+      console.log('Auto-refreshing sales data...');
+      fetchRealSalesData();
+    }, 180000); // 3 minutes
+    
+    return () => {
+      clearInterval(waitlistInterval);
+      clearInterval(salesDataInterval);
+    };
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -230,14 +243,27 @@ export default function Dashboard() {
   const fetchWaitlistCount = async () => {
     try {
       setWaitlistLoading(true);
+      // Use our new dedicated endpoint
       const response = await axios.get('/api/waitlist/count');
-      if (response.data && response.data.success) {
+      
+      if (response.data && (response.data.success || typeof response.data.count === 'number')) {
         setWaitlistCount(response.data.count);
         console.log('Waitlist count fetched:', response.data.count);
       } else {
         console.error('Error in waitlist count response:', response.data);
-        // Default to 0 if there's an issue
+        // Try alternative endpoint if first one fails
+        try {
+          const altResponse = await axios.get('/api/waitlist');
+          if (altResponse.data && Array.isArray(altResponse.data)) {
+            setWaitlistCount(altResponse.data.length);
+            console.log('Waitlist count fetched from alternative endpoint:', altResponse.data.length);
+          } else {
         setWaitlistCount(0);
+          }
+        } catch (altError) {
+          console.error('Alternative waitlist endpoint also failed:', altError);
+          setWaitlistCount(0);
+        }
       }
     } catch (error) {
       console.error('Error fetching waitlist count:', error);
@@ -396,8 +422,9 @@ export default function Dashboard() {
         );
         setOrders(updatedOrders);
         toast.success('Order status updated successfully');
-        // Refresh dashboard stats after updating an order
+        // Refresh dashboard stats and real sales data after updating an order
         fetchDashboardStats();
+        fetchRealSalesData();
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -412,6 +439,7 @@ export default function Dashboard() {
       toast.success('Order deleted successfully');
       // Refresh dashboard stats after deleting an order
       fetchDashboardStats();
+      fetchRealSalesData();
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Failed to delete order');
@@ -507,6 +535,52 @@ export default function Dashboard() {
     }
   };
 
+  // Add new function to fetch products and categories counts
+  const fetchProductsAndCategoriesCounts = async () => {
+    try {
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        axios.get('/api/products/count'),
+        axios.get('/api/categories/count')
+      ]);
+      
+      if (productsResponse.data && typeof productsResponse.data.count === 'number') {
+        // Update stats with real product count
+        setStats(prev => prev ? {...prev, activeProducts: productsResponse.data.count} : prev);
+      }
+      
+      if (categoriesResponse.data && typeof categoriesResponse.data.count === 'number') {
+        // Update stats with real category count
+        setStats(prev => prev ? {...prev, totalCategories: categoriesResponse.data.count} : prev);
+      }
+    } catch (error) {
+      console.error("Error fetching products and categories counts:", error);
+    }
+  };
+
+  // Add new function to fetch real sales data
+  const fetchRealSalesData = async () => {
+    try {
+      const response = await axios.get('/api/dashboard/real-sales');
+      
+      if (response.data) {
+        console.log('Real sales data fetched:', response.data);
+        // Update with real data
+        setStats(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            totalSales: response.data.totalSales || prev.totalSales,
+            currentMonthSales: response.data.currentMonthSales || prev.currentMonthSales,
+            monthlyData: response.data.monthlyData || prev.monthlyData
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching real sales data:', error);
+      // Don't show error toast as this is a background enhancement
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen">
@@ -587,33 +661,17 @@ export default function Dashboard() {
   }
 
   const renderDashboardContent = () => {
-    if (isLoading || !stats) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-        </div>
-      );
-    }
-
-    // Calculate percentage of monthly goal - use the current monthlyGoal state which is guaranteed to be updated
-    const goalPercentage = Math.min(Math.round((stats.currentMonthSales / monthlyGoal) * 100), 100);
-    console.log('Current month sales:', stats.currentMonthSales, 'Monthly goal:', monthlyGoal, 'Percentage:', goalPercentage);
-
-    // Add CSS variables for dark mode support
+    if (!stats) return null;
+    
+    // Calculate goal percentage for the progress bar
+    const goalPercentage = monthlyGoal > 0
+      ? Math.min(Math.round((stats.currentMonthSales / monthlyGoal) * 100), 100)
+      : 0;
+      
     return (
-      <div className="space-y-8 
-        [--graph-stroke:#000] 
-        [--graph-fill:rgba(0,0,0,0.3)] 
-        [--tooltip-bg:#fff]
-        [--tooltip-text:#000]
-        [--tooltip-border:#ccc]
-        dark:[--graph-stroke:#fff] 
-        dark:[--graph-fill:rgba(255,255,255,0.3)]
-        dark:[--tooltip-bg:#000]
-        dark:[--tooltip-text:#fff]
-        dark:[--tooltip-border:#333]">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="space-y-8">
+        {/* Dashboard Stats Cards - Make more responsive */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {/* Orders Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
             <CardHeaderUI className="pb-2">
@@ -651,17 +709,14 @@ export default function Dashboard() {
             </CardContentUI>
           </CardUI>
 
-          {/* Products Card */}
-          
-
-          {/* Categories Card */}
+          {/* Sales Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
             <CardHeaderUI className="pb-2">
-              <CardTitleUI className="text-sm font-medium text-black dark:text-white">Categories</CardTitleUI>
+              <CardTitleUI className="text-sm font-medium text-black dark:text-white">Total Sales</CardTitleUI>
             </CardHeaderUI>
             <CardContentUI className="pt-0">
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-black dark:text-white">{stats.totalCategories}</div>
+                <div className="text-2xl font-bold text-black dark:text-white">{stats.totalSales.toLocaleString()}</div>
                 <div className="p-2 rounded-full bg-black/5 dark:bg-white/10">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -673,22 +728,13 @@ export default function Dashboard() {
                     strokeLinejoin="round"
                     className="h-5 w-5 text-black dark:text-white"
                   >
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path>
                   </svg>
                 </div>
               </div>
-              <a 
-                href="/categories"
-                className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
-              >
-                Manage Categories
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-              </a>
+              <div className="text-xs text-black/70 dark:text-white/70 mt-2">
+                Auto-refreshes every 3 minutes
+              </div>
             </CardContentUI>
           </CardUI>
 
@@ -728,7 +774,45 @@ export default function Dashboard() {
             </CardContentUI>
           </CardUI>
           
-          {/* Site Status Card */}
+          {/* Categories Card */}
+          <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
+            <CardHeaderUI className="pb-2">
+              <CardTitleUI className="text-sm font-medium text-black dark:text-white">Categories</CardTitleUI>
+            </CardHeaderUI>
+            <CardContentUI className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-black dark:text-white">{stats.totalCategories}</div>
+                <div className="p-2 rounded-full bg-black/5 dark:bg-white/10">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5 text-black dark:text-white"
+                  >
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </div>
+              </div>
+              <a 
+                href="/categories"
+                className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
+              >
+                Manage Categories
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+              </a>
+            </CardContentUI>
+          </CardUI>
+
+          {/* Status Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
             <CardHeaderUI className="pb-2">
               <CardTitleUI className="text-sm font-medium text-black dark:text-white">Site Status</CardTitleUI>
@@ -834,7 +918,9 @@ export default function Dashboard() {
           </CardUI>
         </div>
 
-        {/* Monthly Sales Goal */}
+        {/* Monthly Goal and Monthly Sales Overview Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+          {/* Monthly Goal Card */}
         <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
           <CardHeaderUI className="pb-2 flex justify-between items-center">
             <div>
@@ -897,9 +983,15 @@ export default function Dashboard() {
                   />
                 </div>
               ) : (
+                  <>
+                    {(() => {
+                      const goalPercentage = monthlyGoal > 0
+                        ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
+                        : 0;
+                      return (
                 <>
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-black dark:text-white">L.E {stats.currentMonthSales.toLocaleString()}</span>
+                            <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
                     <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
@@ -912,6 +1004,9 @@ export default function Dashboard() {
                     <span>{goalPercentage}% of monthly goal</span>
                     <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
                   </div>
+                        </>
+                      );
+                    })()}
                 </>
               )}
             </div>
@@ -979,9 +1074,10 @@ export default function Dashboard() {
             </div>
           </CardContentUI>
         </CardUI>
+        </div>
 
-        {/* Recent Orders */}
-        <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+        {/* Recent Orders Table */}
+        <DarkModePanel className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
           <CardHeaderUI>
             <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Recent Orders</CardTitleUI>
             <CardDescription className="text-black/70 dark:text-white/70">Latest orders across your store</CardDescription>
@@ -1046,32 +1142,32 @@ export default function Dashboard() {
               </div>
             )}
           </CardContentUI>
-        </CardUI>
+        </DarkModePanel>
       </div>
     );
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8 pb-24 lg:pb-8">
+      <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
-          {/* Navigation for pages */}
-          <div className="mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-md flex flex-col sm:flex-row">
+          {/* Navigation for pages - improve mobile responsiveness */}
+          <div className="mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-md flex flex-wrap">
             <div 
-              className="flex-1 py-10 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 bg-black text-white dark:bg-gray-900 text-center"
+              className="flex-1 py-3 md:py-10 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 bg-black text-white dark:bg-gray-900 text-center min-w-[120px]"
             >
               Dashboard
             </div>
             <a 
               href="/test" 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
+              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center min-w-[120px]"
             >
               Orders
             </a>
             <a 
               href="/test-settings" 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
+              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center min-w-[120px]"
             >
               Settings
             </a>
@@ -1080,250 +1176,165 @@ export default function Dashboard() {
           {/* Content based on active section */}
           {activeSection === 'dashboard' && renderDashboardContent()}
           
-          {activeSection === 'orders' && (
-            <div className="w-full">
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">Orders</h1>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <Input
-                      type="search"
-                      placeholder="Search orders..."
-                      className="w-full sm:w-[300px] px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
-                      <SelectTrigger className="w-full sm:w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+          {/* Monthly Goal and Monthly Sales Overview Cards - make more responsive */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+            {/* Monthly Goal Card */}
+            <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+              <CardHeaderUI className="pb-2 flex justify-between items-center">
+                <div>
+                  <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
+                  <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
                   </div>
-
-                  <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredOrders.map((order) => (
-                          <tr key={order._id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              #{order._id.substring(0, 8)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-gray-900">{order.customer.name}</div>
-                              <div className="text-sm text-gray-500">{order.customer.email}</div>
-                              <div className="text-sm text-gray-500">{order.customer.phone || order.phone || 'No phone'}</div>
-                              <div className="text-sm text-gray-500">{order.customer.address || order.address || 'No address'}</div>
-                              {order.apartmentNumber && <div className="text-sm text-gray-500">Apt: {order.apartmentNumber}</div>}
-                              {order.city && <div className="text-sm text-gray-500">City: {order.city}</div>}
-                              {order.products?.length > 0 && (
-                                <div className="text-sm text-gray-500 mt-2">
-                                  <strong>Products:</strong>
-                                  <ul className="list-disc pl-5">
-                                    {order.products.map((item) => (
-                                      <li key={item.productId || Math.random()}>
-                                        {item.name} - {item.size || 'N/A'} x {item.quantity} - L.E {item.price.toFixed(2)}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              L.E {order.totalAmount.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <Select
-                                value={order.status}
-                                onValueChange={(value: Order['status']) => updateOrderStatus(order._id, value)}
-                              >
-                                <SelectTrigger className="w-[130px]">
-                                  <SelectValue>
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status]}`}>
-                                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                    </span>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="processing">Processing</SelectItem>
-                                  <SelectItem value="shipped">Shipped</SelectItem>
-                                  <SelectItem value="delivered">Delivered</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                {isEditingGoal ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setIsEditingGoal(false);
+                        setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                      }}
+                      className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
+                      disabled={isSavingGoal}
+                    >
+                      Cancel
+                    </button>
                               <button 
-                                className="text-red-600 hover:text-red-900"
-                                onClick={() => deleteOrder(order._id)}
-                              >
-                                Delete
+                      onClick={updateMonthlySalesGoal}
+                      className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
+                      disabled={isSavingGoal}
+                    >
+                      {isSavingGoal ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </span>
+                      ) : 'Save'}
                               </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
-
-                  <div className="mt-4 text-center text-gray-500">
-                    {filteredOrders.length === 0 && !ordersLoading && (
-                      <p>No orders found. {statusFilter !== 'all' ? 'Try changing the status filter.' : ''}</p>
-                    )}
-                    {ordersLoading && (
-                      <div className="flex justify-center items-center py-10">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {activeSection === 'settings' && (
-            <div className="w-full">
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-6 space-y-8">
-                  {/* Profile Settings Card */}
-                  <div className="border rounded-lg p-4">
-                    <h2 className="text-lg font-medium mb-4">Profile Settings</h2>
-                    <form onSubmit={handleProfileSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ) : (
+                  <button
+                    onClick={() => setIsEditingGoal(true)}
+                    className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+                  >
+                    Edit Goal
+                  </button>
+                )}
+              </CardHeaderUI>
+              <CardContentUI>
+                <div className="space-y-2">
+                  {isEditingGoal ? (
                         <div>
-                          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                            First Name
+                      <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
+                        Monthly Goal (L.E)
                           </label>
-                          <Input
-                            id="firstName"
-                            name="firstName"
-                            type="text"
-                            placeholder="Enter your first name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                            value={profileData.firstName}
-                            onChange={handleProfileChange}
+                      <input
+                        type="number"
+                        id="monthlyGoal"
+                        value={monthlyGoal}
+                        onChange={(e) => setMonthlyGoal(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
+                        placeholder="Enter goal amount"
+                        min="0"
+                        disabled={isSavingGoal}
                           />
                         </div>
-                        <div>
-                          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                            Last Name
-                          </label>
-                          <Input
-                            id="lastName"
-                            name="lastName"
-                            type="text"
-                            placeholder="Enter your last name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                            value={profileData.lastName}
-                            onChange={handleProfileChange}
-                          />
+                  ) : (
+                    <>
+                      {(() => {
+                        const goalPercentage = monthlyGoal > 0
+                          ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
+                          : 0;
+                        return (
+                          <>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
+                              <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
                         </div>
+                            <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-black dark:bg-white rounded-full" 
+                                style={{ width: `${goalPercentage}%` }}
+                              ></div>
                       </div>
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          placeholder="Enter your email"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                          value={profileData.email}
-                          onChange={handleProfileChange}
-                        />
+                            <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
+                              <span>{goalPercentage}% of monthly goal</span>
+                              <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
                       </div>
-                      <button 
-                        type="submit"
-                        className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
-                        disabled={settingsLoading}
-                      >
-                        {settingsLoading ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </form>
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                  </div>
+              </CardContentUI>
+            </CardUI>
+
+            {/* Monthly Sales Chart */}
+            <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+              <CardHeaderUI>
+                <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
+                <CardDescription className="text-black/70 dark:text-white/70">Performance over the last year</CardDescription>
+              </CardHeaderUI>
+              <CardContentUI>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={stats.monthlyData}
+                      margin={{
+                        top: 10,
+                        right: 30,
+                        left: 0,
+                        bottom: 0,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#00000020" className="dark:stroke-[#FFFFFF20]" />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="var(--graph-stroke, #000)" 
+                        tick={{ fill: 'var(--graph-stroke, #000)' }}
+                      />
+                      <YAxis 
+                        stroke="var(--graph-stroke, #000)" 
+                        tick={{ fill: 'var(--graph-stroke, #000)' }}
+                        domain={[0, monthlyGoal]} 
+                      />
+                      <Tooltip 
+                        formatter={(value) => [`L.E ${value}`, 'Sales']} 
+                        wrapperClassName="dark:bg-black dark:text-white dark:border-white/20"
+                        contentStyle={{
+                          backgroundColor: 'var(--tooltip-bg, #fff)',
+                          color: 'var(--tooltip-text, #000)',
+                          border: '1px solid var(--tooltip-border, #ccc)'
+                        }}
+                      />
+                      <defs>
+                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="rgba(0,0,0,0.8)" className="dark:stop-color-white" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="rgba(0,0,0,0.2)" className="dark:stop-color-white" stopOpacity={0.2} />
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="sales" 
+                        stroke="#000000" 
+                        fill="url(#colorSales)" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        style={{
+                          stroke: 'var(--graph-stroke, #000)',
+                          fill: 'var(--graph-fill, rgba(0,0,0,0.3))'
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                      </div>
+              </CardContentUI>
+            </CardUI>
                   </div>
 
-                  {/* Password Settings Card */}
-                  <div className="border rounded-lg p-4">
-                    <h2 className="text-lg font-medium mb-4">OTP Password Settings</h2>
-                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                      <div>
-                        <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                          Current OTP Password
-                        </label>
-                        <Input
-                          id="currentPassword"
-                          name="currentPassword"
-                          type="password"
-                          placeholder="Enter current OTP password"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                          New OTP Password
-                        </label>
-                        <Input
-                          id="newPassword"
-                          name="newPassword"
-                          type="password"
-                          placeholder="Enter new OTP password"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New OTP Password
-                        </label>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          placeholder="Confirm new OTP password"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                          value={passwordData.confirmPassword}
-                          onChange={handlePasswordChange}
-                        />
-                      </div>
-                      <button 
-                        type="submit"
-                        className="w-full px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-md"
-                        disabled={settingsLoading}
-                      >
-                        {settingsLoading ? 'Updating...' : 'Update OTP Password'}
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="mt-4 text-center text-gray-500">
-                    <p>Visit the Settings page for full functionality once we fix the routing issue.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Rest of content... */}
         </div>
       </main>
     </div>

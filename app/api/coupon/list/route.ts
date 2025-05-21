@@ -12,11 +12,13 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Find all approved ambassadors
+    // Find all approved AND active ambassadors (add isActive: true to query)
     const ambassadors = await Ambassador.find(
-      { status: 'approved' },
+      { status: 'approved', isActive: true },
       'name couponCode referralCode discountPercent'
     );
+    
+    console.log(`Found ${ambassadors.length} active ambassadors with approved status`);
     
     // Format the response to include both coupon and referral codes
     const coupons = ambassadors.flatMap(ambassador => {

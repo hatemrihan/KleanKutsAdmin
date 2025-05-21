@@ -11,10 +11,19 @@ export async function GET(request: NextRequest) {
     // Clear the admin-auth cookie
     response.cookies.set('admin-auth', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV !== 'development',
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 0 // Immediate expiration
+    });
+    
+    // Clear any other auth-related cookies
+    response.cookies.set('pwd-backup', '', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 0
     });
     
     return response;

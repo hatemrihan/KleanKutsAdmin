@@ -25,15 +25,17 @@ export async function POST(request: NextRequest) {
     const normalizedCode = code.trim().toUpperCase();
     
     // Try to find an ambassador with this coupon code (case-insensitive)
+    // IMPORTANT: Now also check that isActive is true
     let ambassador = await Ambassador.findOne({
       $or: [
-        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' },
-        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' }
+        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true },
+        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true }
       ]
     });
     
-    // If not found or not approved, return invalid
+    // If not found, inactive, or not approved, return invalid
     if (!ambassador) {
+      console.log(`Invalid coupon code attempted: ${normalizedCode}`);
       const response = NextResponse.json(
         { valid: false, message: 'Invalid or expired coupon code' },
         { status: 200 }
@@ -46,6 +48,8 @@ export async function POST(request: NextRequest) {
       
       return response;
     }
+    
+    console.log(`Valid coupon code used: ${normalizedCode}, ambassador: ${ambassador.name}`);
     
     // Return validation result with discount information
     const response = NextResponse.json({

@@ -109,38 +109,44 @@ const AmbassadorSchema = new Schema({
     type: Number, 
     default: 0 
   },
-  recentOrders: [{
-    orderId: String,
-    orderDate: Date,
-    amount: Number,
-    commission: Number,
-    isPaid: { type: Boolean, default: false }
-  }],
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-  updatedAt: { 
-    type: Date, 
-    default: Date.now 
+  recentOrders: {
+    type: [{
+      orderId: { type: String },
+      orderDate: { type: Date, default: Date.now },
+      amount: { type: Number, default: 0 },
+      commission: { type: Number, default: 0 },
+      isPaid: { type: Boolean, default: false }
+    }],
+    default: []
   }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Update timestamps before saving
-AmbassadorSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
+// Virtual field for total earnings
+AmbassadorSchema.virtual('totalEarnings').get(function() {
+  return this.earnings || 0;
 });
 
 // Generate referral code based on name if not already set
 AmbassadorSchema.pre('save', function(next) {
+  // Generate referral code and referral link for all ambassadors
   if (this.isNew || !this.referralCode) {
     const nameBase = this.name.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 5);
     const random = Math.floor(Math.random() * 90 + 10); // two digit number
     this.referralCode = `${nameBase}${random}`;
-    
-    // Generate full referral link
-    this.referralLink = `https://elevee.netlify.app?ref=${this.referralCode}`;
+  }
+  
+  // Always regenerate the referral link to ensure it's present and correct
+  // Use the store URL from environment or fallback to default
+  const storeUrl = process.env.STORE_URL || 'https://elevee.netlify.app';
+  this.referralLink = `${storeUrl}?ref=${this.referralCode}`;
+  
+  // Ensure coupon code exists for approved ambassadors
+  if (this.status === 'approved' && !this.couponCode) {
+    this.couponCode = this.referralCode;
   }
   
   // Ensure isActive exists
@@ -228,6 +234,5 @@ export async function fixAllAmbassadorsActive() {
   }
 }
 
-// Prevent duplicate model compilation error in development
-export const Ambassador = mongoose.models.Ambassador || 
-  mongoose.model<AmbassadorDocument>('Ambassador', AmbassadorSchema); 
+// Export the model
+export const Ambassador = mongoose.models.Ambassador || mongoose.model('Ambassador', AmbassadorSchema); 

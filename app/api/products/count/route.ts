@@ -1,53 +1,103 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongoose';
+import { MongoClient } from 'mongodb';
+import { checkProductCountsCache, markProductCountsCacheRefreshed } from '@/app/utils/cacheUtils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
+    // Extract query parameters
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get('forceRefresh') === 'true';
     
-    // Get the Product model
-    const Product = mongoose.models.Product;
-    
-    if (!Product) {
-      console.error('Product model not found - trying to create from schema');
-      // If the model doesn't exist, try to create it or use a direct collection approach
-      const db = mongoose.connection.db;
-      if (db) {
-        try {
-          // Try direct collection access as fallback
-          const collection = db.collection('products');
-          const count = await collection.countDocuments({});
-          console.log(`Found ${count} products via direct collection access`);
-          return NextResponse.json({ count });
-        } catch (collectionError) {
-          console.error('Error accessing products collection directly:', collectionError);
-        }
-      }
-      return NextResponse.json({ count: 0 });
+    // Add cache-control headers to prevent caching when forcing refresh
+    const headers: Record<string, string> = {};
+    if (forceRefresh) {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
+      console.log('Force refreshing product count...');
     }
     
-    // Count all products (remove active filter to get all)
-    const count = await Product.countDocuments({});
-    console.log(`Found ${count} products using Product model`);
+    // Check if we need to refresh the count based on our cache system
+    const cacheStatus = await checkProductCountsCache();
+    const needsRefresh = forceRefresh || cacheStatus.requiresRefresh;
     
-    return NextResponse.json({ count });
+    if (!needsRefresh) {
+      console.log('Using cached product count, no refresh needed');
+    }
+    
+    // Try multiple approaches to get the most accurate count
+    let count = 0;
+    let success = false;
+    
+    // 1. Try using Mongoose models first
+    try {
+      await connectToDatabase();
+      const Product = mongoose.models.Product;
+      
+      if (Product) {
+        // Count active (non-deleted) products only
+        count = await Product.countDocuments({ deleted: { $ne: true } });
+        console.log(`Found ${count} active products using Product model`);
+        success = true;
+        
+        // Mark cache as refreshed if successful
+        if (needsRefresh) {
+          await markProductCountsCacheRefreshed();
+        }
+      }
+    } catch (modelError) {
+      console.error('Error using Mongoose model:', modelError);
+    }
+    
+    // 2. If Mongoose approach fails, try direct MongoDB access
+    if (!success) {
+      try {
+        // Use mongoose connection instead of clientPromise
+        const db = mongoose.connection.db;
+        if (db) {
+          const collection = db.collection('products');
+          
+          // Count active (non-deleted) products only
+          count = await collection.countDocuments({ deleted: { $ne: true } });
+          console.log(`Found ${count} active products via direct collection access`);
+          success = true;
+          
+          // Mark cache as refreshed if successful
+          if (needsRefresh) {
+            await markProductCountsCacheRefreshed();
+          }
+        }
+      } catch (directError) {
+        console.error('Error using direct MongoDB access:', directError);
+      }
+    }
+    
+    // Return the count with appropriate headers and cache information
+    return new NextResponse(
+      JSON.stringify({ 
+        count, 
+        timestamp: new Date().toISOString(),
+        fromCache: !needsRefresh,
+        cacheLastInvalidated: cacheStatus.lastInvalidated
+      }),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        }
+      }
+    );
   } catch (error) {
     console.error('Error fetching product count:', error);
     
-    // Fallback direct MongoDB query if model approach failed
-    try {
-      const db = mongoose.connection.db;
-      if (db) {
-        const collection = db.collection('products');
-        const count = await collection.countDocuments({});
-        console.log(`Fallback: Found ${count} products via direct collection`);
-        return NextResponse.json({ count });
-      }
-    } catch (fallbackError) {
-      console.error('Fallback query also failed:', fallbackError);
-    }
-    
-    return NextResponse.json({ count: 0 });
+    // Return a fallback count with error information
+    return NextResponse.json({ 
+      count: 0, 
+      error: 'Failed to fetch product count',
+      errorDetails: (error as Error).message
+    }, { status: 500 });
   }
 } 

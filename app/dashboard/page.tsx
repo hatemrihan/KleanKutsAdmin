@@ -205,6 +205,103 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Add more robust product tracking with timestamp-based checks
+  useEffect(() => {
+    // More robust product change detection
+    const handleProductChange = () => {
+      console.log('Product change detected, refreshing product counts');
+      fetchProductsAndCategoriesCounts();
+    };
+
+    // Track the last time we refreshed data
+    let lastRefreshTime = Date.now();
+    let productChangeDetected = false;
+
+    // Add event listener for custom events
+    window.addEventListener('product-deleted', (e: Event) => {
+      const customEvent = e as CustomEvent;
+      console.log('Product deletion event received:', customEvent.detail);
+      productChangeDetected = true;
+      handleProductChange();
+    });
+    
+    window.addEventListener('product-added', handleProductChange);
+    window.addEventListener('product-updated', handleProductChange);
+
+    // Enhanced localStorage checking with debouncing
+    let localStorageCheckTimer: NodeJS.Timeout | null = null;
+    
+    const checkLocalStorage = () => {
+      try {
+        const needsRefresh = localStorage.getItem('dashboard_refresh_needed');
+        if (needsRefresh === 'true') {
+          console.log('Dashboard refresh requested via localStorage');
+          
+          // Get details about the product action if available
+          try {
+            const actionDetails = localStorage.getItem('dashboard_last_product_action');
+            if (actionDetails) {
+              const action = JSON.parse(actionDetails);
+              console.log('Product action details:', action);
+              
+              // Only refresh if the action is recent (within last 30 seconds)
+              const actionTime = new Date(action.timestamp).getTime();
+              const now = Date.now();
+              if (now - actionTime < 30000) {
+                fetchProductsAndCategoriesCounts();
+              } else {
+                console.log('Ignoring stale product action from', new Date(actionTime).toLocaleString());
+              }
+            } else {
+              // No details, refresh anyway
+              fetchProductsAndCategoriesCounts();
+            }
+          } catch (parseError) {
+            console.log('Error parsing action details, refreshing anyway:', parseError);
+            fetchProductsAndCategoriesCounts();
+          }
+          
+          localStorage.removeItem('dashboard_refresh_needed');
+        }
+      } catch (error) {
+        // Ignore localStorage errors
+      }
+      
+      // Schedule the next check with exponential backoff if no changes detected
+      const delay = productChangeDetected ? 2000 : Math.min(10000, (Date.now() - lastRefreshTime) / 10);
+      localStorageCheckTimer = setTimeout(checkLocalStorage, delay);
+    };
+    
+    // Start the checking process
+    checkLocalStorage();
+    
+    // Polling for product changes every 30 seconds as a fallback
+    const backupInterval = setInterval(() => {
+      const timeSinceLastRefresh = Date.now() - lastRefreshTime;
+      
+      // Only poll if it's been more than 30 seconds since our last refresh
+      if (timeSinceLastRefresh > 30000) {
+        console.log('Performing backup poll for product count updates');
+        fetchProductsAndCategoriesCounts();
+        lastRefreshTime = Date.now();
+        productChangeDetected = false;
+      }
+    }, 30000);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('product-deleted', handleProductChange);
+      window.removeEventListener('product-added', handleProductChange);
+      window.removeEventListener('product-updated', handleProductChange);
+      
+      if (localStorageCheckTimer) {
+        clearTimeout(localStorageCheckTimer);
+      }
+      
+      clearInterval(backupInterval);
+    };
+  }, []);
+
   const fetchDashboardStats = async () => {
     try {
       setIsLoading(true);
@@ -316,8 +413,27 @@ export default function Dashboard() {
       const response = await axios.post('/api/dashboard/update-goal', { monthlyGoal });
       console.log('Update goal response:', response.data);
       
+      // Force update stats with new goal even before API responds
+      setStats(prevStats => {
+        if (!prevStats) return prevStats;
+        return {
+          ...prevStats,
+          monthlyGoal
+        };
+      });
+      
       // Fetch updated dashboard stats to reflect the new goal
       await fetchDashboardStats();
+      
+      // Force another update to ensure chart scales properly
+      setTimeout(() => {
+        // This timeout forces a re-render after the state update cycle
+        const chartContainer = document.querySelector('.recharts-responsive-container');
+        if (chartContainer) {
+          // Trigger resize event to force chart update
+          window.dispatchEvent(new Event('resize'));
+        }
+      }, 100);
       
       toast.success('Monthly sales goal updated successfully');
       setIsEditingGoal(false);
@@ -535,25 +651,76 @@ export default function Dashboard() {
     }
   };
 
-  // Add new function to fetch products and categories counts
+  // Add new function to fetch products and categories counts with enhanced error handling
   const fetchProductsAndCategoriesCounts = async () => {
     try {
+      console.log('Fetching latest product and category counts...');
+      
+      // Add retry logic and cache busting
+      const fetchWithRetry = async (url: string, retries = 3) => {
+        // Add cache busting and unique identifier
+        const cacheBuster = Date.now();
+        const fullUrl = `${url}?_=${cacheBuster}`;
+        
+        try {
+          const response = await axios.get(fullUrl);
+          return response;
+        } catch (error) {
+          if (retries <= 0) throw error;
+          console.log(`Retrying ${url}, ${retries} attempts left`);
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchWithRetry(url, retries - 1);
+        }
+      };
+      
+      // Fetch both counts with retry
       const [productsResponse, categoriesResponse] = await Promise.all([
-        axios.get('/api/products/count'),
-        axios.get('/api/categories/count')
+        fetchWithRetry('/api/products/count'),
+        fetchWithRetry('/api/categories/count')
       ]);
       
       if (productsResponse.data && typeof productsResponse.data.count === 'number') {
         // Update stats with real product count
-        setStats(prev => prev ? {...prev, activeProducts: productsResponse.data.count} : prev);
+        console.log('Updating dashboard with new product count:', productsResponse.data.count);
+        setStats(prev => {
+          if (!prev) return prev;
+          // Only update if the count has actually changed
+          if (prev.activeProducts !== productsResponse.data.count) {
+            console.log(`Product count changed: ${prev.activeProducts} → ${productsResponse.data.count}`);
+            
+            // Force a refresh of the dashboard stats to ensure consistency
+            fetchDashboardStats();
+            
+            return {...prev, activeProducts: productsResponse.data.count};
+          }
+          return prev;
+        });
       }
       
       if (categoriesResponse.data && typeof categoriesResponse.data.count === 'number') {
         // Update stats with real category count
-        setStats(prev => prev ? {...prev, totalCategories: categoriesResponse.data.count} : prev);
+        setStats(prev => {
+          if (!prev) return prev;
+          // Only update if the count has actually changed
+          if (prev.totalCategories !== categoriesResponse.data.count) {
+            return {...prev, totalCategories: categoriesResponse.data.count};
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error("Error fetching products and categories counts:", error);
+      // Add fallback approach if the API fails
+      try {
+        console.log("Trying fallback approach for product counts...");
+        const fallbackResponse = await axios.get('/api/dashboard');
+        if (fallbackResponse.data && typeof fallbackResponse.data.activeProducts === 'number') {
+          setStats(prev => prev ? {...prev, activeProducts: fallbackResponse.data.activeProducts} : prev);
+        }
+      } catch (fallbackError) {
+        console.error("Fallback approach also failed:", fallbackError);
+      }
     }
   };
 
@@ -1031,43 +1198,67 @@ export default function Dashboard() {
                     bottom: 0,
                   }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#00000020" className="dark:stroke-[#FFFFFF20]" />
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke="rgba(0,0,0,0.1)" 
+                    className="dark:stroke-[rgba(255,255,255,0.1)]" 
+                  />
                   <XAxis 
                     dataKey="name" 
-                    stroke="var(--graph-stroke, #000)" 
-                    tick={{ fill: 'var(--graph-stroke, #000)' }}
+                    stroke="currentColor" 
+                    tick={{ fill: 'currentColor' }}
+                    className="text-black dark:text-white"
                   />
                   <YAxis 
-                    stroke="var(--graph-stroke, #000)" 
-                    tick={{ fill: 'var(--graph-stroke, #000)' }}
-                    domain={[0, monthlyGoal]} 
+                    stroke="currentColor" 
+                    tick={{ fill: 'currentColor' }}
+                    domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
+                    className="text-black dark:text-white"
                   />
                   <Tooltip 
                     formatter={(value) => [`L.E ${value}`, 'Sales']} 
-                    wrapperClassName="dark:bg-black dark:text-white dark:border-white/20"
                     contentStyle={{
                       backgroundColor: 'var(--tooltip-bg, #fff)',
                       color: 'var(--tooltip-text, #000)',
-                      border: '1px solid var(--tooltip-border, #ccc)'
+                      border: '1px solid var(--tooltip-border, #ccc)',
+                      borderRadius: '4px',
+                      padding: '8px'
                     }}
+                    itemStyle={{
+                      color: '#000',
+                    }}
+                    labelStyle={{
+                      color: '#000',
+                      fontWeight: 'bold'
+                    }}
+                    wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
+                  />
+                  <ReferenceLine 
+                    y={monthlyGoal} 
+                    label={{ 
+                      value: 'Goal', 
+                      position: 'right', 
+                      fill: 'currentColor',
+                      className: 'text-black dark:text-white'
+                    }} 
+                    stroke="#FF0000" 
+                    strokeDasharray="5 5" 
+                    className="dark:stroke-red-500"
                   />
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="rgba(0,0,0,0.8)" className="dark:stop-color-white" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="rgba(0,0,0,0.2)" className="dark:stop-color-white" stopOpacity={0.2} />
+                      <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
                     </linearGradient>
                   </defs>
                   <Area 
                     type="monotone" 
                     dataKey="sales" 
-                    stroke="#000000" 
-                    fill="url(#colorSales)" 
+                    stroke="currentColor"
                     strokeWidth={2}
+                    fill="url(#colorSales)" 
                     fillOpacity={1} 
-                    style={{
-                      stroke: 'var(--graph-stroke, #000)',
-                      fill: 'var(--graph-fill, rgba(0,0,0,0.3))'
-                    }}
+                    className="text-black dark:text-white"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1289,43 +1480,67 @@ export default function Dashboard() {
                         bottom: 0,
                       }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#00000020" className="dark:stroke-[#FFFFFF20]" />
+                      <CartesianGrid 
+                        strokeDasharray="3 3" 
+                        stroke="rgba(0,0,0,0.1)" 
+                        className="dark:stroke-[rgba(255,255,255,0.1)]" 
+                      />
                       <XAxis 
                         dataKey="name" 
-                        stroke="var(--graph-stroke, #000)" 
-                        tick={{ fill: 'var(--graph-stroke, #000)' }}
+                        stroke="currentColor" 
+                        tick={{ fill: 'currentColor' }}
+                        className="text-black dark:text-white"
                       />
                       <YAxis 
-                        stroke="var(--graph-stroke, #000)" 
-                        tick={{ fill: 'var(--graph-stroke, #000)' }}
-                        domain={[0, monthlyGoal]} 
+                        stroke="currentColor" 
+                        tick={{ fill: 'currentColor' }}
+                        domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
+                        className="text-black dark:text-white"
                       />
                       <Tooltip 
                         formatter={(value) => [`L.E ${value}`, 'Sales']} 
-                        wrapperClassName="dark:bg-black dark:text-white dark:border-white/20"
                         contentStyle={{
                           backgroundColor: 'var(--tooltip-bg, #fff)',
                           color: 'var(--tooltip-text, #000)',
-                          border: '1px solid var(--tooltip-border, #ccc)'
+                          border: '1px solid var(--tooltip-border, #ccc)',
+                          borderRadius: '4px',
+                          padding: '8px'
                         }}
+                        itemStyle={{
+                          color: '#000',
+                        }}
+                        labelStyle={{
+                          color: '#000',
+                          fontWeight: 'bold'
+                        }}
+                        wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
+                      />
+                      <ReferenceLine 
+                        y={monthlyGoal} 
+                        label={{ 
+                          value: 'Goal', 
+                          position: 'right', 
+                          fill: 'currentColor',
+                          className: 'text-black dark:text-white'
+                        }} 
+                        stroke="#FF0000" 
+                        strokeDasharray="5 5" 
+                        className="dark:stroke-red-500"
                       />
                       <defs>
                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="rgba(0,0,0,0.8)" className="dark:stop-color-white" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="rgba(0,0,0,0.2)" className="dark:stop-color-white" stopOpacity={0.2} />
+                          <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
                         </linearGradient>
                       </defs>
                       <Area 
                         type="monotone" 
                         dataKey="sales" 
-                        stroke="#000000" 
-                        fill="url(#colorSales)" 
+                        stroke="currentColor"
                         strokeWidth={2}
+                        fill="url(#colorSales)" 
                         fillOpacity={1} 
-                        style={{
-                          stroke: 'var(--graph-stroke, #000)',
-                          fill: 'var(--graph-fill, rgba(0,0,0,0.3))'
-                        }}
+                        className="text-black dark:text-white"
                       />
                     </AreaChart>
                   </ResponsiveContainer>

@@ -214,7 +214,7 @@ export default function AmbassadorsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-0">Ambassadors</h1>
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-4">
+            {/* <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-4">
               <DarkModeInput
                 type="search"
                 placeholder="Search ambassadors..."
@@ -231,7 +231,7 @@ export default function AmbassadorsPage() {
                 </svg>
                 New Ambassador
               </Link>
-            </div>
+            </div> */}
           </div>
           
           {isLoading ? (

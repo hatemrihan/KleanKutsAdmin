@@ -813,75 +813,38 @@ export default function Dashboard() {
   // Add new function to fetch products and categories counts with enhanced error handling
   const fetchProductsAndCategoriesCounts = async () => {
     try {
-      console.log('Fetching latest product and category counts...');
-      
-      // Add retry logic and cache busting
-      const fetchWithRetry = async (url: string, retries = 3) => {
-        // Add cache busting and unique identifier
-        const cacheBuster = Date.now();
-        const fullUrl = `${url}?_=${cacheBuster}`;
-        
-        try {
-          const response = await axios.get(fullUrl);
-          return response;
-        } catch (error) {
-          if (retries <= 0) throw error;
-          console.log(`Retrying ${url}, ${retries} attempts left`);
-          // Wait a bit before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return fetchWithRetry(url, retries - 1);
-        }
-      };
-      
-      // Fetch both counts with retry
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        fetchWithRetry('/api/products/count'),
-        fetchWithRetry('/api/categories/count')
-      ]);
-      
-      if (productsResponse.data && typeof productsResponse.data.count === 'number') {
-        // Update stats with real product count
-        console.log('Updating dashboard with new product count:', productsResponse.data.count);
-        setStats(prev => {
-          if (!prev) return prev;
-          // Only update if the count has actually changed
-          if (prev.activeProducts !== productsResponse.data.count) {
-            console.log(`Product count changed: ${prev.activeProducts} → ${productsResponse.data.count}`);
-            
-            // Force a refresh of the dashboard stats to ensure consistency
-            fetchDashboardStats();
-            
-            return {...prev, activeProducts: productsResponse.data.count};
-          }
-          return prev;
+        const fetchWithRetry = async (url: string, retries = 3) => {
+            try {
+                const response = await axios.get(url);
+                return response.data;
+            } catch (error) {
+                if (retries > 0) {
+                    console.log(`Retrying... ${retries} attempts left`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return fetchWithRetry(url, retries - 1);
+                }
+                throw error;
+            }
+        };
+
+        // Use the new dedicated endpoint for counts
+        const data = await fetchWithRetry('/api/dashboard/counts');
+        console.log('Products and Categories counts:', data);
+
+        // Update the stats with the counts
+        setStats(prevStats => {
+            if (!prevStats) return fallbackStats;
+            return {
+                ...prevStats,
+                activeProducts: data.productCount,
+                totalCategories: data.categoryCount
+            };
         });
-      }
-      
-      if (categoriesResponse.data && typeof categoriesResponse.data.count === 'number') {
-        // Update stats with real category count
-        setStats(prev => {
-          if (!prev) return prev;
-          // Only update if the count has actually changed
-          if (prev.totalCategories !== categoriesResponse.data.count) {
-            return {...prev, totalCategories: categoriesResponse.data.count};
-          }
-          return prev;
-        });
-      }
     } catch (error) {
-      console.error("Error fetching products and categories counts:", error);
-      // Add fallback approach if the API fails
-      try {
-        console.log("Trying fallback approach for product counts...");
-        const fallbackResponse = await axios.get('/api/dashboard');
-        if (fallbackResponse.data && typeof fallbackResponse.data.activeProducts === 'number') {
-          setStats(prev => prev ? {...prev, activeProducts: fallbackResponse.data.activeProducts} : prev);
-        }
-      } catch (fallbackError) {
-        console.error("Fallback approach also failed:", fallbackError);
-      }
+        console.error('Error fetching product and category counts:', error);
+        toast.error('Failed to fetch product and category counts');
     }
-  };
+};
 
   // Fix the TypeScript error by properly typing the monthlyData
   const fetchRealSalesData = async () => {

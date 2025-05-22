@@ -1,13 +1,17 @@
 // Utility for managing environment variables
 
-// MongoDB connection string
-export const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://seif:seif123@seif.pulbpsi.mongodb.net/?retryWrites=true&w=majority';
+// MongoDB connection string - try multiple environment variables to ensure we get the connection string
+export const MONGODB_URI = process.env.MONGODB_URI || 
+                         process.env.NEXT_PUBLIC_MONGODB_URI || 
+                         process.env.DATABASE_URL || 
+                         'mongodb+srv://seif:seif123@seif.pulbpsi.mongodb.net/?retryWrites=true&w=majority';
 
 // API URLs
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // Other environment variables
 export const NODE_ENV = process.env.NODE_ENV || 'development';
+export const IS_PRODUCTION = NODE_ENV === 'production';
 
 // Validate environment
 export function validateEnv() {
@@ -33,8 +37,14 @@ export function validateEnv() {
 export function logEnvStatus() {
   console.log('Environment Status:', {
     nodeEnv: NODE_ENV,
+    isProduction: IS_PRODUCTION,
     mongodbUri: MONGODB_URI.substring(0, 15) + '...',
     apiUrl: API_URL,
-    isValid: validateEnv()
+    isValid: validateEnv(),
+    envVars: {
+      MONGODB_URI: !!process.env.MONGODB_URI,
+      NEXT_PUBLIC_MONGODB_URI: !!process.env.NEXT_PUBLIC_MONGODB_URI,
+      DATABASE_URL: !!process.env.DATABASE_URL
+    }
   });
 } 

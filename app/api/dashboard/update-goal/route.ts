@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongoose';
+import { CACHE_KEYS, invalidateCache } from '@/app/utils/cacheUtils';
 
 // Define a schema for the settings
 const SettingsSchema = new mongoose.Schema({
@@ -43,10 +44,41 @@ export async function POST(request: NextRequest) {
     
     console.log('Updated settings:', updatedSettings);
     
+    // Invalidate any related caches to ensure fresh data on next fetch
+    try {
+      await invalidateCache(CACHE_KEYS.DASHBOARD_STATS);
+      console.log('Dashboard stats cache invalidated');
+    } catch (cacheError) {
+      console.error('Error invalidating cache:', cacheError);
+      // Continue execution even if cache invalidation fails
+    }
+    
+    // Try to update the dashboard summary in real-time if available
+    try {
+      const db = mongoose.connection.db;
+      if (db && db.collection('dashboardSummary')) {
+        await db.collection('dashboardSummary').updateOne(
+          { key: 'current' },
+          { 
+            $set: { 
+              monthlyGoal: monthlyGoal,
+              lastUpdated: new Date()
+            }
+          },
+          { upsert: true }
+        );
+        console.log('Dashboard summary updated in real-time');
+      }
+    } catch (dbError) {
+      console.error('Error updating dashboard summary:', dbError);
+      // Continue execution even if this update fails
+    }
+    
     return NextResponse.json({
       success: true,
       monthlyGoal,
-      message: 'Monthly goal updated successfully'
+      message: 'Monthly goal updated successfully',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error updating monthly goal:', error);

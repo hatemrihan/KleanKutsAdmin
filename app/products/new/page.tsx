@@ -49,10 +49,11 @@ interface ProductFormData {
   gender: string;
   selectedImages: string[];
   sizeVariants: SizeVariant[];
-  materials: string[];
+
   sizeGuide: string;
   packaging: string;
   shippingReturns: string;
+ 
 }
 
 export default function NewProduct() {
@@ -75,10 +76,11 @@ export default function NewProduct() {
     gender: 'Unisex', // Default gender
     selectedImages: [],
     sizeVariants: [],
-    materials: [],
+  
     sizeGuide: '',
     packaging: '',
-    shippingReturns: ''
+    shippingReturns: '',
+   
   });
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -89,12 +91,7 @@ export default function NewProduct() {
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const genders = ['Men', 'Woman', 'Unisex'];
 
-  const colors = [
-    { name: 'Brown', value: 'brown' },
-    { name: 'Black', value: 'black' },
-    { name: 'White', value: 'white' },
-    { name: 'Blue', value: 'blue' }
-  ];
+
 
   useEffect(() => {
     setMounted(true);
@@ -522,10 +519,10 @@ export default function NewProduct() {
                 These fields are managed by admins and will be displayed on the product page. Customers cannot edit these fields.
               </p>
               <ProductContentFields
-                materials={formData.materials}
                 sizeGuide={formData.sizeGuide}
                 packaging={formData.packaging}
                 shippingReturns={formData.shippingReturns}
+              
                 onChange={(field, value) => handleInputChange(field as keyof ProductFormData, value)}
               />
             </div>

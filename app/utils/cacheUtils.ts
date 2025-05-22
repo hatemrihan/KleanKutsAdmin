@@ -223,4 +223,45 @@ export async function markProductCountsCacheRefreshed(): Promise<boolean> {
     console.error('Error marking product counts cache as refreshed:', error);
     return false;
   }
+}
+
+/**
+ * Invalidate a specific cache to force refresh on next fetch
+ * @param cacheKey - The key of the cache to invalidate
+ * @returns Boolean indicating if the invalidation was successful
+ */
+export async function invalidateCache(cacheKey: string): Promise<boolean> {
+  try {
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    
+    if (!db) {
+      console.error('Failed to connect to database for cache invalidation');
+      return false;
+    }
+    
+    // Get cache collection
+    const cacheCollection = db.collection('cache');
+    
+    // Current timestamp
+    const timestamp = new Date();
+    
+    // Update the cache status
+    await cacheCollection.updateOne(
+      { key: cacheKey },
+      { 
+        $set: { 
+          lastInvalidated: timestamp,
+          requiresRefresh: true
+        }
+      },
+      { upsert: true }
+    );
+    
+    console.log(`Cache invalidated: ${cacheKey}`);
+    return true;
+  } catch (error) {
+    console.error(`Error invalidating cache ${cacheKey}:`, error);
+    return false;
+  }
 } 

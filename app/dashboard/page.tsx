@@ -158,6 +158,10 @@ export default function Dashboard() {
   // Site status
   const [siteStatus, setSiteStatus] = useState({ active: true, message: '' });
   
+  // Add selected orders state
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
+
   useEffect(() => {
     fetchDashboardStats();
     fetchSiteStatus();
@@ -306,31 +310,112 @@ export default function Dashboard() {
     try {
       setIsLoading(true);
       
-      // Use absolute URL for API calls
-      const apiUrl = window.location.origin + '/api/dashboard';
+      // Use absolute URL for API calls with proper error handling
+      const origin = window.location.origin;
+      console.log('Current origin:', origin);
+      
+      // First try to fetch orders to ensure we have basic order data
+      try {
+        console.log('Pre-fetching orders to ensure data availability');
+        const ordersResponse = await axios.get(`${origin}/api/orders`);
+        console.log('Orders pre-fetch successful, count:', Array.isArray(ordersResponse.data) ? ordersResponse.data.length : 'unknown');
+      } catch (ordersError) {
+        console.error('Error pre-fetching orders (non-critical):', ordersError);
+      }
+      
+      // Fetch real sales data first
+      try {
+        console.log('Fetching real-sales data');
+        const salesResponse = await axios.get(`${origin}/api/dashboard/real-sales`);
+        if (salesResponse.data) {
+          console.log('Real sales data received:', salesResponse.data);
+        }
+      } catch (salesError) {
+        console.error('Error fetching real sales (non-critical):', salesError);
+      }
+      
+      // Now fetch the main dashboard data
+      const apiUrl = `${origin}/api/dashboard`;
       console.log('Fetching dashboard data from:', apiUrl);
       
-      const response = await axios.get(apiUrl);
+      const response = await axios.get(apiUrl, { 
+        headers: { 'Cache-Control': 'no-cache' },
+        timeout: 10000 // 10 second timeout
+      });
+      
       console.log('Dashboard data received:', response.data);
       
       // IMPORTANT: Update monthly goal from API first, then set stats
-      // This ensures the goal is updated before any stats components are rendered
       if (response.data && typeof response.data.monthlyGoal === 'number') {
         setMonthlyGoal(response.data.monthlyGoal);
         console.log('Updated monthly goal from API:', response.data.monthlyGoal);
       }
       
+      // Ensure we have proper monthlyData with all months
+      if (response.data && (!response.data.monthlyData || response.data.monthlyData.length < 12)) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        response.data.monthlyData = months.map(name => ({ name, sales: 0 }));
+        console.log('Created default monthly data structure');
+      }
+      
       // Set dashboard stats after monthly goal is updated
       setStats(response.data);
+      
+      // Immediately fetch real sales data to update the chart
+      fetchRealSalesData();
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       
+      // Create more reliable fallback data
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const fallbackMonthlyData = months.map(name => ({ name, sales: 0 }));
+      
+      const enhanced_fallbackStats = {
+        ...fallbackStats,
+        monthlyData: fallbackMonthlyData
+      };
+      
       // Use fallback data instead of showing error
-      setMonthlyGoal(fallbackStats.monthlyGoal);
-      setStats(fallbackStats);
+      setMonthlyGoal(enhanced_fallbackStats.monthlyGoal);
+      setStats(enhanced_fallbackStats);
       
       // Show error toast
-      toast.error('Failed to load dashboard data');
+      toast.error('Failed to load dashboard data. Showing default values.');
+      
+      // Try to recover by fetching orders directly
+      try {
+        const ordersResponse = await axios.get(`${window.location.origin}/api/orders`);
+        if (ordersResponse.data && Array.isArray(ordersResponse.data)) {
+          const orders = ordersResponse.data;
+          console.log('Recovered orders directly:', orders.length);
+          
+          // Calculate total sales and other stats from orders
+          let totalSales = 0;
+          orders.forEach(order => {
+            if (order.totalAmount) totalSales += Number(order.totalAmount);
+            else if (order.total) totalSales += Number(order.total);
+          });
+          
+          // Update stats with the recovered data
+          setStats(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              totalOrders: orders.length,
+              totalSales: totalSales,
+              recentOrders: orders.slice(0, 5).map(order => ({
+                _id: order._id,
+                customerName: order.customer?.name || `${order.firstName || ''} ${order.lastName || ''}` || 'Unknown',
+                status: order.status || 'pending',
+                total: order.totalAmount || order.total || 0,
+                createdAt: order.createdAt || new Date().toISOString()
+              }))
+            };
+          });
+        }
+      } catch (recoveryError) {
+        console.error('Recovery attempt also failed:', recoveryError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -450,6 +535,10 @@ export default function Dashboard() {
     try {
       setOrdersLoading(true);
       setOrdersError('');
+      // Clear selected orders when fetching new orders
+      setSelectedOrders([]);
+      setSelectAllChecked(false);
+      
       const response = await axios.get(`${config.apiUrl}/orders`);
       console.log('Raw orders data:', response.data);
       
@@ -576,6 +665,76 @@ export default function Dashboard() {
     
     return matchesSearch && matchesStatus;
   });
+
+  // Handle select all orders
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectAllChecked(e.target.checked);
+    if (e.target.checked) {
+      // Select all visible filtered orders
+      setSelectedOrders(filteredOrders.map(order => order._id));
+    } else {
+      // Deselect all
+      setSelectedOrders([]);
+    }
+  };
+
+  // Handle individual order selection
+  const handleSelectOrder = (orderId: string, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedOrders(prev => [...prev, orderId]);
+    } else {
+      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+    }
+  };
+
+  // Delete multiple orders
+  const deleteSelectedOrders = async () => {
+    if (selectedOrders.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)?`)) {
+      try {
+        // Create a loading toast
+        const loadingToastId = toast.loading(`Deleting ${selectedOrders.length} order(s)...`);
+        
+        // Track successful and failed deletions
+        let successCount = 0;
+        let failCount = 0;
+        
+        // Delete each order one by one
+        for (const orderId of selectedOrders) {
+          try {
+            await axios.delete(`${config.apiUrl}/orders?id=${orderId}`);
+            successCount++;
+          } catch (error) {
+            console.error(`Error deleting order ${orderId}:`, error);
+            failCount++;
+          }
+        }
+        
+        // Update the orders list
+        setOrders(orders.filter(order => !selectedOrders.includes(order._id)));
+        
+        // Clear selected orders
+        setSelectedOrders([]);
+        setSelectAllChecked(false);
+        
+        // Update toast with results
+        toast.dismiss(loadingToastId);
+        if (failCount === 0) {
+          toast.success(`Successfully deleted ${successCount} order(s)`);
+        } else {
+          toast.error(`Deleted ${successCount} order(s), failed to delete ${failCount} order(s)`);
+        }
+        
+        // Refresh dashboard stats after deleting orders
+        fetchDashboardStats();
+        fetchRealSalesData();
+      } catch (error) {
+        console.error('Error in batch delete operation:', error);
+        toast.error('An error occurred during the batch delete operation');
+      }
+    }
+  };
 
   // Settings functionality
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -724,27 +883,59 @@ export default function Dashboard() {
     }
   };
 
-  // Add new function to fetch real sales data
+  // Fix the TypeScript error by properly typing the monthlyData
   const fetchRealSalesData = async () => {
     try {
-      const response = await axios.get('/api/dashboard/real-sales');
+      console.log('Fetching real sales data...');
+      const origin = window.location.origin;
+      const response = await axios.get(`${origin}/api/dashboard/real-sales`, { 
+        headers: { 'Cache-Control': 'no-cache' } 
+      });
       
       if (response.data) {
         console.log('Real sales data fetched:', response.data);
+        
+        // Make sure we have monthly data for all months
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let enhancedMonthlyData = [...response.data.monthlyData || []];
+        
+        // If we don't have data for all months, create default entries
+        if (!enhancedMonthlyData || enhancedMonthlyData.length < 12) {
+          enhancedMonthlyData = months.map(name => {
+            // Find existing month data or create default
+            const existing = response.data.monthlyData?.find((m: { name: string, sales: number }) => m.name === name);
+            return existing || { name, sales: 0 };
+          });
+        }
+        
         // Update with real data
         setStats(prev => {
           if (!prev) return prev;
           return {
             ...prev,
-            totalSales: response.data.totalSales || prev.totalSales,
-            currentMonthSales: response.data.currentMonthSales || prev.currentMonthSales,
-            monthlyData: response.data.monthlyData || prev.monthlyData
+            totalSales: response.data.totalSales || prev.totalSales || 0,
+            currentMonthSales: response.data.currentMonthSales || prev.currentMonthSales || 0,
+            monthlyData: enhancedMonthlyData
           };
         });
       }
     } catch (error) {
       console.error('Error fetching real sales data:', error);
-      // Don't show error toast as this is a background enhancement
+      // Create fallback monthly data with all months
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const fallbackMonthlyData = months.map(name => ({ name, sales: 0 }));
+      
+      // Update stats with fallback monthly data
+      setStats(prev => {
+        if (!prev) return prev;
+        if (!prev.monthlyData || prev.monthlyData.length < 12) {
+          return {
+            ...prev,
+            monthlyData: fallbackMonthlyData
+          };
+        }
+        return prev;
+      });
     }
   };
 
@@ -804,10 +995,162 @@ export default function Dashboard() {
             
             {activeSection === 'orders' && (
               <div className="w-full">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">Orders</h1>
-                <div className="bg-white rounded-lg shadow p-6">
-                  {/* Orders content - this should still work even if dashboard stats failed to load */}
-                  {/* Copy the existing orders content here */}
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Orders</h1>
+                  <div className="flex items-center gap-2">
+                    {selectedOrders.length > 0 && (
+                      <button
+                        onClick={deleteSelectedOrders}
+                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        Delete Selected ({selectedOrders.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="bg-white dark:bg-black rounded-lg shadow-sm border border-black/10 dark:border-white/10 p-6">
+                  <div className="mb-4 flex flex-col sm:flex-row gap-3 justify-between">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Search orders..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-black text-black dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <Select 
+                        value={statusFilter} 
+                        onValueChange={(value) => setStatusFilter(value)}
+                      >
+                        <SelectTrigger className="min-w-[180px] bg-white dark:bg-black">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-black">
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="shipped">Shipped</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {ordersLoading ? (
+                    <div className="flex justify-center items-center h-40">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black dark:border-white"></div>
+                    </div>
+                  ) : ordersError ? (
+                    <div className="text-center py-6 text-red-500">{ordersError}</div>
+                  ) : filteredOrders.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">No orders found</div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                          <thead>
+                            <tr>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectAllChecked}
+                                    onChange={handleSelectAll}
+                                    className="h-4 w-4 text-black focus:ring-black dark:focus:ring-white border-gray-300 dark:border-gray-700 rounded"
+                                  />
+                                </div>
+                              </th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Order ID</th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
+                            {filteredOrders.map((order) => (
+                              <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedOrders.includes(order._id)}
+                                    onChange={(e) => handleSelectOrder(order._id, e.target.checked)}
+                                    className="h-4 w-4 text-black focus:ring-black dark:focus:ring-white border-gray-300 dark:border-gray-700 rounded"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">{order._id.slice(-6)}</div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900 dark:text-white">{order.customer.name}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">{order.customer.email}</div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Select 
+                                    value={order.status} 
+                                    onValueChange={(value) => updateOrderStatus(order._id, value as Order['status'])}
+                                  >
+                                    <SelectTrigger className={`w-full max-w-[140px] text-xs py-1 ${statusColors[order.status]}`}>
+                                      <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-black">
+                                      <SelectItem value="pending">Pending</SelectItem>
+                                      <SelectItem value="processing">Processing</SelectItem>
+                                      <SelectItem value="shipped">Shipped</SelectItem>
+                                      <SelectItem value="delivered">Delivered</SelectItem>
+                                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    {new Date(order.createdAt).toLocaleDateString()}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    L.E {order.totalAmount.toLocaleString()}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <AlertDialog>
+                                    <AlertDialogTrigger className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 ml-3">
+                                      Delete
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="bg-white dark:bg-black">
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-black dark:text-white">Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                          This action cannot be undone. This will permanently delete this order from the database.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel className="bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-300 dark:border-gray-600">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          className="bg-red-600 text-white hover:bg-red-700" 
+                                          onClick={() => deleteOrder(order._id)}
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                        Showing {filteredOrders.length} of {orders.length} orders
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1088,196 +1431,226 @@ export default function Dashboard() {
         {/* Monthly Goal and Monthly Sales Overview Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           {/* Monthly Goal Card */}
-        <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-          <CardHeaderUI className="pb-2 flex justify-between items-center">
-            <div>
-              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
-              <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
-            </div>
-            {isEditingGoal ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setIsEditingGoal(false);
-                    setMonthlyGoal(stats.monthlyGoal); // Reset to original value
-                  }}
-                  className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
-                  disabled={isSavingGoal}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={updateMonthlySalesGoal}
-                  className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
-                  disabled={isSavingGoal}
-                >
-                  {isSavingGoal ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Saving...
-                    </span>
-                  ) : 'Save'}
-                </button>
+          <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+            <CardHeaderUI className="pb-2 flex justify-between items-center">
+              <div>
+                <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
+                <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
               </div>
-            ) : (
-              <button
-                onClick={() => setIsEditingGoal(true)}
-                className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-              >
-                Edit Goal
-              </button>
-            )}
-          </CardHeaderUI>
-          <CardContentUI>
-            <div className="space-y-2">
               {isEditingGoal ? (
-                <div>
-                  <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
-                    Monthly Goal (L.E)
-                  </label>
-                  <input
-                    type="number"
-                    id="monthlyGoal"
-                    value={monthlyGoal}
-                    onChange={(e) => setMonthlyGoal(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
-                    placeholder="Enter goal amount"
-                    min="0"
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setIsEditingGoal(false);
+                      setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                    }}
+                    className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
                     disabled={isSavingGoal}
-                  />
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={updateMonthlySalesGoal}
+                    className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
+                    disabled={isSavingGoal}
+                  >
+                    {isSavingGoal ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : 'Save'}
+                  </button>
                 </div>
               ) : (
+                <button
+                  onClick={() => setIsEditingGoal(true)}
+                  className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+                >
+                  Edit Goal
+                </button>
+              )}
+            </CardHeaderUI>
+            <CardContentUI>
+              <div className="space-y-2">
+                {isEditingGoal ? (
+                  <div>
+                    <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
+                      Monthly Goal (L.E)
+                    </label>
+                    <input
+                      type="number"
+                      id="monthlyGoal"
+                      value={monthlyGoal}
+                      onChange={(e) => setMonthlyGoal(Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
+                      placeholder="Enter goal amount"
+                      min="0"
+                      disabled={isSavingGoal}
+                    />
+                  </div>
+                ) : (
                   <>
                     {(() => {
                       const goalPercentage = monthlyGoal > 0
                         ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
                         : 0;
                       return (
-                <>
-                  <div className="flex justify-between mb-1">
+                        <>
+                          <div className="flex justify-between mb-1">
                             <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
-                    <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-black dark:bg-white rounded-full" 
-                      style={{ width: `${goalPercentage}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
-                    <span>{goalPercentage}% of monthly goal</span>
-                    <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
-                  </div>
+                            <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-black dark:bg-white rounded-full" 
+                              style={{ width: `${goalPercentage}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
+                            <span>{goalPercentage}% of monthly goal</span>
+                            <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
+                          </div>
                         </>
                       );
                     })()}
-                </>
-              )}
-            </div>
-          </CardContentUI>
-        </CardUI>
+                  </>
+                )}
+              </div>
+            </CardContentUI>
+          </CardUI>
 
-        {/* Monthly Sales Chart */}
-        <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-          <CardHeaderUI>
-            <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
-            <CardDescription className="text-black/70 dark:text-white/70">Performance over the last year</CardDescription>
-          </CardHeaderUI>
-          <CardContentUI>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={stats.monthlyData}
-                  margin={{
-                    top: 10,
-                    right: 30,
-                    left: 0,
-                    bottom: 0,
-                  }}
-                >
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke="rgba(0,0,0,0.1)" 
-                    className="dark:stroke-[rgba(255,255,255,0.1)]" 
-                  />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="currentColor" 
-                    tick={{ fill: 'currentColor' }}
-                    className="text-black dark:text-white"
-                  />
-                  <YAxis 
-                    stroke="currentColor" 
-                    tick={{ fill: 'currentColor' }}
-                    domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
-                    className="text-black dark:text-white"
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`L.E ${value}`, 'Sales']} 
-                    contentStyle={{
-                      backgroundColor: 'var(--tooltip-bg, #fff)',
-                      color: 'var(--tooltip-text, #000)',
-                      border: '1px solid var(--tooltip-border, #ccc)',
-                      borderRadius: '4px',
-                      padding: '8px'
+          {/* Monthly Sales Overview - New Version */}
+          <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+            <CardHeaderUI>
+              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
+              <CardDescription className="text-black/70 dark:text-white/70">Sales performance for all months</CardDescription>
+            </CardHeaderUI>
+            <CardContentUI>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={stats.monthlyData}
+                    margin={{
+                      top: 10,
+                      right: 30,
+                      left: 10,
+                      bottom: 10,
                     }}
-                    itemStyle={{
-                      color: '#000',
-                    }}
-                    labelStyle={{
-                      color: '#000',
-                      fontWeight: 'bold'
-                    }}
-                    wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
-                  />
-                  <ReferenceLine 
-                    y={monthlyGoal} 
-                    label={{ 
-                      value: 'Goal', 
-                      position: 'right', 
-                      fill: 'currentColor',
-                      className: 'text-black dark:text-white'
-                    }} 
-                    stroke="#FF0000" 
-                    strokeDasharray="5 5" 
-                    className="dark:stroke-red-500"
-                  />
-                  <defs>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
-                    </linearGradient>
-                  </defs>
-                  <Area 
-                    type="monotone" 
-                    dataKey="sales" 
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    fill="url(#colorSales)" 
-                    fillOpacity={1} 
-                    className="text-black dark:text-white"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContentUI>
-        </CardUI>
+                  >
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="rgba(0,0,0,0.1)" 
+                      className="dark:stroke-[rgba(255,255,255,0.1)]" 
+                    />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="currentColor" 
+                      tick={{ fill: 'currentColor' }}
+                      className="text-black dark:text-white"
+                    />
+                    <YAxis 
+                      stroke="currentColor" 
+                      tick={{ fill: 'currentColor' }}
+                      domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
+                      className="text-black dark:text-white"
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`L.E ${Number(value).toLocaleString()}`, 'Sales']} 
+                      contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg, #fff)',
+                        color: 'var(--tooltip-text, #000)',
+                        border: '1px solid var(--tooltip-border, #ccc)',
+                        borderRadius: '4px',
+                        padding: '8px'
+                      }}
+                      itemStyle={{
+                        color: '#000',
+                      }}
+                      labelStyle={{
+                        color: '#000',
+                        fontWeight: 'bold'
+                      }}
+                      wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
+                    />
+                    <ReferenceLine 
+                      y={monthlyGoal} 
+                      label={{ 
+                        value: 'Goal', 
+                        position: 'right', 
+                        fill: 'currentColor',
+                        className: 'text-black dark:text-white'
+                      }} 
+                      stroke="#FF0000" 
+                      strokeDasharray="5 5" 
+                      className="dark:stroke-red-500"
+                    />
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
+                    <Area 
+                      type="monotone" 
+                      dataKey="sales" 
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      fill="url(#colorSales)" 
+                      fillOpacity={1} 
+                      className="text-black dark:text-white"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  {stats.monthlyData.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <span className="font-medium text-black dark:text-white">{month.name}</span>
+                      <span className="text-black/70 dark:text-white/70">L.E {month.sales.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContentUI>
+          </CardUI>
         </div>
 
         {/* Recent Orders Table */}
         <DarkModePanel className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
-          <CardHeaderUI>
-            <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Recent Orders</CardTitleUI>
-            <CardDescription className="text-black/70 dark:text-white/70">Latest orders across your store</CardDescription>
+          <CardHeaderUI className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Recent Orders</CardTitleUI>
+              <CardDescription className="text-black/70 dark:text-white/70">Latest orders across your store</CardDescription>
+            </div>
+            {selectedOrders.length > 0 && (
+              <button
+                onClick={deleteSelectedOrders}
+                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Delete Selected ({selectedOrders.length})
+              </button>
+            )}
           </CardHeaderUI>
           <CardContentUI>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-black/10 dark:border-white/10">
+                    <th className="px-4 py-2 text-left font-medium text-black dark:text-white">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectAllChecked}
+                          onChange={handleSelectAll}
+                          className="h-4 w-4 text-black focus:ring-black dark:focus:ring-white border-gray-300 dark:border-gray-700 rounded"
+                        />
+                      </div>
+                    </th>
                     <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Order ID</th>
                     <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Customer</th>
                     <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Status</th>
@@ -1290,6 +1663,14 @@ export default function Dashboard() {
                   {stats.recentOrders.length > 0 ? (
                     stats.recentOrders.map((order) => (
                       <tr key={order._id} className="border-b border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5">
+                        <td className="px-4 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrders.includes(order._id)}
+                            onChange={(e) => handleSelectOrder(order._id, e.target.checked)}
+                            className="h-4 w-4 text-black focus:ring-black dark:focus:ring-white border-gray-300 dark:border-gray-700 rounded"
+                          />
+                        </td>
                         <td className="px-4 py-2 text-black dark:text-white">{order._id.slice(-6)}</td>
                         <td className="px-4 py-2 text-black dark:text-white">{order.customerName}</td>
                         <td className="px-4 py-2">
@@ -1300,18 +1681,27 @@ export default function Dashboard() {
                         <td className="px-4 py-2 text-black/70 dark:text-white/70">{new Date(order.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-2 text-right font-medium text-black dark:text-white">L.E {order.total.toLocaleString()}</td>
                         <td className="px-4 py-2 text-right">
-                                        <a
-                href={`/orders/${order._id}`}
-                className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-              >
-                View
-              </a>
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`/orders/${order._id}`}
+                              className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+                            >
+                              View
+                            </a>
+                            <button
+                              onClick={() => deleteOrder(order._id)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                              type="button"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
+                      <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
                         No recent orders found
                       </td>
                     </tr>
@@ -1321,15 +1711,15 @@ export default function Dashboard() {
             </div>
             {stats.recentOrders.length > 0 && (
               <div className="mt-4 text-center">
-                              <a
-                href="/test"
-                className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
-              >
-                View All Orders
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-              </a>
+                <a
+                  href="/test"
+                  className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
+                >
+                  View All Orders
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                  </svg>
+                </a>
               </div>
             )}
           </CardContentUI>
@@ -1368,188 +1758,198 @@ export default function Dashboard() {
           {activeSection === 'dashboard' && renderDashboardContent()}
           
           {/* Monthly Goal and Monthly Sales Overview Cards - make more responsive */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
-            {/* Monthly Goal Card */}
-            <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-              <CardHeaderUI className="pb-2 flex justify-between items-center">
-                <div>
-                  <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
-                  <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
+          {activeSection !== 'dashboard' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+              {/* Monthly Goal Card */}
+              <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+                <CardHeaderUI className="pb-2 flex justify-between items-center">
+                  <div>
+                    <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
+                    <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
                   </div>
-                {isEditingGoal ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setIsEditingGoal(false);
-                        setMonthlyGoal(stats.monthlyGoal); // Reset to original value
-                      }}
-                      className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
-                      disabled={isSavingGoal}
-                    >
-                      Cancel
-                    </button>
-                              <button 
-                      onClick={updateMonthlySalesGoal}
-                      className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
-                      disabled={isSavingGoal}
-                    >
-                      {isSavingGoal ? (
-                        <span className="flex items-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Saving...
-                        </span>
-                      ) : 'Save'}
-                              </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsEditingGoal(true)}
-                    className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-                  >
-                    Edit Goal
-                  </button>
-                )}
-              </CardHeaderUI>
-              <CardContentUI>
-                <div className="space-y-2">
                   {isEditingGoal ? (
-                        <div>
-                      <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
-                        Monthly Goal (L.E)
-                          </label>
-                      <input
-                        type="number"
-                        id="monthlyGoal"
-                        value={monthlyGoal}
-                        onChange={(e) => setMonthlyGoal(Number(e.target.value))}
-                        className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
-                        placeholder="Enter goal amount"
-                        min="0"
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setIsEditingGoal(false);
+                          setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                        }}
+                        className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
                         disabled={isSavingGoal}
-                          />
-                        </div>
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={updateMonthlySalesGoal}
+                        className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
+                        disabled={isSavingGoal}
+                      >
+                        {isSavingGoal ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                          </span>
+                        ) : 'Save'}
+                      </button>
+                    </div>
                   ) : (
-                    <>
-                      {(() => {
-                        const goalPercentage = monthlyGoal > 0
-                          ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
-                          : 0;
-                        return (
-                          <>
-                            <div className="flex justify-between mb-1">
-                              <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
-                              <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
-                        </div>
-                            <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-black dark:bg-white rounded-full" 
-                                style={{ width: `${goalPercentage}%` }}
-                              ></div>
-                      </div>
-                            <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
-                              <span>{goalPercentage}% of monthly goal</span>
-                              <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
-                      </div>
-                          </>
-                        );
-                      })()}
-                    </>
-                  )}
-                  </div>
-              </CardContentUI>
-            </CardUI>
-
-            {/* Monthly Sales Chart */}
-            <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-              <CardHeaderUI>
-                <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
-                <CardDescription className="text-black/70 dark:text-white/70">Performance over the last year</CardDescription>
-              </CardHeaderUI>
-              <CardContentUI>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={stats.monthlyData}
-                      margin={{
-                        top: 10,
-                        right: 30,
-                        left: 0,
-                        bottom: 0,
-                      }}
+                    <button
+                      onClick={() => setIsEditingGoal(true)}
+                      className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
                     >
-                      <CartesianGrid 
-                        strokeDasharray="3 3" 
-                        stroke="rgba(0,0,0,0.1)" 
-                        className="dark:stroke-[rgba(255,255,255,0.1)]" 
-                      />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="currentColor" 
-                        tick={{ fill: 'currentColor' }}
-                        className="text-black dark:text-white"
-                      />
-                      <YAxis 
-                        stroke="currentColor" 
-                        tick={{ fill: 'currentColor' }}
-                        domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
-                        className="text-black dark:text-white"
-                      />
-                      <Tooltip 
-                        formatter={(value) => [`L.E ${value}`, 'Sales']} 
-                        contentStyle={{
-                          backgroundColor: 'var(--tooltip-bg, #fff)',
-                          color: 'var(--tooltip-text, #000)',
-                          border: '1px solid var(--tooltip-border, #ccc)',
-                          borderRadius: '4px',
-                          padding: '8px'
-                        }}
-                        itemStyle={{
-                          color: '#000',
-                        }}
-                        labelStyle={{
-                          color: '#000',
-                          fontWeight: 'bold'
-                        }}
-                        wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
-                      />
-                      <ReferenceLine 
-                        y={monthlyGoal} 
-                        label={{ 
-                          value: 'Goal', 
-                          position: 'right', 
-                          fill: 'currentColor',
-                          className: 'text-black dark:text-white'
-                        }} 
-                        stroke="#FF0000" 
-                        strokeDasharray="5 5" 
-                        className="dark:stroke-red-500"
-                      />
-                      <defs>
-                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="sales" 
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        fill="url(#colorSales)" 
-                        fillOpacity={1} 
-                        className="text-black dark:text-white"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                      Edit Goal
+                    </button>
+                  )}
+                </CardHeaderUI>
+                <CardContentUI>
+                  <div className="space-y-2">
+                    {isEditingGoal ? (
+                      <div>
+                        <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
+                          Monthly Goal (L.E)
+                        </label>
+                        <input
+                          type="number"
+                          id="monthlyGoal"
+                          value={monthlyGoal}
+                          onChange={(e) => setMonthlyGoal(Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
+                          placeholder="Enter goal amount"
+                          min="0"
+                          disabled={isSavingGoal}
+                        />
                       </div>
-              </CardContentUI>
-            </CardUI>
+                    ) : (
+                      <>
+                        {(() => {
+                          const goalPercentage = monthlyGoal > 0
+                            ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
+                            : 0;
+                          return (
+                            <>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
+                                <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
+                              </div>
+                              <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-black dark:bg-white rounded-full" 
+                                  style={{ width: `${goalPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
+                                <span>{goalPercentage}% of monthly goal</span>
+                                <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
                   </div>
+                </CardContentUI>
+              </CardUI>
 
-          {/* Rest of content... */}
+              {/* Monthly Sales Overview - New Version */}
+              <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+                <CardHeaderUI>
+                  <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
+                  <CardDescription className="text-black/70 dark:text-white/70">Sales performance for all months</CardDescription>
+                </CardHeaderUI>
+                <CardContentUI>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={stats.monthlyData}
+                        margin={{
+                          top: 10,
+                          right: 30,
+                          left: 10,
+                          bottom: 10,
+                        }}
+                      >
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          stroke="rgba(0,0,0,0.1)" 
+                          className="dark:stroke-[rgba(255,255,255,0.1)]" 
+                        />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="currentColor" 
+                          tick={{ fill: 'currentColor' }}
+                          className="text-black dark:text-white"
+                        />
+                        <YAxis 
+                          stroke="currentColor" 
+                          tick={{ fill: 'currentColor' }}
+                          domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
+                          className="text-black dark:text-white"
+                        />
+                        <Tooltip 
+                          formatter={(value) => [`L.E ${Number(value).toLocaleString()}`, 'Sales']} 
+                          contentStyle={{
+                            backgroundColor: 'var(--tooltip-bg, #fff)',
+                            color: 'var(--tooltip-text, #000)',
+                            border: '1px solid var(--tooltip-border, #ccc)',
+                            borderRadius: '4px',
+                            padding: '8px'
+                          }}
+                          itemStyle={{
+                            color: '#000',
+                          }}
+                          labelStyle={{
+                            color: '#000',
+                            fontWeight: 'bold'
+                          }}
+                          wrapperClassName="!bg-white dark:!bg-black dark:!text-white" 
+                        />
+                        <ReferenceLine 
+                          y={monthlyGoal} 
+                          label={{ 
+                            value: 'Goal', 
+                            position: 'right', 
+                            fill: 'currentColor',
+                            className: 'text-black dark:text-white'
+                          }} 
+                          stroke="#FF0000" 
+                          strokeDasharray="5 5" 
+                          className="dark:stroke-red-500"
+                        />
+                        <defs>
+                          <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
+                          </linearGradient>
+                        </defs>
+                        <Area 
+                          type="monotone" 
+                          dataKey="sales" 
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          fill="url(#colorSales)" 
+                          fillOpacity={1} 
+                          className="text-black dark:text-white"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
+                    <div className="grid grid-cols-4 gap-2 text-xs">
+                      {stats.monthlyData.map((month, index) => (
+                        <div key={index} className="flex flex-col items-center">
+                          <span className="font-medium text-black dark:text-white">{month.name}</span>
+                          <span className="text-black/70 dark:text-white/70">L.E {month.sales.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContentUI>
+              </CardUI>
+            </div>
+          )}
         </div>
       </main>
     </div>

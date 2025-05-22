@@ -188,8 +188,8 @@ export default function NewsletterAdmin() {
           {/* Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Newsletter Subscribers</h1>
-              <p className="text-gray-500 dark:text-white dark:opacity-70 mt-1">Manage your newsletter subscribers</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white"> Subscribers</h1>
+              <p className="text-gray-500 dark:text-white dark:opacity-70 mt-1">Manage your  subscribers</p>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
@@ -320,14 +320,14 @@ export default function NewsletterAdmin() {
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <button className="text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200">
-                                  Unsubscribe
+                                 Remove
                                 </button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="dark:bg-black dark:border-white dark:border-opacity-20 w-[95vw] max-w-md mx-auto">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle className="dark:text-white">Unsubscribe Confirmation</AlertDialogTitle>
+                                  <AlertDialogTitle className="dark:text-white">Remove Confirmation</AlertDialogTitle>
                                   <AlertDialogDescription className="dark:text-white dark:opacity-70 break-words">
-                                    Are you sure you want to unsubscribe {subscriber.email}? They will no longer receive newsletter emails.
+                                    Are you sure you want to Remove {subscriber.email}? They will no longer receive newsletter emails.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
@@ -336,7 +336,7 @@ export default function NewsletterAdmin() {
                                     onClick={() => handleUnsubscribe(subscriber.email)}
                                     className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-900 dark:hover:bg-red-800 w-full sm:w-auto"
                                   >
-                                    Unsubscribe
+                                   Remove
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

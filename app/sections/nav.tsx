@@ -233,7 +233,7 @@ const Nav = () => {
     },
   ];
 
-  const activeLinks = getActiveLinks(pathname);
+  const activeLinks = getActiveLinks(pathname ?? '/');
 
   return (
     <>

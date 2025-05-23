@@ -102,6 +102,9 @@ export default function ProductsPage() {
   const [sortOption, setSortOption] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ totalPages: 1 });
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -133,6 +136,73 @@ export default function ProductsPage() {
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedProducts(products.map(product => product._id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(prev => [...prev, productId]);
+    } else {
+      setSelectedProducts(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedProducts.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedProducts.length} product(s)?`)) {
+      try {
+        setIsDeleting(true);
+        toast.loading(`Deleting ${selectedProducts.length} product(s)...`);
+        
+        // Delete each product one by one
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const productId of selectedProducts) {
+          try {
+            await axios.delete(`/api/products?id=${productId}`);
+            successCount++;
+          } catch (error) {
+            console.error(`Error deleting product ${productId}:`, error);
+            failCount++;
+          }
+        }
+        
+        // Update products list
+        await fetchProducts();
+        
+        // Clear selected products
+        setSelectedProducts([]);
+        setSelectAll(false);
+        
+        toast.dismiss();
+        if (failCount === 0) {
+          toast.success(`Successfully deleted ${successCount} product(s)`);
+        } else {
+          toast.error(`Deleted ${successCount} product(s), failed to delete ${failCount} product(s)`);
+        }
+        
+        // Dispatch an event to update other components
+        window.dispatchEvent(new CustomEvent('product-deleted', { 
+          detail: { count: successCount, ids: selectedProducts } 
+        }));
+      } catch (error) {
+        console.error('Error in bulk delete operation:', error);
+        toast.error('An error occurred during the delete operation');
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -188,14 +258,14 @@ export default function ProductsPage() {
         
         if (response.data && response.data.success) {
           console.log(`Product ${productId} deleted successfully in ${Date.now() - startTime}ms`);
-          toast.success('Product deleted successfully');
+        toast.success('Product deleted successfully');
           
           // Update UI immediately to give immediate feedback
           setProducts(prevProducts => prevProducts.filter(p => p._id !== productId));
           
           // Refresh products list in the background 
           setTimeout(() => {
-            fetchProducts();
+        fetchProducts();
           }, 1000);
           
           // Also update dashboard counts to keep them in sync - multiple approaches for redundancy
@@ -352,15 +422,26 @@ export default function ProductsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
             <h1 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-0">Products</h1>
-            <Link href="/products/new">
-              <Button 
-                className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black"
-              >
-                Add New Product
-                <PlusCircle className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="flex gap-3">
+              {selectedProducts.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : `Delete Selected (${selectedProducts.length})`}
+                </button>
+              )}
+              <Link href="/products/new">
+                <Button 
+                  className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black"
+                >
+                  Add New Product
+                  <PlusCircle className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
+          </div>
 
           <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-sm mb-6">
             <div className="p-3 sm:p-4 flex flex-col sm:flex-row gap-3">

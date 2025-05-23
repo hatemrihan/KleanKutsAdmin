@@ -851,8 +851,15 @@ export default function Dashboard() {
     try {
       console.log('Fetching real sales data...');
       const origin = window.location.origin;
-      const response = await axios.get(`${origin}/api/dashboard/real-sales`, { 
-        headers: { 'Cache-Control': 'no-cache' } 
+      
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const url = `${origin}/api/dashboard/real-sales?_=${timestamp}`;
+      console.log('Fetching from URL:', url);
+      
+      const response = await axios.get(url, { 
+        headers: { 'Cache-Control': 'no-cache' },
+        timeout: 15000 // 15 second timeout
       });
       
       if (response.data) {
@@ -864,6 +871,7 @@ export default function Dashboard() {
         
         // If we don't have data for all months, create default entries
         if (!enhancedMonthlyData || enhancedMonthlyData.length < 12) {
+          console.log('Creating complete monthly data structure');
           enhancedMonthlyData = months.map(name => {
             // Find existing month data or create default
             const existing = response.data.monthlyData?.find((m: { name: string, sales: number }) => m.name === name);
@@ -874,16 +882,30 @@ export default function Dashboard() {
         // Update with real data
         setStats(prev => {
           if (!prev) return prev;
-          return {
+          
+          console.log('Updating stats with real sales data');
+          const updatedStats = {
             ...prev,
             totalSales: response.data.totalSales || prev.totalSales || 0,
             currentMonthSales: response.data.currentMonthSales || prev.currentMonthSales || 0,
             monthlyData: enhancedMonthlyData
           };
+          
+          console.log('Stats updated successfully');
+          return updatedStats;
         });
       }
     } catch (error) {
       console.error('Error fetching real sales data:', error);
+      
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data
+        });
+      }
+      
       // Create fallback monthly data with all months
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const fallbackMonthlyData = months.map(name => ({ name, sales: 0 }));
@@ -892,6 +914,7 @@ export default function Dashboard() {
       setStats(prev => {
         if (!prev) return prev;
         if (!prev.monthlyData || prev.monthlyData.length < 12) {
+          console.log('Using fallback monthly data');
           return {
             ...prev,
             monthlyData: fallbackMonthlyData
@@ -899,6 +922,14 @@ export default function Dashboard() {
         }
         return prev;
       });
+      
+      // Try fetching dashboard stats as a fallback
+      try {
+        console.log('Attempting to fetch dashboard stats as fallback');
+        fetchDashboardStats();
+      } catch (fallbackError) {
+        console.error('Fallback approach also failed:', fallbackError);
+      }
     }
   };
 
@@ -1171,7 +1202,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <a 
-                href="/orders"
+                href="/test"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
                 View Real Orders
@@ -1235,7 +1266,7 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <a
+              <a 
                 href="/products"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
@@ -1246,7 +1277,7 @@ export default function Dashboard() {
               </a>
             </CardContentUI>
           </CardUI>
-          
+
           {/* Categories Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
             <CardHeaderUI className="pb-2">
@@ -1273,7 +1304,7 @@ export default function Dashboard() {
                   </svg>
                 </div>
               </div>
-              <a 
+              <a
                 href="/categories"
                 className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
               >
@@ -1284,7 +1315,7 @@ export default function Dashboard() {
               </a>
             </CardContentUI>
           </CardUI>
-
+          
           {/* Status Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
             <CardHeaderUI className="pb-2">
@@ -1394,112 +1425,112 @@ export default function Dashboard() {
         {/* Monthly Goal and Monthly Sales Overview Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           {/* Monthly Goal Card */}
-          <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-            <CardHeaderUI className="pb-2 flex justify-between items-center">
-              <div>
-                <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
-                <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
+        <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+          <CardHeaderUI className="pb-2 flex justify-between items-center">
+            <div>
+              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Goal</CardTitleUI>
+              <CardDescription className="text-black/70 dark:text-white/70">Current progress toward monthly goal</CardDescription>
+            </div>
+            {isEditingGoal ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setIsEditingGoal(false);
+                    setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                  }}
+                  className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
+                  disabled={isSavingGoal}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={updateMonthlySalesGoal}
+                  className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
+                  disabled={isSavingGoal}
+                >
+                  {isSavingGoal ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </span>
+                  ) : 'Save'}
+                </button>
               </div>
+            ) : (
+              <button
+                onClick={() => setIsEditingGoal(true)}
+                className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+              >
+                Edit Goal
+              </button>
+            )}
+          </CardHeaderUI>
+          <CardContentUI>
+            <div className="space-y-2">
               {isEditingGoal ? (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setIsEditingGoal(false);
-                      setMonthlyGoal(stats.monthlyGoal); // Reset to original value
-                    }}
-                    className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
+                <div>
+                  <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
+                    Monthly Goal (L.E)
+                  </label>
+                  <input
+                    type="number"
+                    id="monthlyGoal"
+                    value={monthlyGoal}
+                    onChange={(e) => setMonthlyGoal(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
+                    placeholder="Enter goal amount"
+                    min="0"
                     disabled={isSavingGoal}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={updateMonthlySalesGoal}
-                    className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
-                    disabled={isSavingGoal}
-                  >
-                    {isSavingGoal ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : 'Save'}
-                  </button>
+                  />
                 </div>
               ) : (
-                <button
-                  onClick={() => setIsEditingGoal(true)}
-                  className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-                >
-                  Edit Goal
-                </button>
-              )}
-            </CardHeaderUI>
-            <CardContentUI>
-              <div className="space-y-2">
-                {isEditingGoal ? (
-                  <div>
-                    <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
-                      Monthly Goal (L.E)
-                    </label>
-                    <input
-                      type="number"
-                      id="monthlyGoal"
-                      value={monthlyGoal}
-                      onChange={(e) => setMonthlyGoal(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-black/20 dark:border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white"
-                      placeholder="Enter goal amount"
-                      min="0"
-                      disabled={isSavingGoal}
-                    />
-                  </div>
-                ) : (
                   <>
                     {(() => {
                       const goalPercentage = monthlyGoal > 0
                         ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
                         : 0;
                       return (
-                        <>
-                          <div className="flex justify-between mb-1">
+                <>
+                  <div className="flex justify-between mb-1">
                             <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
-                            <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
-                          </div>
-                          <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-black dark:bg-white rounded-full" 
-                              style={{ width: `${goalPercentage}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
-                            <span>{goalPercentage}% of monthly goal</span>
-                            <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
-                          </div>
+                    <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-black dark:bg-white rounded-full" 
+                      style={{ width: `${goalPercentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
+                    <span>{goalPercentage}% of monthly goal</span>
+                    <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
+                  </div>
                         </>
                       );
                     })()}
-                  </>
-                )}
-              </div>
-            </CardContentUI>
-          </CardUI>
+                </>
+              )}
+            </div>
+          </CardContentUI>
+        </CardUI>
 
           {/* Monthly Sales Overview - New Version */}
-          <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
-            <CardHeaderUI>
-              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
+        <CardUI className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10">
+          <CardHeaderUI>
+            <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Monthly Sales Overview</CardTitleUI>
               <CardDescription className="text-black/70 dark:text-white/70">Sales performance for all months</CardDescription>
-            </CardHeaderUI>
-            <CardContentUI>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={stats.monthlyData}
-                    margin={{
-                      top: 10,
-                      right: 30,
+          </CardHeaderUI>
+          <CardContentUI>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={stats.monthlyData}
+                  margin={{
+                    top: 10,
+                    right: 30,
                       left: 10,
                       bottom: 10,
                     }}
@@ -1509,23 +1540,23 @@ export default function Dashboard() {
                       stroke="rgba(0,0,0,0.1)" 
                       className="dark:stroke-[rgba(255,255,255,0.1)]" 
                     />
-                    <XAxis 
-                      dataKey="name" 
+                  <XAxis 
+                    dataKey="name" 
                       stroke="currentColor" 
                       tick={{ fill: 'currentColor' }}
                       className="text-black dark:text-white"
-                    />
-                    <YAxis 
+                  />
+                  <YAxis 
                       stroke="currentColor" 
                       tick={{ fill: 'currentColor' }}
                       domain={[0, monthlyGoal > 0 ? monthlyGoal : 10000]} 
                       className="text-black dark:text-white"
-                    />
-                    <Tooltip 
+                  />
+                  <Tooltip 
                       formatter={(value) => [`L.E ${Number(value).toLocaleString()}`, 'Sales']} 
-                      contentStyle={{
-                        backgroundColor: 'var(--tooltip-bg, #fff)',
-                        color: 'var(--tooltip-text, #000)',
+                    contentStyle={{
+                      backgroundColor: 'var(--tooltip-bg, #fff)',
+                      color: 'var(--tooltip-text, #000)',
                         border: '1px solid var(--tooltip-border, #ccc)',
                         borderRadius: '4px',
                         padding: '8px'
@@ -1550,25 +1581,25 @@ export default function Dashboard() {
                       stroke="#FF0000" 
                       strokeDasharray="5 5" 
                       className="dark:stroke-red-500"
-                    />
-                    <defs>
-                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                  />
+                  <defs>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#000000" className="dark:text-white" stopOpacity={0.8} />
                         <stop offset="95%" stopColor="#000000" className="dark:text-white" stopOpacity={0.2} />
-                      </linearGradient>
-                    </defs>
-                    <Area 
-                      type="monotone" 
-                      dataKey="sales" 
+                    </linearGradient>
+                  </defs>
+                  <Area 
+                    type="monotone" 
+                    dataKey="sales" 
                       stroke="currentColor"
-                      strokeWidth={2}
+                    strokeWidth={2}
                       fill="url(#colorSales)" 
-                      fillOpacity={1} 
+                    fillOpacity={1} 
                       className="text-black dark:text-white"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
               <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   {stats.monthlyData.map((month, index) => (
@@ -1578,17 +1609,17 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </CardContentUI>
-          </CardUI>
+            </div>
+          </CardContentUI>
+        </CardUI>
         </div>
 
         {/* Recent Orders Table */}
         <DarkModePanel className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
           <CardHeaderUI className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
-              <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Recent Orders</CardTitleUI>
-              <CardDescription className="text-black/70 dark:text-white/70">Latest orders across your store</CardDescription>
+            <CardTitleUI className="text-lg font-semibold text-black dark:text-white">Recent Orders</CardTitleUI>
+            <CardDescription className="text-black/70 dark:text-white/70">Latest orders across your store</CardDescription>
             </div>
             {selectedOrders.length > 0 && (
               <button
@@ -1645,12 +1676,12 @@ export default function Dashboard() {
                         <td className="px-4 py-2 text-right font-medium text-black dark:text-white">L.E {order.total.toLocaleString()}</td>
                         <td className="px-4 py-2 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <a
-                              href={`/orders/${order._id}`}
-                              className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
-                            >
-                              View
-                            </a>
+                                        <a
+                href={`/orders/${order._id}`}
+                className="text-black hover:text-black/70 dark:text-white dark:hover:text-white/70"
+              >
+                View
+              </a>
                             <button
                               onClick={() => deleteOrder(order._id)}
                               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
@@ -1674,15 +1705,15 @@ export default function Dashboard() {
             </div>
             {stats.recentOrders.length > 0 && (
               <div className="mt-4 text-center">
-                <a
-                  href="/test"
-                  className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
-                >
-                  View All Orders
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                  </svg>
-                </a>
+                              <a
+                href="/test"
+                className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center"
+              >
+                View All Orders
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+              </a>
               </div>
             )}
           </CardContentUI>
@@ -1742,7 +1773,7 @@ export default function Dashboard() {
                       >
                         Cancel
                       </button>
-                      <button 
+                              <button 
                         onClick={updateMonthlySalesGoal}
                         className="px-3 py-1 text-sm bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50"
                         disabled={isSavingGoal}
@@ -1756,8 +1787,8 @@ export default function Dashboard() {
                             Saving...
                           </span>
                         ) : 'Save'}
-                      </button>
-                    </div>
+                              </button>
+                  </div>
                   ) : (
                     <button
                       onClick={() => setIsEditingGoal(true)}
@@ -1770,10 +1801,10 @@ export default function Dashboard() {
                 <CardContentUI>
                   <div className="space-y-2">
                     {isEditingGoal ? (
-                      <div>
+                        <div>
                         <label htmlFor="monthlyGoal" className="text-sm font-medium text-black dark:text-white block mb-1">
                           Monthly Goal (L.E)
-                        </label>
+                          </label>
                         <input
                           type="number"
                           id="monthlyGoal"
@@ -1783,8 +1814,8 @@ export default function Dashboard() {
                           placeholder="Enter goal amount"
                           min="0"
                           disabled={isSavingGoal}
-                        />
-                      </div>
+                          />
+                        </div>
                     ) : (
                       <>
                         {(() => {
@@ -1796,17 +1827,17 @@ export default function Dashboard() {
                               <div className="flex justify-between mb-1">
                                 <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
                                 <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
-                              </div>
+                        </div>
                               <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-black dark:bg-white rounded-full" 
                                   style={{ width: `${goalPercentage}%` }}
                                 ></div>
-                              </div>
+                      </div>
                               <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
                                 <span>{goalPercentage}% of monthly goal</span>
                                 <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
-                              </div>
+                      </div>
                             </>
                           );
                         })()}
@@ -1898,17 +1929,17 @@ export default function Dashboard() {
                         />
                       </AreaChart>
                     </ResponsiveContainer>
-                  </div>
+                      </div>
                   <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
                     <div className="grid grid-cols-4 gap-2 text-xs">
                       {stats.monthlyData.map((month, index) => (
                         <div key={index} className="flex flex-col items-center">
                           <span className="font-medium text-black dark:text-white">{month.name}</span>
                           <span className="text-black/70 dark:text-white/70">L.E {month.sales.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
+                      ))}
+                  </div>
+                </div>
                 </CardContentUI>
               </CardUI>
             </div>

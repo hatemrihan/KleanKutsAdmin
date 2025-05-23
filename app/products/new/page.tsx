@@ -88,6 +88,11 @@ export default function NewProduct() {
     description: ''
   });
 
+  // Restore promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState(10);
+  const [createPromo, setCreatePromo] = useState(false);
+
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const genders = ['Men', 'Woman', 'Unisex'];
 
@@ -130,6 +135,29 @@ export default function NewProduct() {
     }));
   };
 
+  // Restore the promo code creation function
+  const handleCreatePromo = async (productId: string) => {
+    if (!createPromo || !promoCode) return;
+    
+    try {
+      const response = await axios.post('/api/coupon', {
+        code: promoCode,
+        discount: promoDiscount,
+        productId: productId
+      });
+      
+      if (response.data.success) {
+        toast.success(`Promo code "${promoCode}" created successfully`);
+      } else {
+        toast.error('Failed to create promo code');
+      }
+    } catch (error) {
+      console.error('Error creating promo code:', error);
+      toast.error('Error creating promo code');
+    }
+  };
+
+  // Modify handleSubmit to include promo code creation again
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -205,6 +233,11 @@ export default function NewProduct() {
       const response = await axios.post('/api/products', productData);
 
       if (response.data) {
+        // Restore promo code creation
+        if (createPromo && promoCode) {
+          await handleCreatePromo(response.data._id);
+        }
+        
         toast.success('Product created successfully');
         router.push('/products');
       }
@@ -525,6 +558,60 @@ export default function NewProduct() {
               
                 onChange={(field, value) => handleInputChange(field as keyof ProductFormData, value)}
               />
+            </div>
+
+            {/* Promo Code Section */}
+            <div className="bg-white p-6 rounded-lg shadow mb-6">
+              <h2 className="text-lg font-medium mb-4">Promo Code</h2>
+              
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="createPromo"
+                  checked={createPromo}
+                  onChange={(e) => setCreatePromo(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="createPromo" className="ml-2 text-sm text-gray-700">
+                  Create promo code for this product
+                </label>
+              </div>
+              
+              {createPromo && (
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="promoCode" className="block text-sm font-medium text-gray-700 mb-1">
+                      Promo Code
+                    </label>
+                    <input
+                      type="text"
+                      id="promoCode"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="e.g., SUMMER20"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      This code will be automatically created when you save the product.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="promoDiscount" className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount Percentage
+                    </label>
+                    <input
+                      type="number"
+                      id="promoDiscount"
+                      min="1"
+                      max="100"
+                      value={promoDiscount}
+                      onChange={(e) => setPromoDiscount(Number(e.target.value))}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8">

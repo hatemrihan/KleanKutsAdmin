@@ -22,8 +22,10 @@ const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', CouponSchema);
 // This matches what the e-commerce site is looking for
 export async function POST(request: NextRequest) {
   try {
-    // Ensure MongoDB connection is established
-    await mongooseConnect();
+    // Handle OPTIONS request for CORS
+    if (request.method === 'OPTIONS') {
+      return handleCors();
+    }
     
     // Parse request body
     const body = await request.json().catch(() => ({}));
@@ -43,7 +45,31 @@ export async function POST(request: NextRequest) {
     // Normalize code to uppercase for case-insensitive matching
     const normalizedCode = code.trim().toUpperCase();
     
-    // First check for regular coupon codes created in admin
+    // First try to proxy to the admin API
+    try {
+      console.log('Trying to validate with admin API');
+      const adminResponse = await fetch('https://eleveadmin.netlify.app/api/coupon/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, productId }),
+      });
+      
+      if (adminResponse.ok) {
+        console.log('Admin API validation successful');
+        const data = await adminResponse.json();
+        return createResponse(data);
+      } else {
+        console.log('Admin API validation failed:', await adminResponse.text());
+      }
+    } catch (adminError) {
+      console.error('Error validating with admin API:', adminError);
+      // Continue with local validation if admin API fails
+    }
+    
+    // Ensure MongoDB connection is established for local validation
+    await mongooseConnect();
+    
+    // Check for regular coupon codes created in admin (local database)
     let coupon = await Coupon.findOne({
       code: { $regex: new RegExp(`^${normalizedCode}$`, 'i') },
       isActive: true,
@@ -54,7 +80,7 @@ export async function POST(request: NextRequest) {
       ]
     });
     
-    console.log('Coupon search result:', coupon ? 'Found' : 'Not found');
+    console.log('Local coupon search result:', coupon ? 'Found' : 'Not found');
     
     // If coupon found, check product-specific conditions
     if (coupon) {
@@ -141,7 +167,7 @@ function createResponse(data: any, status = 200) {
   const headers = new Headers(response.headers);
   headers.set('Access-Control-Allow-Origin', '*');
   headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   
   return new Response(response.body, {
     status: response.status,
@@ -151,14 +177,18 @@ function createResponse(data: any, status = 200) {
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS() {
-  const response = new Response(null, { status: 204 });
-  const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+  return handleCors();
+}
+
+// Helper function for CORS preflight
+function handleCors() {
   return new Response(null, {
     status: 204,
-    headers
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Max-Age': '86400'
+    },
   });
 } 

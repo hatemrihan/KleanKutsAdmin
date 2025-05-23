@@ -21,6 +21,11 @@ const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', CouponSchema);
 // POST /api/coupon/validate - Validate a coupon code and get its discount percentage
 export async function POST(request: NextRequest) {
   try {
+    // For CORS preflight
+    if (request.method === 'OPTIONS') {
+      return handleCors();
+    }
+    
     // Ensure MongoDB connection is established
     await mongooseConnect();
     
@@ -132,19 +137,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Handle preflight OPTIONS requests for CORS
+export async function OPTIONS() {
+  return handleCors();
+}
+
 // Helper function to create a response with CORS headers
 function createResponse(data: any, status = 200) {
   const response = NextResponse.json(data, { status });
   
   // Add CORS headers
-  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Origin', 'https://elevee.netlify.app');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   
   return response;
 }
 
-// Handle OPTIONS requests for CORS
-export async function OPTIONS() {
-  return createResponse(null, 204);
+// Helper function for CORS preflight
+function handleCors() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'https://elevee.netlify.app',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Max-Age': '86400'
+    },
+  });
 } 

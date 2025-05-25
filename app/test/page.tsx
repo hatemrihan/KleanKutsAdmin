@@ -116,6 +116,16 @@ export default function OrdersPage() {
           });
         }
 
+        // Debug coupon information
+        if (order.couponCode) {
+          console.log('DEBUG Coupon data:', {
+            id: order._id,
+            couponCode: order.couponCode,
+            couponDiscount: order.couponDiscount,
+            ambassadorId: order.ambassadorId
+          });
+        }
+
         // Create a default customer object
         const defaultCustomer = {
           name: 'Unknown Customer',
@@ -137,6 +147,10 @@ export default function OrdersPage() {
             totalAmount: Number(order.total || order.totalAmount) || 0,
             paymentMethod: order.paymentMethod || 'cod',
             transactionScreenshot: order.transactionScreenshot || null,
+            // Preserve coupon information
+            couponCode: order.couponCode || null,
+            couponDiscount: order.couponDiscount || null,
+            ambassadorId: order.ambassadorId || null,
             products: Array.isArray(order.products) ? order.products.map((product: any) => ({
               productId: product.id || product.productId || '',
               name: product.name || 'Unknown Product',
@@ -172,10 +186,16 @@ export default function OrdersPage() {
         
         // Ensure payment fields are preserved
         order.paymentMethod = order.paymentMethod || 'cod';
+        
         // Make sure we preserve the transactionScreenshot if it exists
         if (order.transactionScreenshot) {
           console.log('Found transaction screenshot URL:', order.transactionScreenshot);
         }
+
+        // Preserve coupon information
+        order.couponCode = order.couponCode || null;
+        order.couponDiscount = order.couponDiscount || null;
+        order.ambassadorId = order.ambassadorId || null;
 
         return order;
       }).filter(Boolean); // Remove any null orders

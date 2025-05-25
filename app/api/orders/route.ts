@@ -25,6 +25,9 @@ interface OrderData {
   total: number;
   paymentMethod?: string;
   transactionScreenshot?: string;
+  couponCode?: string;
+  couponDiscount?: number;
+  ambassadorId?: string;
 }
 
 interface UpdateOrderData {
@@ -173,7 +176,10 @@ export async function POST(request: Request) {
       paymentMethod: orderData.paymentMethod || 'cod',
       transactionScreenshot: orderData.transactionScreenshot || null,
       paymentVerified: orderData.paymentMethod === 'instapay' ? false : true,
-      orderDate: new Date()
+      orderDate: new Date(),
+      couponCode: orderData.couponCode || null,
+      couponDiscount: orderData.couponDiscount || null,
+      ambassadorId: orderData.ambassadorId || null
     };
 
     console.log('Prepared order data:', JSON.stringify(orderToCreate, null, 2));

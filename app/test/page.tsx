@@ -395,6 +395,15 @@ export default function OrdersPage() {
                                 paymentMethod={order.paymentMethod}
                               />
                             )}
+
+                            {order.couponCode && (
+                              <div className="mt-1">
+                                <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
+                                  {order.couponCode}
+                                  {order.couponDiscount && ` (${order.couponDiscount}% off)`}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">

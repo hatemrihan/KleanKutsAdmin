@@ -19,6 +19,9 @@ interface OrderData {
     image?: string;
   }>;
   total: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  ambassadorId?: string;
 }
 
 export async function createOrder(orderData: OrderData) {
@@ -44,7 +47,13 @@ export async function createOrder(orderData: OrderData) {
       totalAmount: orderData.total,
       notes: orderData.notes || '',
       status: 'pending',
-      orderDate: new Date()
+      orderDate: new Date(),
+      // Add coupon information if present
+      ...(orderData.couponCode && { 
+        couponCode: orderData.couponCode,
+        couponDiscount: orderData.couponDiscount,
+        ambassadorId: orderData.ambassadorId
+      })
     };
 
     // Create the order

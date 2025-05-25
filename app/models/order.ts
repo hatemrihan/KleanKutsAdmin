@@ -35,7 +35,10 @@ const OrderSchema = new Schema({
   notes: { type: String },
   orderDate: { type: Date, default: Date.now },
   deleted: { type: Boolean, default: false },
-  deletedAt: { type: Date, default: null }
+  deletedAt: { type: Date, default: null },
+  couponCode: { type: String },
+  couponDiscount: { type: Number },
+  ambassadorId: { type: Schema.Types.ObjectId, ref: 'Ambassador' }
 }, {
   timestamps: true
 });

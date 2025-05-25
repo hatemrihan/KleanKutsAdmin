@@ -69,6 +69,9 @@ interface Order {
   phone?: string;
   address?: string;
   total?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  ambassadorId?: string;
 }
 
 interface ApiErrorResponse {
@@ -496,6 +499,20 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
+
+                      {order.couponCode && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                          <strong className="dark:text-gray-300">Coupon Applied:</strong>{' '}
+                          <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
+                            {order.couponCode}
+                          </span>
+                          {order.couponDiscount && (
+                            <span className="ml-2">
+                              ({order.couponDiscount}% off)
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center">
                         <Select

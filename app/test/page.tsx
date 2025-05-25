@@ -101,6 +101,18 @@ export default function OrdersPage() {
       const response = await axios.get('/api/orders');
       console.log('Raw orders data:', response.data);
       
+      // Debug log for coupon information
+      response.data.forEach((order: any) => {
+        if (order.couponCode) {
+          console.log('Order with coupon found:', {
+            orderId: order._id,
+            couponCode: order.couponCode,
+            couponDiscount: order.couponDiscount,
+            ambassadorId: order.ambassadorId
+          });
+        }
+      });
+      
       // Transform and validate orders data
       const validatedOrders = response.data.map((order: any) => {
         // Skip invalid orders
@@ -513,6 +525,20 @@ export default function OrdersPage() {
                         </div>
                       )}
 
+                      {order.couponCode && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                          <strong className="dark:text-gray-300">Coupon Applied:</strong>{' '}
+                          <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
+                            {order.couponCode}
+                          </span>
+                          {order.couponDiscount && (
+                            <span className="ml-2">
+                              ({order.couponDiscount}% off)
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         <strong className="dark:text-gray-300">Payment:</strong>{' '}
                         <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
@@ -528,20 +554,6 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
-
-                      {order.couponCode && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                          <strong className="dark:text-gray-300">Coupon Applied:</strong>{' '}
-                          <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
-                            {order.couponCode}
-                          </span>
-                          {order.couponDiscount && (
-                            <span className="ml-2">
-                              ({order.couponDiscount}% off)
-                            </span>
-                          )}
-                        </div>
-                      )}
 
                       <div className="flex justify-between items-center">
                         <Select

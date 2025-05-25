@@ -135,6 +135,17 @@ export async function POST(request: Request) {
     const orderData = await request.json();
     console.log('Received order data:', JSON.stringify(orderData, null, 2));
 
+    // Debug log for coupon information
+    if (orderData.couponCode) {
+      console.log('Coupon Information Received:', {
+        couponCode: orderData.couponCode,
+        couponDiscount: orderData.couponDiscount,
+        ambassadorId: orderData.ambassadorId
+      });
+    } else {
+      console.log('No coupon information received in order data');
+    }
+
     // Validate required fields
     const requiredFields = {
       firstName: !!orderData.firstName,

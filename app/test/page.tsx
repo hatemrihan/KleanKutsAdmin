@@ -86,6 +86,16 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
+const getCouponDisplay = (order: Order) => {
+  if (!order.couponCode) return null;
+  
+  return {
+    code: order.couponCode,
+    discount: order.couponDiscount,
+    isAmbassador: !!order.ambassadorId
+  };
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -429,20 +439,22 @@ export default function OrdersPage() {
                               />
                             )}
 
-                            {order.couponCode && (
+                            {(couponInfo => couponInfo && (
                               <div className="mt-1">
                                 <div className="flex flex-col gap-1">
-                                  <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
-                                    {order.couponCode}
+                                  <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                                    ${couponInfo.isAmbassador ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                                    'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                                    {couponInfo.code}
                                   </span>
-                                  {order.couponDiscount && (
+                                  {couponInfo.discount && (
                                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                                      {order.couponDiscount}% off
+                                      {couponInfo.discount}% off
                                     </span>
                                   )}
                                 </div>
                               </div>
-                            )}
+                            ))(getCouponDisplay(order))}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -532,19 +544,26 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {order.couponCode && (
+                      {(couponInfo => couponInfo && (
                         <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                           <strong className="dark:text-gray-300">Coupon Applied:</strong>{' '}
-                          <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
-                            {order.couponCode}
+                          <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                            ${couponInfo.isAmbassador ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                            'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                            {couponInfo.code}
                           </span>
-                          {order.couponDiscount && (
+                          {couponInfo.discount && (
                             <span className="ml-2 text-green-600 dark:text-green-400">
-                              ({order.couponDiscount}% off)
+                              ({couponInfo.discount}% off)
+                            </span>
+                          )}
+                          {couponInfo.isAmbassador && (
+                            <span className="ml-2 text-purple-600 dark:text-purple-400">
+                              (Ambassador Coupon)
                             </span>
                           )}
                         </div>
-                      )}
+                      ))(getCouponDisplay(order))}
 
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         <strong className="dark:text-gray-300">Payment:</strong>{' '}

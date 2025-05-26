@@ -135,13 +135,52 @@ export async function POST(request: Request) {
     const orderData = await request.json();
     console.log('Received order data:', JSON.stringify(orderData, null, 2));
 
+    // Extract and normalize coupon information from all possible formats
+    const extractCouponInfo = (data: any) => {
+      // First check flat fields
+      let couponCode = data.couponCode || null;
+      let couponDiscount = data.couponDiscount || null;
+      let ambassadorId = data.ambassadorId || null;
+
+      // Check ambassador object
+      if (!couponCode && data.ambassador) {
+        couponCode = data.ambassador.couponCode || null;
+        ambassadorId = data.ambassador.ambassadorId || null;
+      }
+
+      // Check promoCode object
+      if (!couponCode && data.promoCode) {
+        couponCode = data.promoCode.code || null;
+        // Handle percentage discount
+        if (data.promoCode.type === 'percentage') {
+          couponDiscount = data.promoCode.value || null;
+        }
+        ambassadorId = data.promoCode.ambassadorId || null;
+      }
+
+      return {
+        couponCode,
+        couponDiscount,
+        ambassadorId
+      };
+    };
+
+    // Get normalized coupon information
+    const couponInfo = extractCouponInfo(orderData);
+
     // Debug log for coupon information
-    if (orderData.promoCode || orderData.couponCode) {
-      console.log('Coupon Information Received:', {
-        promoCode: orderData.promoCode,
-        couponCode: orderData.couponCode,
-        couponDiscount: orderData.couponDiscount,
-        ambassadorId: orderData.ambassadorId
+    if (couponInfo.couponCode) {
+      console.log('Normalized Coupon Information:', {
+        ...couponInfo,
+        originalData: {
+          flatFields: {
+            couponCode: orderData.couponCode,
+            couponDiscount: orderData.couponDiscount,
+            ambassadorId: orderData.ambassadorId
+          },
+          ambassador: orderData.ambassador,
+          promoCode: orderData.promoCode
+        }
       });
     }
 
@@ -171,13 +210,6 @@ export async function POST(request: Request) {
       ), request);
     }
 
-    // Extract coupon information from either promoCode or direct coupon fields
-    const couponInfo = {
-      couponCode: orderData.couponCode || (orderData.promoCode ? orderData.promoCode.code : null),
-      couponDiscount: orderData.couponDiscount || (orderData.promoCode ? orderData.promoCode.discount : null),
-      ambassadorId: orderData.ambassadorId || (orderData.promoCode ? orderData.promoCode.ambassadorId : null)
-    };
-
     // Prepare the order data
     const orderToCreate = {
       customer: {
@@ -194,7 +226,7 @@ export async function POST(request: Request) {
       transactionScreenshot: orderData.transactionScreenshot || null,
       paymentVerified: orderData.paymentMethod === 'instapay' ? false : true,
       orderDate: new Date(),
-      // Add coupon information
+      // Add coupon information if present
       ...(couponInfo.couponCode && {
         couponCode: couponInfo.couponCode,
         couponDiscount: couponInfo.couponDiscount,

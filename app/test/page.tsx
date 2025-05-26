@@ -87,13 +87,26 @@ const statusColors: Record<string, string> = {
 };
 
 const getCouponDisplay = (order: Order) => {
-  if (!order.couponCode) return null;
+  console.log('DEBUG getCouponDisplay input:', {
+    orderId: order._id,
+    couponCode: order.couponCode,
+    couponDiscount: order.couponDiscount,
+    ambassadorId: order.ambassadorId
+  });
+
+  if (!order.couponCode) {
+    console.log('DEBUG: No coupon code found for order:', order._id);
+    return null;
+  }
   
-  return {
+  const display = {
     code: order.couponCode,
     discount: order.couponDiscount,
     isAmbassador: !!order.ambassadorId
   };
+
+  console.log('DEBUG getCouponDisplay output:', display);
+  return display;
 };
 
 export default function OrdersPage() {
@@ -138,15 +151,14 @@ export default function OrdersPage() {
           });
         }
 
-        // Debug coupon information
-        if (order.couponCode) {
-          console.log('DEBUG Coupon data:', {
-            id: order._id,
-            couponCode: order.couponCode,
-            couponDiscount: order.couponDiscount,
-            ambassadorId: order.ambassadorId
-          });
-        }
+        // Enhanced coupon debugging
+        console.log('DEBUG Raw order data:', {
+          id: order._id,
+          couponCode: order.couponCode,
+          couponDiscount: order.couponDiscount,
+          ambassadorId: order.ambassadorId,
+          fullOrder: order
+        });
 
         // Create a default customer object
         const defaultCustomer = {
@@ -158,7 +170,7 @@ export default function OrdersPage() {
 
         // Handle old order format (with firstName/lastName)
         if (!order.customer && (order.firstName || order.lastName)) {
-          return {
+          const transformedOrder = {
             ...order,
             customer: {
               name: `${order.firstName || ''} ${order.lastName || ''}`.trim() || defaultCustomer.name,
@@ -169,7 +181,7 @@ export default function OrdersPage() {
             totalAmount: Number(order.total || order.totalAmount) || 0,
             paymentMethod: order.paymentMethod || 'cod',
             transactionScreenshot: order.transactionScreenshot || null,
-            // Preserve coupon information
+            // Explicitly preserve coupon information
             couponCode: order.couponCode || null,
             couponDiscount: order.couponDiscount || null,
             ambassadorId: order.ambassadorId || null,
@@ -182,44 +194,42 @@ export default function OrdersPage() {
               image: product.image || ''
             })) : []
           };
+          console.log('DEBUG Transformed order:', transformedOrder);
+          return transformedOrder;
         }
 
         // Ensure customer object exists and has all required fields
         const customer = order.customer || defaultCustomer;
-        order.customer = {
-          name: customer.name || defaultCustomer.name,
-          email: customer.email || defaultCustomer.email,
-          phone: customer.phone || defaultCustomer.phone,
-          address: customer.address || defaultCustomer.address
+        const transformedOrder = {
+          ...order,
+          customer: {
+            name: customer.name || defaultCustomer.name,
+            email: customer.email || defaultCustomer.email,
+            phone: customer.phone || defaultCustomer.phone,
+            address: customer.address || defaultCustomer.address
+          },
+          // Ensure products array is properly formatted
+          products: Array.isArray(order.products) ? order.products.map((product: any) => ({
+            productId: product.productId || product.id || '',
+            name: product.name || 'Unknown Product',
+            price: Number(product.price) || 0,
+            quantity: Number(product.quantity) || 1,
+            size: product.size || 'N/A',
+            image: product.image || ''
+          })) : [],
+          // Ensure totalAmount is a number
+          totalAmount: Number(order.totalAmount || order.total) || 0,
+          // Ensure payment fields are preserved
+          paymentMethod: order.paymentMethod || 'cod',
+          transactionScreenshot: order.transactionScreenshot || null,
+          // Explicitly preserve coupon information
+          couponCode: order.couponCode || null,
+          couponDiscount: order.couponDiscount || null,
+          ambassadorId: order.ambassadorId || null
         };
 
-        // Ensure products array is properly formatted
-        order.products = Array.isArray(order.products) ? order.products.map((product: any) => ({
-          productId: product.productId || product.id || '',
-          name: product.name || 'Unknown Product',
-          price: Number(product.price) || 0,
-          quantity: Number(product.quantity) || 1,
-          size: product.size || 'N/A',
-          image: product.image || ''
-        })) : [];
-
-        // Ensure totalAmount is a number
-        order.totalAmount = Number(order.totalAmount || order.total) || 0;
-        
-        // Ensure payment fields are preserved
-        order.paymentMethod = order.paymentMethod || 'cod';
-        
-        // Make sure we preserve the transactionScreenshot if it exists
-        if (order.transactionScreenshot) {
-          console.log('Found transaction screenshot URL:', order.transactionScreenshot);
-        }
-
-        // Preserve coupon information
-        order.couponCode = order.couponCode || null;
-        order.couponDiscount = order.couponDiscount || null;
-        order.ambassadorId = order.ambassadorId || null;
-
-        return order;
+        console.log('DEBUG Transformed order:', transformedOrder);
+        return transformedOrder;
       }).filter(Boolean); // Remove any null orders
       
       console.log('Validated orders:', validatedOrders);
@@ -354,7 +364,6 @@ export default function OrdersPage() {
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coupon</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -438,27 +447,25 @@ export default function OrdersPage() {
                                 paymentMethod={order.paymentMethod}
                               />
                             )}
-
-                            {(couponInfo => couponInfo && (
-                              <div className="mt-1">
-                                <div className="flex flex-col gap-1">
-                                  <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                                    ${couponInfo.isAmbassador ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                                    'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                                    {couponInfo.code}
-                                  </span>
-                                  {couponInfo.discount && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                      {couponInfo.discount}% off
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))(getCouponDisplay(order))}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'No date'}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.couponCode ? (
+                            <div className="flex flex-col gap-1">
+                              <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                                ${order.ambassadorId ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                                'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                                {order.couponCode}
+                              </span>
+                              {order.couponDiscount && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {order.couponDiscount}% off
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <AlertDialog>
@@ -521,9 +528,20 @@ export default function OrdersPage() {
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             L.E {(order.totalAmount ?? order.total ?? 0).toFixed(2)}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'No date'}
-                          </div>
+                          {order.couponCode && (
+                            <div className="mt-1">
+                              <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                                ${order.ambassadorId ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                                'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                                {order.couponCode}
+                              </span>
+                              {order.couponDiscount && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {order.couponDiscount}% off
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -543,27 +561,6 @@ export default function OrdersPage() {
                           </ul>
                         </div>
                       )}
-
-                      {(couponInfo => couponInfo && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                          <strong className="dark:text-gray-300">Coupon Applied:</strong>{' '}
-                          <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                            ${couponInfo.isAmbassador ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                            'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                            {couponInfo.code}
-                          </span>
-                          {couponInfo.discount && (
-                            <span className="ml-2 text-green-600 dark:text-green-400">
-                              ({couponInfo.discount}% off)
-                            </span>
-                          )}
-                          {couponInfo.isAmbassador && (
-                            <span className="ml-2 text-purple-600 dark:text-purple-400">
-                              (Ambassador Coupon)
-                            </span>
-                          )}
-                        </div>
-                      ))(getCouponDisplay(order))}
 
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         <strong className="dark:text-gray-300">Payment:</strong>{' '}

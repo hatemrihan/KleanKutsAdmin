@@ -136,14 +136,13 @@ export async function POST(request: Request) {
     console.log('Received order data:', JSON.stringify(orderData, null, 2));
 
     // Debug log for coupon information
-    if (orderData.couponCode) {
+    if (orderData.promoCode || orderData.couponCode) {
       console.log('Coupon Information Received:', {
+        promoCode: orderData.promoCode,
         couponCode: orderData.couponCode,
         couponDiscount: orderData.couponDiscount,
         ambassadorId: orderData.ambassadorId
       });
-    } else {
-      console.log('No coupon information received in order data');
     }
 
     // Validate required fields
@@ -172,6 +171,13 @@ export async function POST(request: Request) {
       ), request);
     }
 
+    // Extract coupon information from either promoCode or direct coupon fields
+    const couponInfo = {
+      couponCode: orderData.couponCode || (orderData.promoCode ? orderData.promoCode.code : null),
+      couponDiscount: orderData.couponDiscount || (orderData.promoCode ? orderData.promoCode.discount : null),
+      ambassadorId: orderData.ambassadorId || (orderData.promoCode ? orderData.promoCode.ambassadorId : null)
+    };
+
     // Prepare the order data
     const orderToCreate = {
       customer: {
@@ -188,9 +194,12 @@ export async function POST(request: Request) {
       transactionScreenshot: orderData.transactionScreenshot || null,
       paymentVerified: orderData.paymentMethod === 'instapay' ? false : true,
       orderDate: new Date(),
-      couponCode: orderData.couponCode || null,
-      couponDiscount: orderData.couponDiscount || null,
-      ambassadorId: orderData.ambassadorId || null
+      // Add coupon information
+      ...(couponInfo.couponCode && {
+        couponCode: couponInfo.couponCode,
+        couponDiscount: couponInfo.couponDiscount,
+        ambassadorId: couponInfo.ambassadorId
+      })
     };
 
     console.log('Prepared order data:', JSON.stringify(orderToCreate, null, 2));

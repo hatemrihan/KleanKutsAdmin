@@ -73,14 +73,18 @@ export async function getOrders() {
       .select('-__v') // Exclude only the __v field to ensure we get all other fields
       .lean();
     
-    // Log the first order to check if transactionScreenshot is included
+    // Log the first order to check for all relevant fields including coupon info
     if (orders.length > 0) {
-      console.log('Sample order from MongoDB:', JSON.stringify({
-        _id: orders[0]._id,
-        paymentMethod: orders[0].paymentMethod,
-        transactionScreenshot: orders[0].transactionScreenshot,
-        hasScreenshot: !!orders[0].transactionScreenshot
-      }));
+      const firstOrder = orders[0];
+      console.log('Sample order from MongoDB (handler):', JSON.stringify({
+        _id: firstOrder._id,
+        paymentMethod: firstOrder.paymentMethod,
+        transactionScreenshot: firstOrder.transactionScreenshot,
+        hasScreenshot: !!firstOrder.transactionScreenshot,
+        couponCode: firstOrder.couponCode,
+        couponDiscount: firstOrder.couponDiscount,
+        ambassadorId: firstOrder.ambassadorId
+      }, null, 2));
     }
     
     return orders;

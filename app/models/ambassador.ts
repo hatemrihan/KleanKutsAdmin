@@ -118,7 +118,10 @@ const AmbassadorSchema = new Schema({
       isPaid: { type: Boolean, default: false }
     }],
     default: []
-  }
+  },
+  // Update the video-related fields
+  productVideoLink: { type: String },
+  videoSubmissionDate: { type: Date },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -215,6 +218,8 @@ interface AmbassadorDocument extends mongoose.Document {
   }[];
   createdAt: Date;
   updatedAt: Date;
+  productVideoLink?: string;
+  videoSubmissionDate?: Date;
 }
 
 // Helper function to fix missing isActive field on all ambassadors
@@ -233,6 +238,10 @@ export async function fixAllAmbassadorsActive() {
     }
   }
 }
+
+// Add index for faster queries
+AmbassadorSchema.index({ email: 1, status: 1 });
+AmbassadorSchema.index({ videoSubmissionDate: 1 });
 
 // Export the model
 export const Ambassador = mongoose.models.Ambassador || mongoose.model('Ambassador', AmbassadorSchema); 

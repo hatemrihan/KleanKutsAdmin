@@ -83,20 +83,30 @@ export async function GET(request: NextRequest) {
         totalSales = salesResult.length > 0 ? salesResult[0].total : 0;
         console.log('Total sales from Order model:', totalSales);
         
-        // Get current month sales
+        // Get current month sales - improved to handle different order status types
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
         const currentMonthResult = await Order.aggregate([
           { 
             $match: { 
-              createdAt: { $gte: startOfMonth } 
+              createdAt: { $gte: startOfMonth },
+              // Don't count cancelled orders in monthly sales
+              status: { $ne: 'cancelled' }
             } 
           },
           { 
             $group: { 
               _id: null, 
-              total: { $sum: '$totalAmount' } 
+              total: { 
+                $sum: { 
+                  $cond: [
+                    { $ifNull: ["$totalAmount", false] },
+                    "$totalAmount",
+                    { $ifNull: ["$total", 0] }
+                  ]
+                } 
+              }
             } 
           }
         ]);
@@ -140,20 +150,30 @@ export async function GET(request: NextRequest) {
           totalSales = salesResult.length > 0 ? salesResult[0].total : 0;
           console.log('Total sales from direct collection:', totalSales);
           
-          // Get current month sales
+          // Get current month sales - improved to handle different order status types
           const now = new Date();
           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
           
           const currentMonthResult = await orderCollection.aggregate([
             { 
               $match: { 
-                createdAt: { $gte: startOfMonth } 
+                createdAt: { $gte: startOfMonth },
+                // Don't count cancelled orders in monthly sales
+                status: { $ne: 'cancelled' }
               } 
             },
             { 
               $group: { 
                 _id: null, 
-                total: { $sum: '$totalAmount' } 
+                total: { 
+                  $sum: { 
+                    $cond: [
+                      { $ifNull: ["$totalAmount", false] },
+                      "$totalAmount",
+                      { $ifNull: ["$total", 0] }
+                    ]
+                  }
+                } 
               } 
             }
           ]).toArray();
@@ -245,6 +265,18 @@ export async function GET(request: NextRequest) {
       currentMonthSales
     });
 
+    // Log summary of dashboard data before responding
+    console.log('Dashboard data summary:', {
+      totalOrders,
+      totalSales,
+      activeProducts,
+      totalCategories,
+      monthlyGoal,
+      currentMonthSales,
+      recentOrdersCount: recentOrders.length,
+      monthlyDataPoints: monthlyData.length
+    });
+    
     return NextResponse.json({
       totalOrders,
       totalSales,
@@ -254,7 +286,7 @@ export async function GET(request: NextRequest) {
       currentMonthSales,
       recentOrders,
       monthlyData
-    });
+    }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (error) {
     console.error('Error in dashboard API:', error);
     return NextResponse.json(

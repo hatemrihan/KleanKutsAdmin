@@ -3,6 +3,17 @@ import mongoose from 'mongoose';
 import { Ambassador, fixAllAmbassadorsActive } from '@/app/models/ambassador';
 import { connectToDatabase } from '@/lib/mongoose';
 
+interface AmbassadorType {
+  _id: string;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  toObject?: () => any;
+  [key: string]: any;
+}
+
 // Mock data for testing and development
 const mockAmbassadors = [
   {
@@ -58,14 +69,6 @@ export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     
-    // Check for any ambassadors missing the isActive field and fix them
-    try {
-      await fixAllAmbassadorsActive();
-    } catch (error) {
-      console.error('Error fixing ambassador active status:', error);
-      // Continue processing - don't fail the request if this fails
-    }
-    
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -76,20 +79,38 @@ export async function GET(request: NextRequest) {
       filter.status = status;
     }
     
-    // Query for ambassadors
-    const ambassadors = await Ambassador.find(filter).sort({ createdAt: -1 });
-    
-    if (!ambassadors || ambassadors.length === 0) {
-      console.log('No ambassadors found with filter:', filter);
-    } else {
-      console.log(`Found ${ambassadors.length} ambassadors`);
+    // Query for ambassadors with proper error handling
+    let ambassadors: AmbassadorType[] = [];
+    try {
+      ambassadors = await Ambassador.find(filter).sort({ createdAt: -1 });
+      console.log(`Successfully fetched ${ambassadors.length} ambassadors`);
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      // Try direct collection access as fallback
+      const db = (await connectToDatabase()).connection.db;
+      const collection = db.collection('ambassadors');
+      ambassadors = await collection.find(filter).sort({ createdAt: -1 }).toArray();
+      console.log(`Fetched ${ambassadors.length} ambassadors using direct collection access`);
     }
     
-    return NextResponse.json({ ambassadors }, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching ambassadors:', error);
+    // Transform and validate ambassador data
+    const validatedAmbassadors = ambassadors.map((ambassador: AmbassadorType) => {
+      const data = ambassador.toObject ? ambassador.toObject() : ambassador;
+      return {
+        ...data,
+        status: data.status || 'pending',
+        createdAt: data.createdAt || new Date(),
+        updatedAt: data.updatedAt || new Date()
+      };
+    });
+    
+    console.log(`Returning ${validatedAmbassadors.length} validated ambassadors`);
+    return NextResponse.json({ ambassadors: validatedAmbassadors }, { status: 200 });
+    
+  } catch (error: any) {
+    console.error('Error in ambassadors API:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch ambassadors' },
+      { error: 'Failed to fetch ambassadors', details: error.message },
       { status: 500 }
     );
   }

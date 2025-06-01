@@ -55,10 +55,22 @@ export default function SalesAnalyticsPage() {
     try {
       // Fetch actual orders from the real e-commerce system
       const response = await axios.get('/api/orders', {
-        withCredentials: true
+        withCredentials: true,
+        // Add timeout to prevent hanging requests
+        timeout: 10000,
+        // Add error handling headers
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       
       console.log('Raw orders data for analytics:', response.data);
+      
+      // Check if response data is valid
+      if (!response.data || !Array.isArray(response.data)) {
+        throw new Error('Invalid response format from API');
+      }
       
       // Process the orders data to generate sales analytics
       const processedData = processOrdersForAnalytics(response.data, timeframe);
@@ -67,11 +79,15 @@ export default function SalesAnalyticsPage() {
     } catch (err) {
       console.error('Error fetching sales data:', err);
       setError('Failed to load sales data. Please try again later.');
-      toast.error('Failed to load sales data');
+      toast.error('Failed to load sales data. Check your network connection and try again.');
+      // Set empty sales data instead of leaving it undefined
+      setSalesData([]);
     } finally {
       setIsLoading(false);
     }
   };
+  
+
   
   // Process orders data into analytics format based on selected timeframe
   const processOrdersForAnalytics = (orders: any[], selectedTimeframe: string): SalesData[] => {
@@ -320,39 +336,46 @@ export default function SalesAnalyticsPage() {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
             </div>
+          </div>
+                    <section className="p-6 bg-white dark:bg-black shadow rounded-lg mb-6">
+            <h2 className="text-xl font-semibold mb-4">Sales Analytics</h2>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner mx-auto">
-                <button
-                  onClick={() => setTimeframe('weekly')}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'weekly' ? 
-                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
-                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+
+            
+            {/* Timeframe selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Select Timeframe:</label>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setTimeframe('daily')} 
+                  className={`px-4 py-2 rounded ${timeframe === 'daily' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                >
+                  Daily
+                </button>
+                <button 
+                  onClick={() => setTimeframe('weekly')} 
+                  className={`px-4 py-2 rounded ${timeframe === 'weekly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Weekly
                 </button>
-                <button
-                  onClick={() => setTimeframe('monthly')}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'monthly' ? 
-                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
-                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                <button 
+                  onClick={() => setTimeframe('monthly')} 
+                  className={`px-4 py-2 rounded ${timeframe === 'monthly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Monthly
                 </button>
-                <button
-                  onClick={() => setTimeframe('yearly')}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'yearly' ? 
-                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
-                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                <button 
+                  onClick={() => setTimeframe('yearly')} 
+                  className={`px-4 py-2 rounded ${timeframe === 'yearly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Yearly
                 </button>
               </div>
               
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-4">
                 <button
                   onClick={exportToExcel}
-                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-black text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
                 >
                   <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
                   <span className="relative flex items-center">
@@ -376,7 +399,7 @@ export default function SalesAnalyticsPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </section>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <DarkModePanel className="rounded-lg shadow-sm p-6">

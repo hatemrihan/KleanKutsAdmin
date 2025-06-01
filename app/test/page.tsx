@@ -40,8 +40,7 @@ interface OrderProduct {
   name: string;
   price: number;
   quantity: number;
-  size: string;
-  image?: string;
+  size?: string;
 }
 
 interface Customer {
@@ -53,23 +52,23 @@ interface Customer {
 
 interface Order {
   _id: string;
-  customer: Customer;
-  products: OrderProduct[];
-  totalAmount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentMethod?: 'cod' | 'instapay';
-  transactionScreenshot?: string;
-  paymentVerified?: boolean;
-  notes?: string;
-  orderDate: string;
-  createdAt: string;
-  updatedAt: string;
+  customer?: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+  };
   firstName?: string;
   lastName?: string;
   email?: string;
   phone?: string;
   address?: string;
+  status: string;
+  totalAmount: number;
   total?: number;
+  createdAt: string;
+  orderDate?: string;
+  products: OrderProduct[];
   couponCode?: string;
   couponDiscount?: number;
   ambassadorId?: string;
@@ -82,6 +81,10 @@ interface Order {
     ambassadorId: string;
     couponCode: string;
   };
+  paymentMethod?: 'cod' | 'instapay';
+  transactionScreenshot?: string;
+  paymentVerified?: boolean;
+  notes?: string;
 }
 
 interface ApiErrorResponse {
@@ -145,6 +148,8 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
   
 
   const fetchOrders = async () => {
@@ -301,7 +306,7 @@ export default function OrdersPage() {
   const exportOrdersToExcel = () => {
     try {
       // Prepare data for export
-      const exportData = filteredOrders.map(order => {
+      const exportData = orders.map(order => {
         // Calculate total without discounts/promos
         const productTotal = order.products.reduce((sum, product) => {
           return sum + (product.price * product.quantity);
@@ -383,12 +388,75 @@ export default function OrdersPage() {
     }
   };
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectAll(e.target.checked);
+    if (e.target.checked) {
+      setSelectedOrders(orders.map(order => order._id));
+    } else {
+      setSelectedOrders([]);
+    }
+  };
+
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrders(prev => {
+      if (prev.includes(orderId)) {
+        const newSelected = prev.filter(id => id !== orderId);
+        setSelectAll(false);
+        return newSelected;
+      } else {
+        const newSelected = [...prev, orderId];
+        setSelectAll(newSelected.length === orders.length);
+        return newSelected;
+      }
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('No orders selected');
+      return;
+    }
+
+    try {
+      const loadingToast = toast.loading(`Deleting ${selectedOrders.length} orders...`);
+      let successCount = 0;
+      let failCount = 0;
+
+      // Delete orders one by one
+      for (const orderId of selectedOrders) {
+        try {
+          await deleteOrder(orderId);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to delete order ${orderId}:`, error);
+          failCount++;
+        }
+      }
+
+      // Update UI
+      toast.dismiss(loadingToast);
+      if (failCount === 0) {
+        toast.success(`Successfully deleted ${successCount} orders`);
+      } else {
+        toast.error(`Deleted ${successCount} orders, failed to delete ${failCount} orders`);
+      }
+
+      // Refresh orders list and reset selection
+      fetchOrders();
+      setSelectedOrders([]);
+      setSelectAll(false);
+    } catch (error) {
+      console.error('Error in batch delete:', error);
+      toast.error('Failed to delete selected orders');
+    }
+  };
+
   const filteredOrders = orders.filter(order => {
     if (!order) return false;
 
     const matchesSearch = searchQuery === '' || (
-      order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order._id.toLowerCase().includes(searchQuery.toLowerCase())
     );
     
@@ -401,6 +469,14 @@ export default function OrdersPage() {
   const isInstaPay = (method?: string): boolean => {
     if (!method) return false;
     return method.toLowerCase().includes('instapay');
+  };
+
+  const calculateOrderTotal = (order: Order): number => {
+    // Calculate total without discounts/promos
+    const productTotal = order.products.reduce((sum: number, product: OrderProduct) => {
+      return sum + (product.price * product.quantity);
+    }, 0);
+    return productTotal;
   };
 
   if (isLoading) {
@@ -472,7 +548,15 @@ export default function OrdersPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
                   <tr>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
                     <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
@@ -496,6 +580,14 @@ export default function OrdersPage() {
 
                     return (
                       <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrders.includes(order._id)}
+                            onChange={() => handleSelectOrder(order._id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {order._id}
                         </td>
@@ -564,39 +656,39 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-            {(() => {
-              // Extract coupon information from all possible sources
-              const couponCode = order.couponCode || 
-                                (order.promoCode && order.promoCode.code) || 
-                                (order.ambassador && order.ambassador.couponCode);
-              
-              const couponDiscount = order.couponDiscount || 
-                                    (order.promoCode && order.promoCode.value) || 
-                                    0;
-              
-              const ambassadorId = order.ambassadorId || 
-                                  (order.ambassador && order.ambassador.ambassadorId) || 
-                                  undefined; // Remove the ambassadorId reference from promoCode
-              
-              return couponCode ? (
-                <div className="flex flex-col gap-1">
-                  <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                    ${ambassadorId ? 
-                      'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                      'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                    {couponCode}
-                  </span>
-                  {couponDiscount > 0 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {couponDiscount}% off
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
-              );
-            })()} 
-          </td>
+                          {(() => {
+                            // Extract coupon information from all possible sources
+                            const couponCode = order.couponCode || 
+                                              (order.promoCode && order.promoCode.code) || 
+                                              (order.ambassador && order.ambassador.couponCode);
+                            
+                            const couponDiscount = order.couponDiscount || 
+                                                  (order.promoCode && order.promoCode.value) || 
+                                                  0;
+                            
+                            const ambassadorId = order.ambassadorId || 
+                                                (order.ambassador && order.ambassador.ambassadorId) || 
+                                                undefined; // Remove the ambassadorId reference from promoCode
+                            
+                            return couponCode ? (
+                              <div className="flex flex-col gap-1">
+                                <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                                  ${ambassadorId ? 
+                                    'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                                    'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                                  {couponCode}
+                                </span>
+                                {couponDiscount > 0 && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {couponDiscount}% off
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
+                            );
+                          })()} 
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

@@ -147,7 +147,7 @@ export default function Dashboard() {
   
   // Sales goal state
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [monthlyGoal, setMonthlyGoal] = useState<number>(0);
+  const [monthlyGoal, setMonthlyGoal] = useState(100000);
   const [isSavingGoal, setIsSavingGoal] = useState(false);
   
   // Waitlist and Ambassadors state
@@ -162,13 +162,63 @@ export default function Dashboard() {
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [selectAllChecked, setSelectAllChecked] = useState(false);
 
+  const [error, setError] = useState('');
+  const [currentMonthSales, setCurrentMonthSales] = useState(0);
+
+  // Add this after the ambassadors count state
+  const [videoSubmissions, setVideoSubmissions] = useState<Array<{
+    _id: string;
+    name: string;
+    email: string;
+    productVideoLink: string;
+    videoSubmissionDate: string;
+  }>>([]);
+
   useEffect(() => {
+    // Initial data load
     fetchDashboardStats();
     fetchSiteStatus();
     fetchWaitlistCount();
-    fetchAmbassadorsCount();
     fetchProductsAndCategoriesCounts();
-    fetchRealSalesData();
+    fetchRealSalesData(); // Add initial real sales data fetch
+    
+    // Set up intervals for auto-refresh
+    const dashboardRefreshInterval = setInterval(() => {
+      console.log('Auto-refreshing dashboard data...');
+      fetchDashboardStats();
+      fetchRealSalesData(); // Add real sales data refresh
+    }, 60000); // Refresh every minute
+    
+    // Set up event listeners for order updates
+    const handleOrderUpdate = () => {
+      console.log('Order update detected, refreshing sales data...');
+      fetchRealSalesData();
+    };
+    
+    window.addEventListener('order-created', handleOrderUpdate);
+    window.addEventListener('order-updated', handleOrderUpdate);
+    window.addEventListener('order-deleted', handleOrderUpdate);
+    
+    // Check localStorage for updates
+    const orderUpdateCheckInterval = setInterval(() => {
+      const needsRefresh = localStorage.getItem('refresh_dashboard_sales');
+      if (needsRefresh === 'true') {
+        console.log('Sales refresh requested via localStorage');
+        fetchRealSalesData();
+        localStorage.removeItem('refresh_dashboard_sales');
+      }
+    }, 5000); // Check every 5 seconds
+    
+    // Add this to your useEffect that fetches ambassadors
+    fetchVideoSubmissions();
+    
+    return () => {
+      clearInterval(dashboardRefreshInterval);
+      clearInterval(orderUpdateCheckInterval);
+      window.removeEventListener('order-created', handleOrderUpdate);
+      window.removeEventListener('order-updated', handleOrderUpdate);
+      window.removeEventListener('order-deleted', handleOrderUpdate);
+    };
   }, []);
   
   // Refresh dashboard stats when switching back to dashboard section
@@ -190,165 +240,35 @@ export default function Dashboard() {
     fetchOrders();
   }, []);
 
-  // Set up intervals for auto-refresh
-  useEffect(() => {
-    // Refresh waitlist count every minute
-    const waitlistInterval = setInterval(() => {
-      fetchWaitlistCount();
-    }, 60000); // 60 seconds
-    
-    // Refresh real sales data every 3 minutes
-    const salesDataInterval = setInterval(() => {
-      console.log('Auto-refreshing sales data...');
-      fetchRealSalesData();
-    }, 180000); // 3 minutes
-    
-    return () => {
-      clearInterval(waitlistInterval);
-      clearInterval(salesDataInterval);
-    };
-  }, []);
-
-  // Add more robust product tracking with timestamp-based checks
-  useEffect(() => {
-    // More robust product change detection
-    const handleProductChange = () => {
-      console.log('Product change detected, refreshing product counts');
-      fetchProductsAndCategoriesCounts();
-    };
-
-    // Track the last time we refreshed data
-    let lastRefreshTime = Date.now();
-    let productChangeDetected = false;
-
-    // Add event listener for custom events
-    window.addEventListener('product-deleted', (e: Event) => {
-      const customEvent = e as CustomEvent;
-      console.log('Product deletion event received:', customEvent.detail);
-      productChangeDetected = true;
-      handleProductChange();
-    });
-    
-    window.addEventListener('product-added', handleProductChange);
-    window.addEventListener('product-updated', handleProductChange);
-
-    // Enhanced localStorage checking with debouncing
-    let localStorageCheckTimer: NodeJS.Timeout | null = null;
-    
-    const checkLocalStorage = () => {
-      try {
-        const needsRefresh = localStorage.getItem('dashboard_refresh_needed');
-        if (needsRefresh === 'true') {
-          console.log('Dashboard refresh requested via localStorage');
-          
-          // Get details about the product action if available
-          try {
-            const actionDetails = localStorage.getItem('dashboard_last_product_action');
-            if (actionDetails) {
-              const action = JSON.parse(actionDetails);
-              console.log('Product action details:', action);
-              
-              // Only refresh if the action is recent (within last 30 seconds)
-              const actionTime = new Date(action.timestamp).getTime();
-              const now = Date.now();
-              if (now - actionTime < 30000) {
-                fetchProductsAndCategoriesCounts();
-              } else {
-                console.log('Ignoring stale product action from', new Date(actionTime).toLocaleString());
-              }
-            } else {
-              // No details, refresh anyway
-              fetchProductsAndCategoriesCounts();
-            }
-          } catch (parseError) {
-            console.log('Error parsing action details, refreshing anyway:', parseError);
-            fetchProductsAndCategoriesCounts();
-          }
-          
-          localStorage.removeItem('dashboard_refresh_needed');
-        }
-      } catch (error) {
-        // Ignore localStorage errors
-      }
-      
-      // Schedule the next check with exponential backoff if no changes detected
-      const delay = productChangeDetected ? 2000 : Math.min(10000, (Date.now() - lastRefreshTime) / 10);
-      localStorageCheckTimer = setTimeout(checkLocalStorage, delay);
-    };
-    
-    // Start the checking process
-    checkLocalStorage();
-    
-    // Polling for product changes every 30 seconds as a fallback
-    const backupInterval = setInterval(() => {
-      const timeSinceLastRefresh = Date.now() - lastRefreshTime;
-      
-      // Only poll if it's been more than 30 seconds since our last refresh
-      if (timeSinceLastRefresh > 30000) {
-        console.log('Performing backup poll for product count updates');
-        fetchProductsAndCategoriesCounts();
-        lastRefreshTime = Date.now();
-        productChangeDetected = false;
-      }
-    }, 30000);
-
-    // Cleanup function
-    return () => {
-      window.removeEventListener('product-deleted', handleProductChange);
-      window.removeEventListener('product-added', handleProductChange);
-      window.removeEventListener('product-updated', handleProductChange);
-      
-      if (localStorageCheckTimer) {
-        clearTimeout(localStorageCheckTimer);
-      }
-      
-      clearInterval(backupInterval);
-    };
-  }, []);
-
   const fetchDashboardStats = async () => {
     try {
-      setIsLoading(true);
+      console.log('Fetching dashboard stats...');
       
-      // Use absolute URL for API calls with proper error handling
-      const origin = window.location.origin;
-      console.log('Current origin:', origin);
-      
-      // First try to fetch orders to ensure we have basic order data
-      try {
-        console.log('Pre-fetching orders to ensure data availability');
-        const ordersResponse = await axios.get(`${origin}/api/orders`);
-        console.log('Orders pre-fetch successful, count:', Array.isArray(ordersResponse.data) ? ordersResponse.data.length : 'unknown');
-      } catch (ordersError) {
-        console.error('Error pre-fetching orders (non-critical):', ordersError);
-      }
-      
-      // Fetch real sales data first
-      try {
-        console.log('Fetching real-sales data');
-        const salesResponse = await axios.get(`${origin}/api/dashboard/real-sales`);
-        if (salesResponse.data) {
-          console.log('Real sales data received:', salesResponse.data);
-        }
-      } catch (salesError) {
-        console.error('Error fetching real sales (non-critical):', salesError);
-      }
-      
-      // Now fetch the main dashboard data
-      const apiUrl = `${origin}/api/dashboard`;
-      console.log('Fetching dashboard data from:', apiUrl);
-      
-      const response = await axios.get(apiUrl, { 
-        headers: { 'Cache-Control': 'no-cache' },
-        timeout: 10000 // 10 second timeout
+      // Add cache-busting parameter to prevent stale data
+      const timestamp = new Date().getTime();
+      const response = await axios.get(`/api/dashboard?_=${timestamp}`, {
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
       });
       
-      console.log('Dashboard data received:', response.data);
+      console.log('Dashboard stats loaded:', response.data);
       
-      // IMPORTANT: Update monthly goal from API first, then set stats
-      if (response.data && typeof response.data.monthlyGoal === 'number') {
+      // Set monthly goal from API response with validation
+      if (response.data && typeof response.data.monthlyGoal === 'number' && !isNaN(response.data.monthlyGoal)) {
         setMonthlyGoal(response.data.monthlyGoal);
         console.log('Updated monthly goal from API:', response.data.monthlyGoal);
+      } else {
+        console.warn('Invalid monthly goal in API response:', response.data?.monthlyGoal);
+      }
+      
+      // Validate current month sales from API response
+      if (response.data && typeof response.data.currentMonthSales === 'number' && !isNaN(response.data.currentMonthSales)) {
+        console.log('Current month sales from API:', response.data.currentMonthSales);
+      } else {
+        console.warn('Invalid current month sales in API response:', response.data?.currentMonthSales);
+        // Add fallback if current month sales is invalid
+        if (response.data) {
+          response.data.currentMonthSales = 0;
+        }
       }
       
       // Ensure we have proper monthlyData with all months
@@ -360,9 +280,7 @@ export default function Dashboard() {
       
       // Set dashboard stats after monthly goal is updated
       setStats(response.data);
-      
-      // Immediately fetch real sales data to update the chart
-      fetchRealSalesData();
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       
@@ -474,16 +392,40 @@ export default function Dashboard() {
     try {
       const response = await axios.get('/api/ambassadors');
       if (response.data && Array.isArray(response.data.ambassadors)) {
-        setAmbassadorsCount(response.data.ambassadors.length);
+        const ambassadors = response.data.ambassadors;
+        console.log('Fetched ambassadors:', ambassadors.length);
+        
+        // Update ambassadors count
+        setAmbassadorsCount(ambassadors.length);
         
         // Count pending ambassadors
-        const pending = response.data.ambassadors.filter(
-          (ambassador: any) => ambassador.status === 'pending'
+        const pending = ambassadors.filter(
+          (ambassador: { status: string }) => ambassador.status === 'pending'
         ).length;
         setPendingAmbassadorsCount(pending);
+        
+        // Store in localStorage for persistence
+        try {
+          localStorage.setItem('ambassadorsCount', ambassadors.length.toString());
+          localStorage.setItem('pendingAmbassadorsCount', pending.toString());
+        } catch (e) {
+          console.error('Error storing ambassadors count in localStorage:', e);
+        }
+      } else {
+        console.error('Invalid ambassadors data format:', response.data);
+        // Try to use cached count from localStorage
+        const cachedCount = localStorage.getItem('ambassadorsCount');
+        const cachedPending = localStorage.getItem('pendingAmbassadorsCount');
+        if (cachedCount) setAmbassadorsCount(parseInt(cachedCount));
+        if (cachedPending) setPendingAmbassadorsCount(parseInt(cachedPending));
       }
     } catch (error) {
       console.error('Error fetching ambassadors count:', error);
+      // Try to use cached count from localStorage on error
+      const cachedCount = localStorage.getItem('ambassadorsCount');
+      const cachedPending = localStorage.getItem('pendingAmbassadorsCount');
+      if (cachedCount) setAmbassadorsCount(parseInt(cachedCount));
+      if (cachedPending) setPendingAmbassadorsCount(parseInt(cachedPending));
     }
   };
   
@@ -846,90 +788,80 @@ export default function Dashboard() {
     }
 };
 
-  // Fix the TypeScript error by properly typing the monthlyData
+  // Improved version to fetch real sales data with better integration with monthly goal
   const fetchRealSalesData = async () => {
     try {
-      console.log('Fetching real sales data...');
-      const origin = window.location.origin;
-      
-      // Add timestamp to prevent caching
-      const timestamp = new Date().getTime();
-      const url = `${origin}/api/dashboard/real-sales?_=${timestamp}`;
-      console.log('Fetching from URL:', url);
-      
-      const response = await axios.get(url, { 
-        headers: { 'Cache-Control': 'no-cache' },
-        timeout: 15000 // 15 second timeout
-      });
-      
+      const response = await axios.get('/api/dashboard/real-sales');
       if (response.data) {
-        console.log('Real sales data fetched:', response.data);
+        setCurrentMonthSales(response.data.currentMonthSales || 0);
+        setMonthlyGoal(response.data.monthlyGoal || 100000);
         
-        // Make sure we have monthly data for all months
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        let enhancedMonthlyData = [...response.data.monthlyData || []];
-        
-        // If we don't have data for all months, create default entries
-        if (!enhancedMonthlyData || enhancedMonthlyData.length < 12) {
-          console.log('Creating complete monthly data structure');
-          enhancedMonthlyData = months.map(name => {
-            // Find existing month data or create default
-            const existing = response.data.monthlyData?.find((m: { name: string, sales: number }) => m.name === name);
-            return existing || { name, sales: 0 };
-          });
-        }
-        
-        // Update with real data
-        setStats(prev => {
-          if (!prev) return prev;
-          
-          console.log('Updating stats with real sales data');
-          const updatedStats = {
-            ...prev,
-            totalSales: response.data.totalSales || prev.totalSales || 0,
-            currentMonthSales: response.data.currentMonthSales || prev.currentMonthSales || 0,
-            monthlyData: enhancedMonthlyData
+        // Update stats with real data
+        setStats(prevStats => {
+          if (!prevStats) return null;
+          return {
+            ...prevStats,
+            currentMonthSales: response.data.currentMonthSales || 0,
+            monthlyGoal: response.data.monthlyGoal || 100000
           };
-          
-          console.log('Stats updated successfully');
-          return updatedStats;
         });
       }
     } catch (error) {
-      console.error('Error fetching real sales data:', error);
-      
-      if (axios.isAxiosError(error)) {
-        console.error('Axios error details:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data
-        });
+      console.error('Error fetching real-time sales data:', error);
+    }
+  };
+
+  // Add this to your useEffect
+  useEffect(() => {
+    // Initial fetch
+    fetchAmbassadorsCount();
+    
+    // Set up interval to refresh ambassadors count
+    const ambassadorsInterval = setInterval(() => {
+      fetchAmbassadorsCount();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => {
+      clearInterval(ambassadorsInterval);
+    };
+  }, []);
+
+  // Add this function to fetch video submissions
+  const fetchVideoSubmissions = async () => {
+    try {
+      const response = await axios.get('/api/ambassadors');
+      if (response.data && Array.isArray(response.data.ambassadors)) {
+        const submissions = response.data.ambassadors
+          .filter((ambassador: any) => ambassador.productVideoLink)
+          .map((ambassador: any) => ({
+            _id: ambassador._id,
+            name: ambassador.name,
+            email: ambassador.email,
+            productVideoLink: ambassador.productVideoLink,
+            videoSubmissionDate: ambassador.videoSubmissionDate || new Date().toISOString()
+          }));
+        setVideoSubmissions(submissions);
       }
-      
-      // Create fallback monthly data with all months
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const fallbackMonthlyData = months.map(name => ({ name, sales: 0 }));
-      
-      // Update stats with fallback monthly data
-      setStats(prev => {
-        if (!prev) return prev;
-        if (!prev.monthlyData || prev.monthlyData.length < 12) {
-          console.log('Using fallback monthly data');
-          return {
-            ...prev,
-            monthlyData: fallbackMonthlyData
-          };
-        }
-        return prev;
+    } catch (error) {
+      console.error('Error fetching ambassador links:', error);
+    }
+  };
+
+  // Add this function to update video status
+  const updateVideoStatus = async (ambassadorId: string, status: string) => {
+    try {
+      const response = await axios.post('/api/ambassadors/update-video-status', {
+        ambassadorId,
+        status
       });
       
-      // Try fetching dashboard stats as a fallback
-      try {
-        console.log('Attempting to fetch dashboard stats as fallback');
-        fetchDashboardStats();
-      } catch (fallbackError) {
-        console.error('Fallback approach also failed:', fallbackError);
+      if (response.data.success) {
+        toast.success('Video status updated successfully');
+        fetchVideoSubmissions(); // Refresh the list
       }
+    } catch (error) {
+      console.error('Error updating video status:', error);
+      toast.error('Failed to update video status');
     }
   };
 
@@ -1426,7 +1358,12 @@ export default function Dashboard() {
                 <button
                   onClick={() => {
                     setIsEditingGoal(false);
-                    setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                    // Ensure we have a valid stats object before accessing monthlyGoal
+                    if (stats && typeof stats.monthlyGoal === 'number') {
+                      setMonthlyGoal(stats.monthlyGoal); // Reset to original value
+                    } else {
+                      setMonthlyGoal(fallbackStats.monthlyGoal); // Use fallback
+                    }
                   }}
                   className="px-2 py-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
                   disabled={isSavingGoal}
@@ -1479,14 +1416,34 @@ export default function Dashboard() {
               ) : (
                   <>
                     {(() => {
-                      const goalPercentage = monthlyGoal > 0
-                        ? Math.min(Math.round((stats?.currentMonthSales || 0) / monthlyGoal * 100), 100)
+                      // Safe access to currentMonthSales with fallback to 0
+                      const currentMonthSales = (stats && typeof stats.currentMonthSales === 'number') 
+                        ? stats.currentMonthSales 
                         : 0;
+                        
+                      // Calculate goal percentage safely
+                      const goalPercentage = monthlyGoal > 0
+                        ? Math.min(Math.round((currentMonthSales / monthlyGoal) * 100), 100)
+                        : 0;
+                        
+                      // Format numbers safely
+                      const formatNumber = (num: number) => {
+                        try {
+                          return num.toLocaleString();
+                        } catch (e) {
+                          return '0';
+                        }
+                      };
+                      
                       return (
                 <>
                   <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-black dark:text-white">L.E {stats?.currentMonthSales.toLocaleString()}</span>
-                    <span className="text-sm font-medium text-black dark:text-white">L.E {monthlyGoal.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-black dark:text-white">
+                      L.E {formatNumber(currentMonthSales)}
+                    </span>
+                    <span className="text-sm font-medium text-black dark:text-white">
+                      L.E {formatNumber(monthlyGoal)}
+                    </span>
                   </div>
                   <div className="w-full h-2.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                     <div 
@@ -1496,11 +1453,14 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between text-xs text-black/70 dark:text-white/70">
                     <span>{goalPercentage}% of monthly goal</span>
-                    <span>Goal: L.E {monthlyGoal.toLocaleString()}</span>
+                    <span>Goal: L.E {formatNumber(monthlyGoal)}</span>
+                  </div>
+                  <div className="text-xs text-black/60 dark:text-white/60 mt-1">
+                    Auto-refreshes with new orders
                   </div>
                         </>
                       );
-                    })()}
+                    })()} 
                 </>
               )}
             </div>
@@ -1708,7 +1668,76 @@ export default function Dashboard() {
             )}
           </CardContentUI>
         </DarkModePanel>
+
+        {/* Add the video submissions section */}
+        {renderVideoSubmissionsSection()}
       </div>
+    );
+  };
+
+  const renderVideoSubmissionsSection = () => {
+    if (!videoSubmissions.length) {
+      return null;
+    }
+
+    return (
+      <DarkModePanel className="bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10 rounded-lg overflow-hidden mt-8">
+        <CardHeaderUI>
+          <CardTitleUI className="text-lg font-semibold text-black dark:text-white">
+            Ambassador Links
+          </CardTitleUI>
+          <CardDescription className="text-black/70 dark:text-white/70">
+            View ambassador content links
+          </CardDescription>
+        </CardHeaderUI>
+        <CardContentUI>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-black/10 dark:border-white/10">
+                  <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Ambassador</th>
+                  <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Link</th>
+                  <th className="px-4 py-2 text-left font-medium text-black dark:text-white">Submission Date</th>
+                  <th className="px-4 py-2 text-right font-medium text-black dark:text-white">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {videoSubmissions.map((submission) => (
+                  <tr key={submission._id} className="border-b border-black/10 dark:border-white/10">
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-black dark:text-white">{submission.name}</div>
+                      <div className="text-sm text-black/70 dark:text-white/70">{submission.email}</div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <a
+                        href={submission.productVideoLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        {submission.productVideoLink}
+                      </a>
+                    </td>
+                    <td className="px-4 py-2 text-black/70 dark:text-white/70">
+                      {new Date(submission.videoSubmissionDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        onClick={() => {
+                          window.open(submission.productVideoLink, '_blank');
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContentUI>
+      </DarkModePanel>
     );
   };
 

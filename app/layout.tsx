@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import { Providers } from './providers';
 import ThemeInitializer from "./components/ThemeInitializer";
@@ -7,6 +7,11 @@ import ThemeInitializer from "./components/ThemeInitializer";
 const inter = Inter({
   subsets: ["latin"],
   variable: '--font-inter',
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: '--font-montserrat',
 });
 
 export const metadata: Metadata = {
@@ -24,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background transition-colors duration-300`}>
+      <body className={`${inter.className} ${montserrat.variable} bg-background transition-colors duration-300`}>
         <Providers>
           <ThemeInitializer />
           <main className="lg:pl-64 min-h-screen transition-all duration-300 pb-20 lg:pb-0">

@@ -975,17 +975,7 @@ export default function Dashboard() {
               </button>
             </div>
             
-            {activeSection === 'dashboard' && (
-              <div className="text-center py-8">
-                <div className="text-center text-red-500">Dashboard data is not available</div>
-                <button 
-                  onClick={fetchDashboardStats} 
-                  className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
-                >
-                  Retry Loading Data
-                </button>
-              </div>
-            )}
+        
             
             {activeSection === 'orders' && (
               <div className="w-full">
@@ -1727,25 +1717,15 @@ export default function Dashboard() {
       <Nav />
       <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
-          {/* Navigation for pages - improve mobile responsiveness */}
-          <div className="mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-md flex flex-wrap">
-            <div 
-              className="flex-1 py-3 md:py-10 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 bg-black text-white dark:bg-gray-900 text-center min-w-[120px]"
+          {/* Modern dashboard heading with Montserrat font */}
+          <div className="mb-8">
+            <h1 
+              className="font-montserrat text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
             >
-              Dashboard
-            </div>
-            <a 
-              href="/test" 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium mb-1 sm:mb-0 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center min-w-[120px]"
-            >
-              Orders
-            </a>
-            <a 
-              href="/test-settings" 
-              className="flex-1 py-2 px-4 rounded-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 text-center min-w-[120px]"
-            >
-              Settings
-            </a>
+             Dashboard
+            </h1>
+            <div className="h-1 w-24 sm:w-32 md:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
           </div>
 
           {/* Content based on active section */}

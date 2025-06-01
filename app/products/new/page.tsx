@@ -53,7 +53,6 @@ interface ProductFormData {
   sizeGuide: string;
   packaging: string;
   shippingReturns: string;
- 
 }
 
 export default function NewProduct() {
@@ -80,7 +79,6 @@ export default function NewProduct() {
     sizeGuide: '',
     packaging: '',
     shippingReturns: '',
-   
   });
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -413,7 +411,7 @@ export default function NewProduct() {
                 <div className="bg-white dark:bg-black p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
                   <h2 className="text-lg font-semibold mb-4 text-black dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Product Details</h2>
                 
-                  <div>
+                  {/* <div>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
                       <Dialog open={isNewCategoryModalOpen} onOpenChange={setIsNewCategoryModalOpen}>
@@ -527,7 +525,7 @@ export default function NewProduct() {
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Select a category or add a new one
                     </p>
-                  </div>
+                  </div> */}
 
                   {/* Removed color input section as requested */}
                 </div>
@@ -555,7 +553,6 @@ export default function NewProduct() {
                 sizeGuide={formData.sizeGuide}
                 packaging={formData.packaging}
                 shippingReturns={formData.shippingReturns}
-              
                 onChange={(field, value) => handleInputChange(field as keyof ProductFormData, value)}
               />
             </div>

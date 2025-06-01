@@ -12,10 +12,8 @@ interface Coupon {
   discount: number;
   productId: string | null;
   isActive: boolean;
-  usageLimit: number;
   usedCount: number;
   createdAt: string;
-  expiresAt: string | null;
 }
 
 export default function CouponsPage() {
@@ -28,9 +26,7 @@ export default function CouponsPage() {
   // New coupon form data
   const [newCoupon, setNewCoupon] = useState({
     code: '',
-    discount: 10,
-    usageLimit: -1,
-    expiresAt: ''
+    discount: 10
   });
 
   useEffect(() => {
@@ -62,8 +58,7 @@ export default function CouponsPage() {
       setIsCreating(true);
       
       const couponData = {
-        ...newCoupon,
-        expiresAt: newCoupon.expiresAt ? new Date(newCoupon.expiresAt).toISOString() : null
+        ...newCoupon
       };
       
       const response = await axios.post('/api/coupon', couponData);
@@ -72,9 +67,7 @@ export default function CouponsPage() {
         toast.success('Promo code created successfully');
         setNewCoupon({
           code: '',
-          discount: 10,
-          usageLimit: -1,
-          expiresAt: ''
+          discount: 10
         });
         fetchCoupons();
       }
@@ -124,14 +117,14 @@ export default function CouponsPage() {
           </div>
           
           {/* Create Promo Code Form */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+          <div className="bg-white dark:bg-black p-6 rounded-lg shadow mb-8">
             <h2 className="text-lg font-semibold mb-4 text-black dark:text-white">Create New Promo Code</h2>
             <p className="mb-4 text-gray-600 dark:text-gray-300">
               Create a promo code that works for all products in your store.
             </p>
             
             <form onSubmit={handleCreateCoupon} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Promo Code
@@ -161,36 +154,6 @@ export default function CouponsPage() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white"
                   />
                 </div>
-                
-                <div>
-                  <label htmlFor="usageLimit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Usage Limit
-                  </label>
-                  <input
-                    type="number"
-                    id="usageLimit"
-                    min="-1"
-                    value={newCoupon.usageLimit}
-                    onChange={(e) => setNewCoupon(prev => ({ ...prev, usageLimit: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    -1 = unlimited, 0 = disabled, 1+ = limited uses
-                  </p>
-                </div>
-                
-                <div>
-                  <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Expiration Date
-                  </label>
-                  <input
-                    type="date"
-                    id="expiresAt"
-                    value={newCoupon.expiresAt}
-                    onChange={(e) => setNewCoupon(prev => ({ ...prev, expiresAt: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white"
-                  />
-                </div>
               </div>
               
               <div className="flex justify-end">
@@ -206,7 +169,7 @@ export default function CouponsPage() {
           </div>
           
           {/* Promo Codes List */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="bg-white dark:bg-black rounded-lg shadow">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-black dark:text-white">Active Promo Codes</h2>
             </div>
@@ -222,7 +185,7 @@ export default function CouponsPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
+                  <thead className="bg-gray-50 dark:bg-black">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Code
@@ -231,20 +194,14 @@ export default function CouponsPage() {
                         Discount
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Usage
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Created
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Expires
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
                     {coupons.map((coupon) => (
                       <tr key={coupon._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -254,19 +211,7 @@ export default function CouponsPage() {
                           <div className="text-sm text-gray-900 dark:text-gray-300">{coupon.discount}%</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-gray-300">
-                            {coupon.usageLimit === -1 ? (
-                              <span>Unlimited</span>
-                            ) : (
-                              <span>{coupon.usedCount} / {coupon.usageLimit}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-gray-300">{formatDate(coupon.createdAt)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-gray-300">{formatDate(coupon.expiresAt)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button

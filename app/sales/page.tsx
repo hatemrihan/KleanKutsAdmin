@@ -1,571 +1,455 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Nav from '../sections/nav';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend 
-} from 'recharts';
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO, isValid } from 'date-fns';
+import * as XLSX from 'xlsx';
+import Nav from '../sections/nav';
+import { config } from '../../config';
+import { DarkModePanel, DarkModeInput } from '../components/ui/dark-mode-wrapper';
+import { Chart } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js';
 
-// Define date filter options
-const DATE_FILTERS = {
-  TODAY: 'today',
-  YESTERDAY: 'yesterday',
-  THIS_WEEK: 'this_week',
-  LAST_WEEK: 'last_week',
-  THIS_MONTH: 'this_month',
-  LAST_MONTH: 'last_month',
-  ALL_TIME: 'all_time',
-  CUSTOM: 'custom'
-};
+// Register the required chart components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
-// Define types for better TypeScript support
-interface Order {
-  _id: string;
-  customer?: {
-    name?: string;
-  };
-  createdAt: string | Date;
-  totalAmount: number;
-  status?: string;
-  products?: Array<{
-    name?: string;
-    price?: number;
-    quantity?: number;
-  }>;
-}
-
-interface DailySales {
+interface SalesData {
   date: string;
-  formattedDate: string;
-  sales: number;
-  orders: number;
-}
-
-interface ProductSales {
-  name: string;
-  sales: number;
-  quantity: number;
-}
-
-interface StatusDistribution {
-  status: string;
+  amount: number;
   count: number;
 }
 
-interface SalesData {
-  totalSales: number;
-  orderCount: number;
-  averageOrderValue: number;
-  dailySales: DailySales[];
-  productSales: ProductSales[];
-  statusDistribution: StatusDistribution[];
-}
-
-export default function SalesAnalytics() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState(DATE_FILTERS.THIS_MONTH);
-  const [customDateRange, setCustomDateRange] = useState({
-    startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    endDate: format(new Date(), 'yyyy-MM-dd')
-  });
-  const [refreshInterval, setRefreshInterval] = useState(5); // Minutes
-  const [autoRefresh, setAutoRefresh] = useState(true);
-
-  // Analytics data
-  const [salesData, setSalesData] = useState<SalesData>({
-    totalSales: 0,
-    orderCount: 0,
-    averageOrderValue: 0,
-    dailySales: [],
-    productSales: [],
-    statusDistribution: []
-  });
-
+export default function SalesAnalyticsPage() {
+  const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [timeframe, setTimeframe] = useState('weekly');
+  
   useEffect(() => {
-    fetchOrders();
-    
-    // Set up auto-refresh if enabled
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        fetchOrders();
-      }, refreshInterval * 60000); // Convert minutes to milliseconds
-      
-      return () => clearInterval(interval);
-    }
-  }, [dateFilter, customDateRange, autoRefresh, refreshInterval]);
-
-  const fetchOrders = async () => {
+    fetchSalesData();
+  }, [timeframe]);
+  
+  const fetchSalesData = async () => {
+    setIsLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.get('/api/orders');
+      // Fetch actual orders from the real e-commerce system
+      const response = await axios.get('/api/orders', {
+        withCredentials: true
+      });
       
-      if (response.data) {
-        const filteredOrders = filterOrdersByDate(response.data);
-        setOrders(filteredOrders);
-        analyzeOrders(filteredOrders);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to load orders data');
+      console.log('Raw orders data for analytics:', response.data);
+      
+      // Process the orders data to generate sales analytics
+      const processedData = processOrdersForAnalytics(response.data, timeframe);
+      setSalesData(processedData);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching sales data:', err);
+      setError('Failed to load sales data. Please try again later.');
+      toast.error('Failed to load sales data');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-
-  const filterOrdersByDate = (allOrders: Order[]): Order[] => {
-    const now = new Date();
-    let startDate: Date, endDate: Date;
-
-    switch (dateFilter) {
-      case DATE_FILTERS.TODAY:
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = new Date();
-        break;
-      case DATE_FILTERS.YESTERDAY:
-        startDate = new Date(subDays(now, 1).setHours(0, 0, 0, 0));
-        endDate = new Date(subDays(now, 1).setHours(23, 59, 59, 999));
-        break;
-      case DATE_FILTERS.THIS_WEEK:
-        startDate = startOfWeek(now);
-        endDate = now;
-        break;
-      case DATE_FILTERS.LAST_WEEK:
-        startDate = startOfWeek(subDays(now, 7));
-        endDate = endOfWeek(subDays(now, 7));
-        break;
-      case DATE_FILTERS.THIS_MONTH:
-        startDate = startOfMonth(now);
-        endDate = now;
-        break;
-      case DATE_FILTERS.LAST_MONTH:
-        startDate = startOfMonth(subDays(now, 30));
-        endDate = endOfMonth(subDays(now, 30));
-        break;
-      case DATE_FILTERS.CUSTOM:
-        startDate = new Date(`${customDateRange.startDate}T00:00:00`);
-        endDate = new Date(`${customDateRange.endDate}T23:59:59`);
-        break;
-      case DATE_FILTERS.ALL_TIME:
-      default:
-        return allOrders;
+  
+  // Process orders data into analytics format based on selected timeframe
+  const processOrdersForAnalytics = (orders: any[], selectedTimeframe: string): SalesData[] => {
+    if (!orders || orders.length === 0) {
+      return [];
     }
-
-    return allOrders.filter(order => {
-      // First, ensure order.createdAt is valid
-      const orderDate = order.createdAt ? 
-        (typeof order.createdAt === 'string' ? parseISO(order.createdAt) : new Date(order.createdAt)) 
-        : null;
-      
-      if (!orderDate || !isValid(orderDate)) return false;
-      
-      return orderDate >= startDate && orderDate <= endDate;
+    
+    // Sort orders by date
+    const sortedOrders = [...orders].sort((a, b) => {
+      const dateA = new Date(a.orderDate || a.createdAt);
+      const dateB = new Date(b.orderDate || b.createdAt);
+      return dateA.getTime() - dateB.getTime();
     });
-  };
-
-  const analyzeOrders = (filteredOrders: Order[]) => {
-    // Calculate total sales
-    const totalSales = filteredOrders.reduce((sum: number, order) => 
-      sum + (Number(order.totalAmount) || 0), 0);
     
-    // Order count
-    const orderCount = filteredOrders.length;
+    // Group by timeframe
+    const groupedData: Record<string, {amount: number, count: number}> = {};
     
-    // Average order value
-    const averageOrderValue = orderCount > 0 ? totalSales / orderCount : 0;
-    
-    // Group orders by day for daily sales chart
-    const dailySalesMap: Record<string, DailySales> = {};
-    filteredOrders.forEach(order => {
-      const orderDate = order.createdAt ? 
-        (typeof order.createdAt === 'string' ? parseISO(order.createdAt) : new Date(order.createdAt)) 
-        : new Date();
+    sortedOrders.forEach(order => {
+      const orderDate = new Date(order.orderDate || order.createdAt);
+      const orderAmount = Number(order.totalAmount || order.total || 0);
       
-      const dateString = format(orderDate, 'yyyy-MM-dd');
-      if (!dailySalesMap[dateString]) {
-        dailySalesMap[dateString] = {
-          date: dateString,
-          formattedDate: format(orderDate, 'MMM dd'),
-          sales: 0,
-          orders: 0
-        };
+      if (isNaN(orderAmount)) {
+        console.warn('Invalid order amount:', order);
+        return;
       }
       
-      dailySalesMap[dateString].sales += (Number(order.totalAmount) || 0);
-      dailySalesMap[dateString].orders += 1;
-    });
-    
-    const dailySales = Object.values(dailySalesMap).sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    // Group by product for product sales chart
-    const productSalesMap: Record<string, ProductSales> = {};
-    filteredOrders.forEach(order => {
-      if (Array.isArray(order.products)) {
-        order.products.forEach(product => {
-          const productName = product.name || 'Unknown Product';
-          if (!productSalesMap[productName]) {
-            productSalesMap[productName] = {
-              name: productName,
-              sales: 0,
-              quantity: 0
-            };
-          }
-          
-          productSalesMap[productName].sales += 
-            (Number(product.price) * Number(product.quantity)) || 0;
-          productSalesMap[productName].quantity += Number(product.quantity) || 0;
-        });
+      let timeKey = '';
+      
+      if (selectedTimeframe === 'weekly') {
+        // Get week number and year
+        const weekStart = new Date(orderDate);
+        const dayOfWeek = orderDate.getDay();
+        const diff = orderDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust for Sunday
+        weekStart.setDate(diff);
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        timeKey = `Week of ${weekStartStr}`;
+      } else if (selectedTimeframe === 'monthly') {
+        // Format: 'Jan 2025'
+        timeKey = orderDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      } else if (selectedTimeframe === 'yearly') {
+        // Format: '2025'
+        timeKey = orderDate.getFullYear().toString();
+      } else {
+        // Default to daily
+        timeKey = orderDate.toISOString().split('T')[0];
       }
-    });
-    
-    const productSales = Object.values(productSalesMap)
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 10); // Top 10 products
-    
-    // Order status distribution
-    const statusMap: Record<string, StatusDistribution> = {};
-    filteredOrders.forEach(order => {
-      const status = order.status || 'unknown';
-      if (!statusMap[status]) {
-        statusMap[status] = {
-          status,
-          count: 0
-        };
+      
+      if (!groupedData[timeKey]) {
+        groupedData[timeKey] = { amount: 0, count: 0 };
       }
-      statusMap[status].count += 1;
+      
+      groupedData[timeKey].amount += orderAmount;
+      groupedData[timeKey].count += 1;
     });
     
-    const statusDistribution = Object.values(statusMap);
-    
-    setSalesData({
-      totalSales,
-      orderCount,
-      averageOrderValue,
-      dailySales,
-      productSales,
-      statusDistribution
-    });
-  };
-
-  const handleDateFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDateFilter(e.target.value);
-  };
-
-  const handleCustomDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCustomDateRange(prev => ({
-      ...prev,
-      [name]: value
+    // Convert to array format
+    const result: SalesData[] = Object.keys(groupedData).map(date => ({
+      date,
+      amount: parseFloat(groupedData[date].amount.toFixed(2)),
+      count: groupedData[date].count
     }));
+    
+    return result;
   };
-
-  const formatCurrency = (value: number | string) => {
-    return `L.E ${Number(value).toLocaleString()}`;
+  
+  // Prepare chart data
+  const prepareChartData = () => {
+    const labels = salesData.map(item => item.date);
+    const amounts = salesData.map(item => item.amount);
+    const counts = salesData.map(item => item.count);
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Sales Amount (L.E)',
+          data: amounts,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        },
+        {
+          label: 'Orders Count',
+          data: counts,
+          borderColor: 'rgb(153, 102, 255)',
+          backgroundColor: 'rgba(153, 102, 255, 0.5)',
+          yAxisID: 'countAxis',
+        },
+      ],
+    };
   };
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
-  const renderDateFilterControls = () => {
+  
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index' as const,
+      intersect: false,
+    },
+    scales: {
+      y: {
+        type: 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        title: {
+          display: true,
+          text: 'Sales Amount (L.E)',
+          color: 'rgb(75, 192, 192)',
+        },
+        grid: {
+          color: 'rgba(200, 200, 200, 0.2)',
+        },
+      },
+      countAxis: {
+        type: 'linear' as const,
+        display: true,
+        position: 'right' as const,
+        title: {
+          display: true,
+          text: 'Orders Count',
+          color: 'rgb(153, 102, 255)',
+        },
+        grid: {
+          display: false,
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Sales Analytics`,
+      },
+    },
+  };
+  
+  const exportToExcel = () => {
+    try {
+      // Create workbook with sales data
+      if (!salesData.length) {
+        toast.error('No data available to export');
+        return;
+      }
+      
+      // Use XLSX library to create Excel file
+      const wb = XLSX ? XLSX.utils.book_new() : null;
+      if (!wb) {
+        // Fallback if XLSX is not available
+        const csvContent = 
+          'Date,Orders,Sales Amount,Average Order\n' +
+          salesData.map(item => {
+            return `"${item.date}",${item.count},${item.amount.toFixed(2)},${(item.amount/Math.max(1, item.count)).toFixed(2)}`;
+          }).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast.success('Sales data exported as CSV');
+        return;
+      }
+      
+      // Create worksheet
+      const wsData = [
+        ['Date', 'Orders', 'Sales Amount (L.E)', 'Average Order Value (L.E)'],
+        ...salesData.map(item => [
+          item.date,
+          item.count,
+          item.amount,
+          parseFloat((item.amount / Math.max(1, item.count)).toFixed(2))
+        ])
+      ];
+      
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      XLSX.utils.book_append_sheet(wb, ws, 'Sales Analytics');
+      
+      // Generate file and trigger download
+      XLSX.writeFile(wb, `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Sales data exported successfully');
+    } catch (err) {
+      console.error('Error exporting to Excel:', err);
+      toast.error('Failed to export sales data');
+    }
+  };
+  
+  const exportToJSON = () => {
+    try {
+      // Create a JSON blob and download it
+      const dataStr = JSON.stringify(salesData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create temporary link and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Sales data exported to JSON successfully');
+    } catch (err) {
+      console.error('Error exporting to JSON:', err);
+      toast.error('Failed to export sales data');
+    }
+  };
+  
+  if (isLoading) {
     return (
-      <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div>
-            <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">
-              Date Range
-            </label>
-            <select
-              id="dateFilter"
-              value={dateFilter}
-              onChange={handleDateFilterChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={DATE_FILTERS.TODAY}>Today</option>
-              <option value={DATE_FILTERS.YESTERDAY}>Yesterday</option>
-              <option value={DATE_FILTERS.THIS_WEEK}>This Week</option>
-              <option value={DATE_FILTERS.LAST_WEEK}>Last Week</option>
-              <option value={DATE_FILTERS.THIS_MONTH}>This Month</option>
-              <option value={DATE_FILTERS.LAST_MONTH}>Last Month</option>
-              <option value={DATE_FILTERS.ALL_TIME}>All Time</option>
-              <option value={DATE_FILTERS.CUSTOM}>Custom Range</option>
-            </select>
-          </div>
-          
-          {dateFilter === DATE_FILTERS.CUSTOM && (
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  id="startDate"
-                  name="startDate"
-                  value={customDateRange.startDate}
-                  onChange={handleCustomDateChange}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  id="endDate"
-                  name="endDate"
-                  value={customDateRange.endDate}
-                  onChange={handleCustomDateChange}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          )}
-          
-          <div className="flex items-center mt-4 sm:mt-0">
-            <label htmlFor="autoRefresh" className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                id="autoRefresh"
-                checked={autoRefresh}
-                onChange={() => setAutoRefresh(!autoRefresh)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Auto-refresh</span>
-            </label>
-            
-            {autoRefresh && (
-              <div className="ml-4">
-                <select
-                  value={refreshInterval}
-                  onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                  className="block px-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value={1}>Every 1 minute</option>
-                  <option value={5}>Every 5 minutes</option>
-                  <option value={15}>Every 15 minutes</option>
-                  <option value={30}>Every 30 minutes</option>
-                </select>
-              </div>
-            )}
-            
-            <button
-              onClick={fetchOrders}
-              className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Refresh Now
-            </button>
-          </div>
+      <div className="flex min-h-screen dark:bg-black">
+        <Nav />
+        <div className="flex-1 flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 dark:border-green-400"></div>
         </div>
       </div>
     );
-  };
-
+  }
+  
+  if (error) {
+    return (
+      <div className="flex min-h-screen dark:bg-black">
+        <Nav />
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-red-600 dark:text-red-400">{error}</div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-6 bg-gray-50">
+      <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Sales Analytics</h1>
-          
-          {renderDateFilterControls()}
-          
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
             </div>
-          ) : (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
-                  <p className="text-3xl font-bold">{formatCurrency(salesData.totalSales)}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    For {dateFilter === DATE_FILTERS.ALL_TIME ? 'all time' : 'selected period'}
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500">Total Orders</h3>
-                  <p className="text-3xl font-bold">{salesData.orderCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    For {dateFilter === DATE_FILTERS.ALL_TIME ? 'all time' : 'selected period'}
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500">Average Order Value</h3>
-                  <p className="text-3xl font-bold">{formatCurrency(salesData.averageOrderValue)}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    For {dateFilter === DATE_FILTERS.ALL_TIME ? 'all time' : 'selected period'}
-                  </p>
-                </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+              <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner mx-auto">
+                <button
+                  onClick={() => setTimeframe('weekly')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'weekly' ? 
+                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
+                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setTimeframe('monthly')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'monthly' ? 
+                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
+                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setTimeframe('yearly')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out ${timeframe === 'yearly' ? 
+                    'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm transform translate-y-0' : 
+                    'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                >
+                  Yearly
+                </button>
               </div>
               
-              {/* Daily Sales Chart */}
-              <div className="bg-white p-4 rounded-lg shadow mb-6">
-                <h2 className="text-lg font-medium mb-4">Daily Sales</h2>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={salesData.dailySales}
-                      margin={{ top: 10, right: 30, left: 20, bottom: 40 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="formattedDate" 
-                        angle={-45} 
-                        textAnchor="end"
-                        height={70}
-                      />
-                      <YAxis />
-                      <Tooltip formatter={(value: any) => formatCurrency(Array.isArray(value) ? value[0] : value)} />
-                      <Legend />
-                      <Area 
-                        type="monotone" 
-                        dataKey="sales" 
-                        stroke="#8884d8" 
-                        fill="#8884d8" 
-                        name="Sales" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={exportToExcel}
+                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                >
+                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
+                  <span className="relative flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Export to Excel
+                  </span>
+                </button>
+                <button
+                  onClick={exportToJSON}
+                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                >
+                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
+                  <span className="relative flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Export to JSON
+                  </span>
+                </button>
               </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Top Products */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <h2 className="text-lg font-medium mb-4">Top Products by Sales</h2>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={salesData.productSales}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-                      >
-                        <XAxis type="number" />
-                        <YAxis 
-                          dataKey="name" 
-                          type="category" 
-                          width={90}
-                          tick={{ fontSize: 12 }}
-                        />
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <Tooltip formatter={(value: any) => formatCurrency(Array.isArray(value) ? value[0] : value)} />
-                        <Bar dataKey="sales" fill="#82ca9d" name="Sales" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <DarkModePanel className="rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Sales</h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                L.E {salesData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
+              </p>
+            </DarkModePanel>
+            
+            <DarkModePanel className="rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Orders</h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                {salesData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
+              </p>
+            </DarkModePanel>
+            
+            <DarkModePanel className="rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Average Order Value</h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                L.E {(salesData.reduce((sum, item) => sum + item.amount, 0) / 
+                      Math.max(1, salesData.reduce((sum, item) => sum + item.count, 0))).toFixed(2)}
+              </p>
+            </DarkModePanel>
+          </div>
+          
+          <DarkModePanel className="rounded-lg shadow-sm p-6 mb-8">
+            <div className="h-[400px] w-full">
+              {salesData.length > 0 ? (
+                <Chart type="bar" data={prepareChartData()} options={chartOptions} />
+              ) : (
+                <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400">
+                  No sales data available for the selected timeframe
                 </div>
-                
-                {/* Order Status Distribution */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <h2 className="text-lg font-medium mb-4">Order Status Distribution</h2>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={salesData.statusDistribution}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          dataKey="count"
-                          nameKey="status"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {salesData.statusDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: any) => Array.isArray(value) ? value[0] : value} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Recent Orders */}
-              <div className="bg-white p-4 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">Recent Orders</h2>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Order ID
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Customer
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Amount
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
+              )}
+            </div>
+          </DarkModePanel>
+          
+          <DarkModePanel className="rounded-lg shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead>
+                  <tr>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sales Amount</th>
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Average Order</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {salesData.length > 0 ? (
+                    salesData.map((item, index) => (
+                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.date}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">L.E {item.amount.toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          L.E {(item.amount / Math.max(1, item.count)).toFixed(2)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {orders.slice(0, 10).map((order) => {
-                        const orderDate = order.createdAt ? 
-                          (typeof order.createdAt === 'string' ? parseISO(order.createdAt) : new Date(order.createdAt)) 
-                          : new Date();
-                          
-                        return (
-                          <tr key={order._id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {order._id.substring(order._id.length - 8)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.customer?.name || 'Unknown Customer'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {format(orderDate, 'MMM dd, yyyy HH:mm')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {formatCurrency(order.totalAmount)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                                order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {order.status ? `${order.status.charAt(0).toUpperCase()}${order.status.slice(1)}` : 'Unknown'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      
-                      {orders.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                            No orders found for the selected period.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No data available for the selected timeframe
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </DarkModePanel>
         </div>
       </main>
     </div>
   );
-} 
+}

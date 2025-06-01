@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import Nav from '../sections/nav';
 import { Input } from '../components/ui/input';
 import { config } from '../../config';
+import * as XLSX from 'xlsx';
 import {
   Select,
   SelectContent,
@@ -72,6 +73,15 @@ interface Order {
   couponCode?: string;
   couponDiscount?: number;
   ambassadorId?: string;
+  promoCode?: {
+    code: string;
+    value: number;
+    type: string;
+  };
+  ambassador?: {
+    ambassadorId: string;
+    couponCode: string;
+  };
 }
 
 interface ApiErrorResponse {
@@ -87,22 +97,42 @@ const statusColors: Record<string, string> = {
 };
 
 const getCouponDisplay = (order: Order) => {
+  // Extract coupon information from all possible sources
+  const couponCode = order.couponCode || 
+                     (order.promoCode && order.promoCode.code) || 
+                     (order.ambassador && order.ambassador.couponCode);
+  
+  const couponDiscount = order.couponDiscount || 
+                         (order.promoCode && order.promoCode.value) || 
+                         0;
+  
+  const ambassadorId = order.ambassadorId || 
+                       (order.ambassador && order.ambassador.ambassadorId) || 
+                       undefined; // Remove the ambassadorId reference from promoCode
+
   console.log('DEBUG getCouponDisplay input:', {
     orderId: order._id,
-    couponCode: order.couponCode,
-    couponDiscount: order.couponDiscount,
-    ambassadorId: order.ambassadorId
+    extractedCode: couponCode,
+    extractedDiscount: couponDiscount,
+    extractedAmbassadorId: ambassadorId,
+    originalData: {
+      couponCode: order.couponCode,
+      couponDiscount: order.couponDiscount,
+      ambassadorId: order.ambassadorId,
+      promoCode: order.promoCode,
+      ambassador: order.ambassador
+    }
   });
 
-  if (!order.couponCode) {
+  if (!couponCode) {
     console.log('DEBUG: No coupon code found for order:', order._id);
     return null;
   }
   
   const display = {
-    code: order.couponCode,
-    discount: order.couponDiscount,
-    isAmbassador: !!order.ambassadorId
+    code: couponCode,
+    discount: couponDiscount,
+    isAmbassador: !!ambassadorId
   };
 
   console.log('DEBUG getCouponDisplay output:', display);
@@ -124,41 +154,22 @@ export default function OrdersPage() {
       const response = await axios.get('/api/orders');
       console.log('Raw orders data:', response.data);
       
-      // Debug log for coupon information
+      // Enhanced debug logging for orders
       response.data.forEach((order: any) => {
-        if (order.couponCode) {
-          console.log('Order with coupon found:', {
-            orderId: order._id,
-            couponCode: order.couponCode,
-            couponDiscount: order.couponDiscount,
-            ambassadorId: order.ambassadorId
-          });
-        }
+        console.log('DEBUG Raw order:', {
+          id: order._id,
+          couponCode: order.couponCode,
+          couponDiscount: order.couponDiscount,
+          ambassadorId: order.ambassadorId,
+          promoCode: order.promoCode,
+          ambassador: order.ambassador
+        });
       });
       
       // Transform and validate orders data
       const validatedOrders = response.data.map((order: any) => {
         // Skip invalid orders
         if (!order) return null;
-
-        // Debug payment method and screenshots
-        if (order.paymentMethod || order.transactionScreenshot) {
-          console.log('DEBUG Order payment data:', {
-            id: order._id,
-            paymentMethod: order.paymentMethod,
-            hasScreenshot: !!order.transactionScreenshot,
-            screenshotUrl: order.transactionScreenshot
-          });
-        }
-
-        // Enhanced coupon debugging
-        console.log('DEBUG Raw order data:', {
-          id: order._id,
-          couponCode: order.couponCode,
-          couponDiscount: order.couponDiscount,
-          ambassadorId: order.ambassadorId,
-          fullOrder: order
-        });
 
         // Create a default customer object
         const defaultCustomer = {
@@ -167,6 +178,20 @@ export default function OrdersPage() {
           phone: 'No phone provided',
           address: 'No address provided'
         };
+
+        // Normalize coupon information
+        const normalizedCouponInfo = {
+          couponCode: order.couponCode || order.promoCode?.code || null,
+          couponDiscount: order.couponDiscount || order.promoCode?.value || null,
+          ambassadorId: order.ambassadorId || order.ambassador?.ambassadorId || null,
+          promoCode: order.promoCode || null,
+          ambassador: order.ambassador || null
+        };
+
+        console.log('DEBUG Normalized coupon info:', {
+          orderId: order._id,
+          ...normalizedCouponInfo
+        });
 
         // Handle old order format (with firstName/lastName)
         if (!order.customer && (order.firstName || order.lastName)) {
@@ -181,10 +206,8 @@ export default function OrdersPage() {
             totalAmount: Number(order.total || order.totalAmount) || 0,
             paymentMethod: order.paymentMethod || 'cod',
             transactionScreenshot: order.transactionScreenshot || null,
-            // Explicitly preserve coupon information
-            couponCode: order.couponCode || null,
-            couponDiscount: order.couponDiscount || null,
-            ambassadorId: order.ambassadorId || null,
+            // Use normalized coupon information
+            ...normalizedCouponInfo,
             products: Array.isArray(order.products) ? order.products.map((product: any) => ({
               productId: product.id || product.productId || '',
               name: product.name || 'Unknown Product',
@@ -208,7 +231,6 @@ export default function OrdersPage() {
             phone: customer.phone || defaultCustomer.phone,
             address: customer.address || defaultCustomer.address
           },
-          // Ensure products array is properly formatted
           products: Array.isArray(order.products) ? order.products.map((product: any) => ({
             productId: product.productId || product.id || '',
             name: product.name || 'Unknown Product',
@@ -217,22 +239,18 @@ export default function OrdersPage() {
             size: product.size || 'N/A',
             image: product.image || ''
           })) : [],
-          // Ensure totalAmount is a number
           totalAmount: Number(order.totalAmount || order.total) || 0,
-          // Ensure payment fields are preserved
           paymentMethod: order.paymentMethod || 'cod',
           transactionScreenshot: order.transactionScreenshot || null,
-          // Explicitly preserve coupon information
-          couponCode: order.couponCode || null,
-          couponDiscount: order.couponDiscount || null,
-          ambassadorId: order.ambassadorId || null
+          // Use normalized coupon information
+          ...normalizedCouponInfo
         };
 
         console.log('DEBUG Transformed order:', transformedOrder);
         return transformedOrder;
-      }).filter(Boolean); // Remove any null orders
+      }).filter(Boolean);
       
-      console.log('Validated orders:', validatedOrders);
+      console.log('Final validated orders:', validatedOrders);
       setOrders(validatedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -276,6 +294,92 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Failed to delete order');
+    }
+  };
+  
+  // Export orders to Excel
+  const exportOrdersToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filteredOrders.map(order => {
+        // Calculate total without discounts/promos
+        const productTotal = order.products.reduce((sum, product) => {
+          return sum + (product.price * product.quantity);
+        }, 0);
+        
+        // Get delivery cost (assuming it's the difference between totalAmount and product prices)
+        // If there's a coupon, we need to add back the discount to get the original total
+        const couponDiscount = order.couponDiscount || 0;
+        const originalTotal = order.totalAmount + (productTotal * (couponDiscount / 100) || 0);
+        const deliveryCost = Math.max(0, originalTotal - productTotal);
+        
+        // Calculate the total we want to show (product cost + delivery, no discounts)
+        const exportTotal = productTotal + deliveryCost;
+        
+        // Prepare customer info
+        const customerName = (order.customer?.name ?? `${order.firstName ?? ""} ${order.lastName ?? ""}`.trim()) || "Unknown";
+        const customerEmail = order.customer?.email ?? order.email ?? "N/A";
+        const customerPhone = order.customer?.phone ?? order.phone ?? "N/A";
+        const customerAddress = order.customer?.address ?? order.address ?? "N/A";
+        
+        // Format date
+        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 
+                         order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A";
+        
+        // Prepare products as a string
+        const productsText = order.products.map(p => 
+          `${p.name} (${p.size}) x${p.quantity} - $${p.price.toFixed(2)}`
+        ).join("\n");
+        
+        return {
+          "Order ID": order._id,
+          "Order Date": orderDate,
+          "Customer Name": customerName,
+          "Email": customerEmail,
+          "Phone": customerPhone,
+          "Address": customerAddress,
+          "Payment Method": order.paymentMethod || "N/A",
+          "Status": order.status,
+          "Products": productsText,
+          "Product Cost": productTotal.toFixed(2),
+          "Delivery Cost": deliveryCost.toFixed(2),
+          "Total Cost": exportTotal.toFixed(2),
+          "Notes": order.notes || ""
+        };
+      });
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Set column widths
+      const columnWidths = [
+        { wch: 24 }, // Order ID
+        { wch: 12 }, // Order Date
+        { wch: 20 }, // Customer Name
+        { wch: 25 }, // Email
+        { wch: 15 }, // Phone
+        { wch: 30 }, // Address
+        { wch: 15 }, // Payment Method
+        { wch: 12 }, // Status
+        { wch: 40 }, // Products
+        { wch: 12 }, // Product Cost
+        { wch: 12 }, // Delivery Cost
+        { wch: 12 }, // Total Cost
+        { wch: 30 }  // Notes
+      ];
+      worksheet['!cols'] = columnWidths;
+      
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+      
+      // Generate Excel file and trigger download
+      XLSX.writeFile(workbook, `orders_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast.success('Orders exported successfully');
+    } catch (error) {
+      console.error('Error exporting orders:', error);
+      toast.error('Failed to export orders');
     }
   };
 
@@ -327,7 +431,9 @@ export default function OrdersPage() {
       <main className="flex-1 p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
               <DarkModeInput
                 type="search"
@@ -336,19 +442,27 @@ export default function OrdersPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[200px] dark:bg-black dark:border-gray-700 dark:text-white">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-black dark:border-gray-700">
-                  <SelectItem value="all" className="dark:text-gray-100 dark:focus:bg-gray-700">All Status</SelectItem>
-                  <SelectItem value="pending" className="dark:text-gray-100 dark:focus:bg-gray-700">Pending</SelectItem>
-                  <SelectItem value="processing" className="dark:text-gray-100 dark:focus:bg-gray-700">Processing</SelectItem>
-                  <SelectItem value="shipped" className="dark:text-gray-100 dark:focus:bg-gray-700">Shipped</SelectItem>
-                  <SelectItem value="delivered" className="dark:text-gray-100 dark:focus:bg-gray-700">Delivered</SelectItem>
-                  <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-row gap-2 w-full">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[200px] dark:bg-black dark:border-gray-700 dark:text-white">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-black dark:border-gray-700">
+                    <SelectItem value="all" className="dark:text-gray-100 dark:focus:bg-gray-700">All Status</SelectItem>
+                    <SelectItem value="pending" className="dark:text-gray-100 dark:focus:bg-gray-700">Pending</SelectItem>
+                    <SelectItem value="processing" className="dark:text-gray-100 dark:focus:bg-gray-700">Processing</SelectItem>
+                    <SelectItem value="shipped" className="dark:text-gray-100 dark:focus:bg-gray-700">Shipped</SelectItem>
+                    <SelectItem value="delivered" className="dark:text-gray-100 dark:focus:bg-gray-700">Delivered</SelectItem>
+                    <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <button
+                  onClick={exportOrdersToExcel}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800 whitespace-nowrap min-w-fit"
+                >
+                  Export to Excel
+                </button>
+              </div>
             </div>
           </div>
 
@@ -450,23 +564,39 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {order.couponCode ? (
-                            <div className="flex flex-col gap-1">
-                              <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                                ${order.ambassadorId ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                                'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                                {order.couponCode}
-                              </span>
-                              {order.couponDiscount && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  {order.couponDiscount}% off
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
-                          )}
-                        </td>
+            {(() => {
+              // Extract coupon information from all possible sources
+              const couponCode = order.couponCode || 
+                                (order.promoCode && order.promoCode.code) || 
+                                (order.ambassador && order.ambassador.couponCode);
+              
+              const couponDiscount = order.couponDiscount || 
+                                    (order.promoCode && order.promoCode.value) || 
+                                    0;
+              
+              const ambassadorId = order.ambassadorId || 
+                                  (order.ambassador && order.ambassador.ambassadorId) || 
+                                  undefined; // Remove the ambassadorId reference from promoCode
+              
+              return couponCode ? (
+                <div className="flex flex-col gap-1">
+                  <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                    ${ambassadorId ? 
+                      'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                      'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                    {couponCode}
+                  </span>
+                  {couponDiscount > 0 && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {couponDiscount}% off
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
+              );
+            })()} 
+          </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -528,16 +658,17 @@ export default function OrdersPage() {
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             L.E {(order.totalAmount ?? order.total ?? 0).toFixed(2)}
                           </div>
-                          {order.couponCode && (
+                          {(order.couponCode || order.promoCode?.code) && (
                             <div className="mt-1">
                               <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                                ${order.ambassadorId ? 'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                                'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                                {order.couponCode}
+                                ${order.ambassadorId || order.ambassador?.ambassadorId ? 
+                                  'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
+                                  'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
+                                {order.couponCode || order.promoCode?.code}
                               </span>
-                              {order.couponDiscount && (
+                              {(order.couponDiscount || order.promoCode?.value) && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  {order.couponDiscount}% off
+                                  {order.couponDiscount || order.promoCode?.value}% off
                                 </div>
                               )}
                             </div>

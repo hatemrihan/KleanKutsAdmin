@@ -126,8 +126,26 @@ export default function NewsletterAdmin() {
         
         toast.success('CSV exported successfully');
       } else {
-        // For JSON, just show a success message
-        await axios.post('/api/newsletter/subscribers', payload);
+        // For JSON, fetch the data and trigger a download
+        const response = await axios.get('/api/newsletter/subscribers', {
+          params: {
+            source: sourceFilter !== 'all' ? sourceFilter : undefined,
+            subscribed: statusFilter === 'true' ? true : statusFilter === 'false' ? false : undefined
+          }
+        });
+        
+        // Create JSON blob and trigger download
+        const jsonData = JSON.stringify(response.data, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `newsletter_subscribers_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        
         toast.success('JSON exported successfully');
       }
     } catch (error) {

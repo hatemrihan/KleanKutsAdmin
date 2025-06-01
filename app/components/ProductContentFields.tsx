@@ -2,6 +2,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProductContentFieldsProps {
+  materials?: string[];
   sizeGuide: string;
   packaging: string;
   shippingReturns: string;
@@ -9,6 +10,7 @@ interface ProductContentFieldsProps {
 }
 
 export default function ProductContentFields({
+  materials = [],
   sizeGuide,
   packaging,
   shippingReturns,
@@ -40,6 +42,58 @@ export default function ProductContentFields({
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           These fields are only visible to admins and can be used to set standardized content that will be displayed on the product page.
         </p>
+        
+        {/* Materials */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">Materials</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {materials.map((material, index) => (
+              <div key={index} className="flex items-center bg-gray-100 dark:bg-gray-800 rounded px-2 py-1">
+                <span className="text-sm text-gray-800 dark:text-gray-200">{material}</span>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const updatedMaterials = [...materials];
+                    updatedMaterials.splice(index, 1);
+                    onChange('materials', updatedMaterials);
+                  }}
+                  className="ml-2 text-gray-500 hover:text-red-500"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex">
+            <input
+              type="text"
+              placeholder="Add a material..."
+              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md flex-1 bg-white dark:bg-black dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim() !== '') {
+                  e.preventDefault();
+                  onChange('materials', [...materials, e.currentTarget.value.trim()]);
+                  e.currentTarget.value = '';
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="ml-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              onClick={(e) => {
+                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                if (input.value.trim() !== '') {
+                  onChange('materials', [...materials, input.value.trim()]);
+                  input.value = '';
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
         
         {/* Size Guide */}
         <div>

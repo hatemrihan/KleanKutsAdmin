@@ -101,7 +101,7 @@ export default function NewsletterAdmin() {
     }
   };
 
-  const exportSubscribers = async (format: 'json' | 'csv') => {
+  const exportSubscribers = async (format: 'txt' | 'csv') => {
     try {
       const payload = {
         format,
@@ -109,45 +109,22 @@ export default function NewsletterAdmin() {
         subscribed: statusFilter === 'true' ? true : statusFilter === 'false' ? false : undefined
       };
       
-      if (format === 'csv') {
-        // For CSV, we need to handle it differently to trigger a download
-        const response = await axios.post('/api/newsletter/subscribers', payload, {
-          responseType: 'blob' // Important for handling the file download
-        });
-        
-        // Create a blob URL and trigger download
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'newsletter_subscribers.csv');
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        
-        toast.success('CSV exported successfully');
-      } else {
-        // For JSON, fetch the data and trigger a download
-        const response = await axios.get('/api/newsletter/subscribers', {
-          params: {
-            source: sourceFilter !== 'all' ? sourceFilter : undefined,
-            subscribed: statusFilter === 'true' ? true : statusFilter === 'false' ? false : undefined
-          }
-        });
-        
-        // Create JSON blob and trigger download
-        const jsonData = JSON.stringify(response.data, null, 2);
-        const blob = new Blob([jsonData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `newsletter_subscribers_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        
-        toast.success('JSON exported successfully');
-      }
+      // For both formats, we need to handle it as a blob download
+      const response = await axios.post('/api/newsletter/subscribers', payload, {
+        responseType: 'blob'
+      });
+      
+      // Create a blob URL and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `newsletter_subscribers.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`${format.toUpperCase()} exported successfully`);
     } catch (error) {
       console.error('Error exporting subscribers:', error);
       toast.error('Failed to export subscribers');
@@ -265,12 +242,12 @@ export default function NewsletterAdmin() {
                   <div className="dropdown-content absolute right-0 mt-2 w-48 bg-white dark:bg-black shadow-lg rounded-md border dark:border-white dark:border-opacity-20 z-10">
                     <button 
                       onClick={() => {
-                        exportSubscribers('json');
+                        exportSubscribers('txt');
                         setExportDropdownOpen(false);
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
                     >
-                      Export as JSON
+                      Export as TXT
                     </button>
                     <button 
                       onClick={() => {

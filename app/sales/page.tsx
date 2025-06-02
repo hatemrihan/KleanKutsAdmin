@@ -52,105 +52,82 @@ export default function SalesAnalyticsPage() {
   
   const fetchSalesData = async () => {
     setIsLoading(true);
+    setError('');
     try {
-      // Fetch actual orders from the real e-commerce system
-      const response = await axios.get('/api/orders', {
-        withCredentials: true,
-        // Add timeout to prevent hanging requests
-        timeout: 10000,
-        // Add error handling headers
+      const response = await axios.get('/api/dashboard/real-sales', {
+        params: { timeframe },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
+        },
+        timeout: 30000
       });
       
-      console.log('Raw orders data for analytics:', response.data);
-      
-      // Check if response data is valid
-      if (!response.data || !Array.isArray(response.data)) {
+      if (!response.data || typeof response.data !== 'object') {
         throw new Error('Invalid response format from API');
       }
+
+      const orders = response.data.orders || [];
+      console.log('Raw orders data for analytics:', orders);
       
-      // Process the orders data to generate sales analytics
-      const processedData = processOrdersForAnalytics(response.data, timeframe);
+      const processedData = processOrdersForAnalytics(orders);
       setSalesData(processedData);
-      setError('');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching sales data:', err);
-      setError('Failed to load sales data. Please try again later.');
-      toast.error('Failed to load sales data. Check your network connection and try again.');
-      // Set empty sales data instead of leaving it undefined
+      setError(err.response?.data?.message || 'Failed to load sales data. Please try again later.');
       setSalesData([]);
     } finally {
       setIsLoading(false);
     }
   };
   
+  const processOrdersForAnalytics = (orders: any[]): SalesData[] => {
+    if (!orders || orders.length === 0) return [];
+    
+    const groupedData: Record<string, { amount: number; count: number }> = {};
+    
+    orders.forEach(order => {
+      if (order.status === 'cancelled') return;
 
-  
-  // Process orders data into analytics format based on selected timeframe
-  const processOrdersForAnalytics = (orders: any[], selectedTimeframe: string): SalesData[] => {
-    if (!orders || orders.length === 0) {
-      return [];
-    }
-    
-    // Sort orders by date
-    const sortedOrders = [...orders].sort((a, b) => {
-      const dateA = new Date(a.orderDate || a.createdAt);
-      const dateB = new Date(b.orderDate || b.createdAt);
-      return dateA.getTime() - dateB.getTime();
-    });
-    
-    // Group by timeframe
-    const groupedData: Record<string, {amount: number, count: number}> = {};
-    
-    sortedOrders.forEach(order => {
-      const orderDate = new Date(order.orderDate || order.createdAt);
-      const orderAmount = Number(order.totalAmount || order.total || 0);
+      const date = new Date(order.createdAt || order.orderDate);
+      const amount = Number(order.totalAmount || order.total || 0);
       
-      if (isNaN(orderAmount)) {
-        console.warn('Invalid order amount:', order);
-        return;
-      }
-      
+      if (isNaN(amount) || !date) return;
+
       let timeKey = '';
-      
-      if (selectedTimeframe === 'weekly') {
-        // Get week number and year
-        const weekStart = new Date(orderDate);
-        const dayOfWeek = orderDate.getDay();
-        const diff = orderDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust for Sunday
-        weekStart.setDate(diff);
-        const weekStartStr = weekStart.toISOString().split('T')[0];
-        timeKey = `Week of ${weekStartStr}`;
-      } else if (selectedTimeframe === 'monthly') {
-        // Format: 'Jan 2025'
-        timeKey = orderDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-      } else if (selectedTimeframe === 'yearly') {
-        // Format: '2025'
-        timeKey = orderDate.getFullYear().toString();
-      } else {
-        // Default to daily
-        timeKey = orderDate.toISOString().split('T')[0];
+      switch (timeframe) {
+        case 'weekly':
+          const weekStart = new Date(date);
+          const dayOfWeek = date.getDay();
+          const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+          weekStart.setDate(diff);
+          timeKey = `Week of ${weekStart.toISOString().split('T')[0]}`;
+          break;
+        case 'monthly':
+          timeKey = date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          break;
+        case 'yearly':
+          timeKey = date.getFullYear().toString();
+          break;
+        default:
+          timeKey = date.toISOString().split('T')[0];
       }
       
       if (!groupedData[timeKey]) {
         groupedData[timeKey] = { amount: 0, count: 0 };
       }
       
-      groupedData[timeKey].amount += orderAmount;
+      groupedData[timeKey].amount += amount;
       groupedData[timeKey].count += 1;
     });
     
-    // Convert to array format
-    const result: SalesData[] = Object.keys(groupedData).map(date => ({
-      date,
-      amount: parseFloat(groupedData[date].amount.toFixed(2)),
-      count: groupedData[date].count
-    }));
-    
-    return result;
+    return Object.entries(groupedData)
+      .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
+      .map(([date, data]) => ({
+        date,
+        amount: Number(data.amount.toFixed(2)),
+        count: data.count
+      }));
   };
   
   // Prepare chart data
@@ -225,82 +202,42 @@ export default function SalesAnalyticsPage() {
     },
   };
   
-  const exportToExcel = () => {
+  const exportData = async (format: 'txt' | 'json') => {
     try {
-      // Create workbook with sales data
       if (!salesData.length) {
         toast.error('No data available to export');
         return;
       }
-      
-      // Use XLSX library to create Excel file
-      const wb = XLSX ? XLSX.utils.book_new() : null;
-      if (!wb) {
-        // Fallback if XLSX is not available
-        const csvContent = 
-          'Date,Orders,Sales Amount,Average Order\n' +
-          salesData.map(item => {
-            return `"${item.date}",${item.count},${item.amount.toFixed(2)},${(item.amount/Math.max(1, item.count)).toFixed(2)}`;
-          }).join('\n');
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        toast.success('Sales data exported as CSV');
-        return;
+
+      let content: string;
+      let filename: string;
+      let type: string;
+
+      if (format === 'txt') {
+        content = salesData.map(item => 
+          `Date: ${item.date}\nOrders: ${item.count}\nSales Amount: L.E ${item.amount}\nAverage Order: L.E ${(item.amount/item.count).toFixed(2)}\n-------------------`
+        ).join('\n');
+        filename = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.txt`;
+        type = 'text/plain';
+      } else {
+        content = JSON.stringify(salesData, null, 2);
+        filename = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.json`;
+        type = 'application/json';
       }
-      
-      // Create worksheet
-      const wsData = [
-        ['Date', 'Orders', 'Sales Amount (L.E)', 'Average Order Value (L.E)'],
-        ...salesData.map(item => [
-          item.date,
-          item.count,
-          item.amount,
-          parseFloat((item.amount / Math.max(1, item.count)).toFixed(2))
-        ])
-      ];
-      
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      XLSX.utils.book_append_sheet(wb, ws, 'Sales Analytics');
-      
-      // Generate file and trigger download
-      XLSX.writeFile(wb, `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.xlsx`);
-      toast.success('Sales data exported successfully');
-    } catch (err) {
-      console.error('Error exporting to Excel:', err);
-      toast.error('Failed to export sales data');
-    }
-  };
-  
-  const exportToJSON = () => {
-    try {
-      // Create a JSON blob and download it
-      const dataStr = JSON.stringify(salesData, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
+
+      const blob = new Blob([content], { type });
       const url = URL.createObjectURL(blob);
-      
-      // Create temporary link and trigger download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      document.body.removeChild(a);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      toast.success('Sales data exported to JSON successfully');
+
+      toast.success(`Sales data exported as ${format.toUpperCase()}`);
     } catch (err) {
-      console.error('Error exporting to JSON:', err);
+      console.error(`Error exporting to ${format}:`, err);
       toast.error('Failed to export sales data');
     }
   };
@@ -310,18 +247,7 @@ export default function SalesAnalyticsPage() {
       <div className="flex min-h-screen dark:bg-black">
         <Nav />
         <div className="flex-1 flex justify-center items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 dark:border-green-400"></div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="flex min-h-screen dark:bg-black">
-        <Nav />
-        <div className="flex-1 flex justify-center items-center">
-          <div className="text-red-600 dark:text-red-400">{error}</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black dark:border-white"></div>
         </div>
       </div>
     );
@@ -330,147 +256,110 @@ export default function SalesAnalyticsPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+      <main className="flex-1 p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-black dark:text-white">Sales Analytics</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => exportData('txt')}
+                className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-opacity-90"
+              >
+                Export as TXT
+              </button>
+              <button
+                onClick={() => exportData('json')}
+                className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-opacity-90"
+              >
+                Export as JSON
+              </button>
             </div>
           </div>
-                    <section className="p-6 bg-white dark:bg-black shadow rounded-lg mb-6">
-            <h2 className="text-xl font-semibold mb-4">Sales Analytics</h2>
-            
 
-            
-            {/* Timeframe selector */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Select Timeframe:</label>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => setTimeframe('daily')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'daily' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  Daily
-                </button>
-                <button 
-                  onClick={() => setTimeframe('weekly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'weekly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  Weekly
-                </button>
-                <button 
-                  onClick={() => setTimeframe('monthly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'monthly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  Monthly
-                </button>
-                <button 
-                  onClick={() => setTimeframe('yearly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'yearly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  Yearly
-                </button>
+          {error ? (
+            <div className="text-red-600 dark:text-red-400 p-4 rounded bg-red-100 dark:bg-red-900/20">
+              {error}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <DarkModePanel className="p-6 rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">Total Sales</h3>
+                  <p className="text-3xl font-bold">
+                    L.E {salesData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
+                  </p>
+                </DarkModePanel>
+                
+                <DarkModePanel className="p-6 rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">Total Orders</h3>
+                  <p className="text-3xl font-bold">
+                    {salesData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
+                  </p>
+                </DarkModePanel>
+                
+                <DarkModePanel className="p-6 rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">Average Order Value</h3>
+                  <p className="text-3xl font-bold">
+                    L.E {(salesData.reduce((sum, item) => sum + item.amount, 0) / 
+                         Math.max(1, salesData.reduce((sum, item) => sum + item.count, 0))).toFixed(2)}
+                  </p>
+                </DarkModePanel>
               </div>
               
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={exportToExcel}
-                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-black text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
-                >
-                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
-                  <span className="relative flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Export to Excel
-                  </span>
-                </button>
-                <button
-                  onClick={exportToJSON}
-                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
-                >
-                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
-                  <span className="relative flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Export to JSON
-                  </span>
-                </button>
-              </div>
-            </div>
-          </section>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Sales</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                L.E {salesData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
-              </p>
-            </DarkModePanel>
-            
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Orders</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {salesData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
-              </p>
-            </DarkModePanel>
-            
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Average Order Value</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                L.E {(salesData.reduce((sum, item) => sum + item.amount, 0) / 
-                      Math.max(1, salesData.reduce((sum, item) => sum + item.count, 0))).toFixed(2)}
-              </p>
-            </DarkModePanel>
-          </div>
-          
-          <DarkModePanel className="rounded-lg shadow-sm p-6 mb-8">
-            <div className="h-[400px] w-full">
-              {salesData.length > 0 ? (
-                <Chart type="bar" data={prepareChartData()} options={chartOptions} />
-              ) : (
-                <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400">
-                  No sales data available for the selected timeframe
+              <DarkModePanel className="rounded-lg overflow-hidden">
+                <div className="p-4 border-b dark:border-white/10">
+                  <div className="flex gap-2">
+                    {['daily', 'weekly', 'monthly', 'yearly'].map(period => (
+                      <button
+                        key={period}
+                        onClick={() => setTimeframe(period)}
+                        className={`px-4 py-2 rounded capitalize ${
+                          timeframe === period
+                            ? 'bg-black dark:bg-white text-white dark:text-black'
+                            : 'bg-gray-100 dark:bg-gray-800'
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          </DarkModePanel>
-          
-          <DarkModePanel className="rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sales Amount</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Average Order</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {salesData.length > 0 ? (
-                    salesData.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.count}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">L.E {item.amount.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          L.E {(item.amount / Math.max(1, item.count)).toFixed(2)}
-                        </td>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800">
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Orders</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Sales Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Average Order</th>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                        No data available for the selected timeframe
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </DarkModePanel>
+                    </thead>
+                    <tbody className="divide-y dark:divide-gray-700">
+                      {salesData.length > 0 ? (
+                        salesData.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap">{item.date}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{item.count}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">L.E {item.amount.toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              L.E {(item.amount / Math.max(1, item.count)).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center">
+                            No sales data available for the selected timeframe
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </DarkModePanel>
+            </>
+          )}
         </div>
       </main>
     </div>

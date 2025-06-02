@@ -61,13 +61,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Export subscribers (JSON or CSV format)
+// POST: Export subscribers (TXT or CSV format)
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
     
     const body = await req.json();
-    const { format = 'json', source, subscribed } = body;
+    const { format = 'txt', source, subscribed } = body;
     
     // Build query based on params
     const query: any = {};
@@ -111,8 +111,25 @@ export async function POST(req: Request) {
       });
     }
     
-    // Default to JSON format
-    return NextResponse.json({ subscribers });
+    // Default to TXT format
+    const txtContent = subscribers.map(sub => {
+      return [
+        `Email: ${sub.email}`,
+        `Source: ${sub.source}`,
+        `Status: ${sub.subscribed ? 'Subscribed' : 'Unsubscribed'}`,
+        `Subscribed At: ${sub.subscribedAt ? new Date(sub.subscribedAt).toLocaleString() : 'N/A'}`,
+        `Created At: ${sub.createdAt ? new Date(sub.createdAt).toLocaleString() : 'N/A'}`,
+        `Updated At: ${sub.updatedAt ? new Date(sub.updatedAt).toLocaleString() : 'N/A'}`,
+        '----------------------------------------'
+      ].join('\n');
+    }).join('\n\n');
+    
+    return new NextResponse(txtContent, {
+      headers: {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': 'attachment; filename=newsletter_subscribers.txt'
+      }
+    });
   } catch (error) {
     console.error('Error in POST /api/newsletter/subscribers:', error);
     return NextResponse.json(

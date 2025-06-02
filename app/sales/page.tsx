@@ -52,35 +52,33 @@ export default function SalesAnalyticsPage() {
   
   const fetchSalesData = async () => {
     setIsLoading(true);
+    setError('');
     try {
-      // Fetch actual orders from the real e-commerce system
-      const response = await axios.get('/api/orders', {
+      // Use the correct API URL for both local and production
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://eleveadmin.netlify.app';
+      const response = await axios.get(`${apiUrl}/api/orders`, {
+        params: { timeframe },
         withCredentials: true,
-        // Add timeout to prevent hanging requests
-        timeout: 10000,
-        // Add error handling headers
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        timeout: 30000
       });
-      
-      console.log('Raw orders data for analytics:', response.data);
-      
-      // Check if response data is valid
+
       if (!response.data || !Array.isArray(response.data)) {
         throw new Error('Invalid response format from API');
       }
-      
-      // Process the orders data to generate sales analytics
+
+      console.log('Raw orders data:', response.data);
       const processedData = processOrdersForAnalytics(response.data, timeframe);
       setSalesData(processedData);
-      setError('');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching sales data:', err);
-      setError('Failed to load sales data. Please try again later.');
-      toast.error('Failed to load sales data. Check your network connection and try again.');
-      // Set empty sales data instead of leaving it undefined
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to load sales data';
+      setError(errorMessage);
+      toast.error('Failed to load sales data. Please try again.');
       setSalesData([]);
     } finally {
       setIsLoading(false);

@@ -3,23 +3,15 @@
 import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { useScroll, useTransform, motion } from 'framer-motion';
+import { useScroll, useTransform, motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { submitToWaitlist } from '../lib/adminIntegration';
 
 // Text reveal animation hook
 function useTextRevealAnimation() {
   const scope = useRef(null);
-  const [controls, setControls] = useState<any>(null);
-
-  useEffect(() => {
-    import('framer-motion').then(({ useAnimation }) => {
-      setControls(useAnimation());
-    });
-  }, []);
+  const controls = useAnimation();
 
   const entranceAnimation = async () => {
-    if (!controls) return;
-    
     await controls.start((i: number) => ({
       opacity: 1,
       y: 0,
@@ -30,6 +22,10 @@ function useTextRevealAnimation() {
       }
     }));
   };
+
+  useEffect(() => {
+    entranceAnimation();
+  }, []);
 
   return { scope, controls, entranceAnimation };
 }
@@ -48,10 +44,6 @@ export default function WaitlistPage() {
   
   const portraitWidth = useTransform(scrollYProgress, [0,1], ['100%', '240%']);
   const {scope, controls, entranceAnimation} = useTextRevealAnimation();
-  
-  useEffect(() => {
-    entranceAnimation();
-  }, [entranceAnimation]);
   
   const handleClickMobileNavItem = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();

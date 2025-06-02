@@ -54,8 +54,11 @@ export default function SalesAnalyticsPage() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.get('/api/dashboard/real-sales', {
-        params: { timeframe },
+      const response = await axios.get('/api/orders/analytics', {
+        params: { 
+          timeframe,
+          includeStatus: ['completed', 'processing', 'pending']
+        },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -63,18 +66,17 @@ export default function SalesAnalyticsPage() {
         timeout: 30000
       });
       
-      if (!response.data || typeof response.data !== 'object') {
-        throw new Error('Invalid response format from API');
+      if (!response.data) {
+        throw new Error('No data received from API');
       }
 
-      const orders = response.data.orders || [];
-      console.log('Raw orders data for analytics:', orders);
-      
-      const processedData = processOrdersForAnalytics(orders);
+      const processedData = processOrdersForAnalytics(response.data.orders || []);
       setSalesData(processedData);
     } catch (err: any) {
       console.error('Error fetching sales data:', err);
-      setError(err.response?.data?.message || 'Failed to load sales data. Please try again later.');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to load sales data';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setSalesData([]);
     } finally {
       setIsLoading(false);

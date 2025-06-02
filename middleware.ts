@@ -4,49 +4,48 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Skip middleware only for essential paths
+  // Skip middleware only for essential paths and static files
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/static') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/test-settings') ||
-    pathname.startsWith('/waitlist')
+    pathname === '/waitlist'
   ) {
     return NextResponse.next();
   }
 
   try {
-    // Fetch site status with no-cache headers
+    // Fetch site status with no-cache headers to prevent stale data
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings/site-status`, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
-      }
+      },
+      next: { revalidate: 0 }
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch site status: ${response.status}`);
+      throw new Error('Failed to fetch site status');
     }
 
     const data = await response.json();
-
-    // If site is inactive, redirect ALL paths (including home page) to waitlist
-    if (data?.data?.active === false) {
-      console.log('Middleware: Site is inactive, redirecting to waitlist');
+    
+    // If site is inactive, redirect all traffic (including home page) to waitlist
+    if (!data.isActive) {
       const url = request.nextUrl.clone();
       url.pathname = '/waitlist';
       return NextResponse.redirect(url);
     }
+
+    return NextResponse.next();
   } catch (error) {
-    console.error('Error checking site status in middleware:', error);
-    // On error, allow the request to proceed
+    console.error('Middleware error:', error);
+    // On error, allow request to proceed to avoid blocking access
     return NextResponse.next();
   }
-
-  // Allow the request to proceed
-  return NextResponse.next();
 }
 
 // Update matcher to include all paths except those that should be excluded

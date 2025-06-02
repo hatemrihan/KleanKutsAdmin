@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrders, updateOrderStatus, deleteOrder } from "../../lib/handlers/orderHandler";
 import { mongooseConnect } from '../../lib/mongoose';
 import { Order } from "../../models/order";
+import { headers } from 'next/headers';
 
 interface OrderProduct {
   productId: string;
@@ -68,7 +69,15 @@ function corsHeaders(response: NextResponse, request: Request) {
 
 // Handle OPTIONS request for CORS
 export async function OPTIONS(request: Request) {
-  return corsHeaders(new NextResponse(null, { status: 200 }), request);
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
+    }
+  });
 }
 
 // Middleware to check API key
@@ -107,16 +116,50 @@ async function validateApiKey(request: Request) {
 // Get all orders
 export async function GET(request: Request) {
   try {
+    // Check authentication
+    const headersList = headers();
+    const authCookie = headersList.get('cookie');
+    if (!authCookie?.includes('admin-auth=true')) {
+      return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
+        }
+      });
+    }
+
     await mongooseConnect();
-    const orders = await getOrders();
-    return corsHeaders(NextResponse.json(orders), request);
-  } catch (error) {
-    const apiError = error as ApiError;
-    console.error('GET orders error:', apiError);
-    return corsHeaders(NextResponse.json(
-      { error: apiError.message },
-      { status: 500 }
-    ), request);
+    
+    const orders = await Order.find({})
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return new NextResponse(JSON.stringify(orders), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching orders:', error);
+    return new NextResponse(JSON.stringify({ message: error.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
+      }
+    });
   }
 }
 

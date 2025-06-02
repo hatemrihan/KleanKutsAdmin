@@ -54,25 +54,28 @@ export default function SalesAnalyticsPage() {
     setIsLoading(true);
     setError('');
     try {
-      // Use the correct API URL for both local and production
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://eleveadmin.netlify.app';
-      const response = await axios.get(`${apiUrl}/api/orders`, {
-        params: { timeframe },
+      // Get auth cookie
+      const cookies = document.cookie.split(';');
+      const authCookie = cookies.find(c => c.trim().startsWith('admin-auth='));
+      
+      const response = await axios.get('https://eleveadmin.netlify.app/api/orders', {
         withCredentials: true,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        timeout: 30000
+          'Cookie': authCookie || '',
+          'Authorization': `Bearer ${authCookie?.split('=')[1] || ''}`
+        }
       });
 
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error('Invalid response format from API');
+      if (!response.data) {
+        throw new Error('No data received from API');
       }
 
-      console.log('Raw orders data:', response.data);
-      const processedData = processOrdersForAnalytics(response.data, timeframe);
+      const orders = Array.isArray(response.data) ? response.data : response.data.orders || [];
+      console.log('Raw orders data:', orders);
+      
+      const processedData = processOrdersForAnalytics(orders, timeframe);
       setSalesData(processedData);
     } catch (err: any) {
       console.error('Error fetching sales data:', err);

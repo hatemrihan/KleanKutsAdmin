@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { connectToDatabase } from '../../../lib/mongodb';
 import Waitlist from '../../../lib/models/Waitlist';
 import mongoose from 'mongoose';
@@ -34,8 +35,17 @@ function logError(message: string, error: any) {
 
 // Helper function to add CORS headers
 function corsHeaders() {
+  const allowedOrigins = [
+    'https://elevee.netlify.app',
+    'https://elevee-store.netlify.app',
+    'http://localhost:3000'
+  ];
+  
+  const requestOrigin = headers().get('origin') || '';
+  const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
+
   return {
-    'Access-Control-Allow-Origin': '*', // In production, replace with specific frontend domain
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };

@@ -6,27 +6,29 @@
  * @param {string} source - Source of the submission (e.g., 'website', 'social', etc.)
  * @returns {Promise<boolean>} Success status
  */
-export async function submitToWaitlist(email, source = 'website') {
+export async function submitToWaitlist(email, source = 'e-commerce') {
   try {
     const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app';
     const response = await fetch(`${adminUrl}/api/waitlist`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Origin': 'https://elevee.netlify.app'
       },
       body: JSON.stringify({
         email,
         source,
+        notes: 'Submitted from e-commerce site'
       }),
     });
 
+    const data = await response.json();
+
     if (response.ok) {
-      console.log('Waitlist submission successful');
+      console.log('Waitlist submission successful:', data);
       return true;
     } else {
-      console.error('Waitlist submission failed with status:', response.status);
-      const data = await response.json().catch(() => ({}));
-      console.error('Error details:', data);
+      console.error('Waitlist submission failed:', data);
       return false;
     }
   } catch (error) {

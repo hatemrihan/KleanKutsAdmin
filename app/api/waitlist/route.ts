@@ -68,70 +68,11 @@ export async function GET() {
       throw new Error('Database connection not established');
     }
 
-    // Define collection names to try
-    const collectionNames = ['waitlist', 'waitlists', 'subscribers'];
-    let waitlistEntries: RawWaitlistEntry[] = [];
-
-    // Try each collection name
-    for (const collName of collectionNames) {
-      try {
-        if (!db) continue;
-        if (await db.listCollections({ name: collName }).hasNext()) {
-          const collection = db.collection(collName);
-          const entries = await collection.find({}).sort({ createdAt: -1 }).limit(100).toArray();
-          
-          if (entries && entries.length > 0) {
-            logInfo(`Found ${entries.length} entries in ${collName} collection`);
-            waitlistEntries = entries as RawWaitlistEntry[];
-            break;
-          }
-        }
-      } catch (err) {
-        logError(`Error checking ${collName} collection`, err);
-      }
-    }
-
-    // If no entries found in any collection, try the Waitlist model as fallback
-    if (waitlistEntries.length === 0 && mongoose.models.Waitlist) {
-      try {
-        const modelEntries = await mongoose.models.Waitlist.find({})
-          .sort({ createdAt: -1 })
-          .limit(100)
-          .lean();
-        
-        if (modelEntries && modelEntries.length > 0) {
-          logInfo(`Found ${modelEntries.length} entries using Waitlist model`);
-          waitlistEntries = modelEntries as RawWaitlistEntry[];
-        }
-      } catch (err) {
-        logError('Error using Waitlist model', err);
-      }
-    }
-
-    // If still no entries, try direct MongoDB query
-    if (waitlistEntries.length === 0 && db) {
-      try {
-        const result = await db.collection('waitlist').aggregate([
-          {
-            $match: {
-              $or: [
-                { email: { $exists: true } },
-                { userEmail: { $exists: true } }
-              ]
-            }
-          },
-          { $sort: { createdAt: -1 } },
-          { $limit: 100 }
-        ]).toArray();
-
-        if (result && result.length > 0) {
-          logInfo(`Found ${result.length} entries using aggregate query`);
-          waitlistEntries = result as RawWaitlistEntry[];
-        }
-      } catch (err) {
-        logError('Error using aggregate query', err);
-      }
-    }
+    // Get entries from the waitlists collection
+    const collection = db.collection('waitlists');
+    const waitlistEntries = await collection.find({})
+      .sort({ createdAt: -1 })
+      .toArray();
 
     // Process and clean the entries
     const processedEntries = waitlistEntries.map(entry => ({
@@ -214,76 +155,37 @@ export async function POST(req: NextRequest) {
     
     await connectToDatabase();
     const db = mongoose.connection.db;
-    
-    // Check if email already exists in any collection
-    const collections = ['waitlist', 'waitlists', 'subscribers'];
-    if (db) {
-      for (const collName of collections) {
-        try {
-          if (await db.listCollections({ name: collName }).hasNext()) {
-            const collection = db.collection(collName);
-            const existing = await collection.findOne({ 
-              $or: [
-                { email: email },
-                { userEmail: email }
-              ]
-            });
-            
-            if (existing) {
-              logInfo('Email already exists in waitlist', { email, collection: collName });
-              return NextResponse.json(
-                { message: 'Email already in waitlist', exists: true },
-                { status: 200, headers: corsHeaders() }
-              );
-            }
-          }
-        } catch (err) {
-          logError(`Error checking ${collName} collection`, err);
-        }
-      }
-      
-      // Create new waitlist entry in the primary collection
-      const collection = db.collection('waitlist');
-      const waitlistEntry = await collection.insertOne({
-        email,
-        source,
-        notes,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      });
-      
-      logInfo('Successfully created waitlist entry', { id: waitlistEntry.insertedId });
-      
-      if (contentType.includes('application/json')) {
-        return NextResponse.json({
-          message: 'Successfully added to waitlist',
-          waitlistEntry
-        }, { status: 201, headers: corsHeaders() });
-      } else {
-        const successHtml = `
-          <html>
-            <head>
-              <meta http-equiv="refresh" content="0;url=https://elevee.netlify.app/waitlist-success">
-              <title>Successfully Added</title>
-            </head>
-            <body>
-              <p>Successfully added to waitlist. Redirecting...</p>
-              <script>
-                window.location.href = 'https://elevee.netlify.app/waitlist-success';
-              </script>
-            </body>
-          </html>
-        `;
-        
-        return new NextResponse(successHtml, { 
-          status: 201,
-          headers: {
-            ...corsHeaders(),
-            'Content-Type': 'text/html',
-          }
-        });
-      }
+    if (!db) {
+      throw new Error('Database connection not established');
     }
+
+    // Check if email already exists
+    const collection = db.collection('waitlists');
+    const existing = await collection.findOne({ email });
+    
+    if (existing) {
+      logInfo('Email already exists in waitlist', { email });
+      return NextResponse.json(
+        { message: 'Email already in waitlist', exists: true },
+        { status: 200, headers: corsHeaders() }
+      );
+    }
+    
+    // Create new waitlist entry
+    const waitlistEntry = await collection.insertOne({
+      email,
+      source,
+      notes,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    
+    logInfo('Successfully created waitlist entry', { id: waitlistEntry.insertedId });
+    
+    return NextResponse.json({
+      message: 'Successfully added to waitlist',
+      waitlistEntry
+    }, { status: 201, headers: corsHeaders() });
   } catch (error: any) {
     logError('Error adding to waitlist', error);
     return NextResponse.json(

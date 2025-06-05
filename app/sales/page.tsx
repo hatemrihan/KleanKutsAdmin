@@ -175,7 +175,7 @@ export default function SalesAnalyticsPage() {
     return result;
   };
   
-  // Prepare chart data
+  // Prepare chart data with explicit type
   const prepareChartData = () => {
     const labels = salesData.map(item => item.date);
     const amounts = salesData.map(item => item.amount);
@@ -185,16 +185,20 @@ export default function SalesAnalyticsPage() {
       labels,
       datasets: [
         {
+          type: 'bar' as const,
           label: 'Sales Amount (L.E)',
           data: amounts,
-          borderColor: 'rgb(75, 192, 192)',
           backgroundColor: 'rgba(75, 192, 192, 0.5)',
+          borderColor: 'rgb(75, 192, 192)',
+          borderWidth: 1
         },
         {
+          type: 'bar' as const,
           label: 'Orders Count',
           data: counts,
-          borderColor: 'rgb(153, 102, 255)',
           backgroundColor: 'rgba(153, 102, 255, 0.5)',
+          borderColor: 'rgb(153, 102, 255)',
+          borderWidth: 1,
           yAxisID: 'countAxis',
         },
       ],
@@ -467,7 +471,11 @@ export default function SalesAnalyticsPage() {
           <DarkModePanel className="rounded-lg shadow-sm p-4 mb-4">
             <div className="h-[350px] w-full">
               {salesData.length > 0 ? (
-                <Chart type="bar" data={prepareChartData()} options={chartOptions} />
+                <Chart 
+                  type="bar" 
+                  data={prepareChartData()} 
+                  options={chartOptions} 
+                />
               ) : (
                 <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400">
                   No sales data available for the selected timeframe

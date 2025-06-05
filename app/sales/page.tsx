@@ -54,34 +54,55 @@ export default function SalesAnalyticsPage() {
     setIsLoading(true);
     setError('');
     try {
-      // Get auth cookie
-      const cookies = document.cookie.split(';');
-      const authCookie = cookies.find(c => c.trim().startsWith('admin-auth='));
+      // For local development, use relative path. For production, use full URL
+      const isProduction = window.location.hostname !== 'localhost';
+      const baseUrl = isProduction ? 'https://eleveadmin.netlify.app' : '';
       
-      const response = await axios.get('https://eleveadmin.netlify.app/api/orders', {
-        withCredentials: true,
+      const response = await axios.get(`${baseUrl}/api/orders`, {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Cookie': authCookie || '',
-          'Authorization': `Bearer ${authCookie?.split('=')[1] || ''}`
+          'Content-Type': 'application/json'
         }
       });
 
+      console.log('API Response:', response.data);
+
       if (!response.data) {
-        throw new Error('No data received from API');
+        throw new Error('No data received');
       }
 
-      const orders = Array.isArray(response.data) ? response.data : response.data.orders || [];
-      console.log('Raw orders data:', orders);
-      
-      const processedData = processOrdersForAnalytics(orders, timeframe);
+      // Get all orders and filter them
+      const allOrders = Array.isArray(response.data) ? response.data : [];
+      console.log('Total orders received:', allOrders.length);
+
+      // Filter orders by status
+      const validOrders = allOrders.filter(order => 
+        order.status === 'completed' || 
+        order.status === 'processing' || 
+        order.status === 'pending'
+      );
+      console.log('Valid orders after filtering:', validOrders.length);
+
+      const processedData = processOrdersForAnalytics(validOrders, timeframe);
+      console.log('Processed data points:', processedData.length);
       setSalesData(processedData);
     } catch (err: any) {
-      console.error('Error fetching sales data:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to load sales data';
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        stack: err.stack
+      });
+      
+      let errorMessage = 'Failed to load sales data.';
+      if (err.response?.status === 404) {
+        errorMessage = 'Sales data not found. Please check the API endpoint.';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (!err.response) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
       setError(errorMessage);
-      toast.error('Failed to load sales data. Please try again.');
       setSalesData([]);
     } finally {
       setIsLoading(false);
@@ -281,27 +302,47 @@ export default function SalesAnalyticsPage() {
     }
   };
   
-  const exportToJSON = () => {
+  const exportToTxt = () => {
     try {
-      // Create a JSON blob and download it
-      const dataStr = JSON.stringify(salesData, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
+      if (!salesData.length) {
+        toast.error('No data available to export');
+        return;
+      }
+
+      // Create text content
+      const txtContent = 
+        'Sales Analytics Report\n' +
+        '====================\n\n' +
+        `Timeframe: ${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}\n` +
+        `Generated on: ${new Date().toLocaleString()}\n\n` +
+        'Date\tOrders\tSales Amount (L.E)\tAverage Order (L.E)\n' +
+        '------------------------------------------------\n' +
+        salesData.map(item => {
+          const avgOrder = (item.amount / Math.max(1, item.count)).toFixed(2);
+          return `${item.date}\t${item.count}\t${item.amount.toLocaleString()}\t${avgOrder}`;
+        }).join('\n') +
+        '\n\n' +
+        'Summary\n' +
+        '-------\n' +
+        `Total Sales: L.E ${salesData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}\n` +
+        `Total Orders: ${salesData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}\n` +
+        `Average Order Value: L.E ${(salesData.reduce((sum, item) => sum + item.amount, 0) / 
+          Math.max(1, salesData.reduce((sum, item) => sum + item.count, 0))).toFixed(2)}`;
+
+      // Create and download the file
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      
-      // Create temporary link and trigger download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      document.body.removeChild(a);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      toast.success('Sales data exported to JSON successfully');
+
+      toast.success('Sales data exported successfully');
     } catch (err) {
-      console.error('Error exporting to JSON:', err);
+      console.error('Error exporting to text:', err);
       toast.error('Failed to export sales data');
     }
   };
@@ -331,103 +372,100 @@ export default function SalesAnalyticsPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
+      <main className="flex-1 p-3 lg:p-6 overflow-x-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
             </div>
           </div>
-                    <section className="p-6 bg-white dark:bg-black shadow rounded-lg mb-6">
-            <h2 className="text-xl font-semibold mb-4">Sales Analytics</h2>
-            
-
+          
+          <section className="p-4 bg-white dark:bg-black shadow rounded-lg mb-4">
+            <h2 className="text-lg font-semibold mb-3">Sales Analytics</h2>
             
             {/* Timeframe selector */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label className="block text-sm font-medium mb-2">Select Timeframe:</label>
               <div className="flex space-x-2">
                 <button 
                   onClick={() => setTimeframe('daily')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'daily' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  className={`px-3 py-1.5 rounded text-sm ${timeframe === 'daily' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Daily
                 </button>
                 <button 
                   onClick={() => setTimeframe('weekly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'weekly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  className={`px-3 py-1.5 rounded text-sm ${timeframe === 'weekly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Weekly
                 </button>
                 <button 
                   onClick={() => setTimeframe('monthly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'monthly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  className={`px-3 py-1.5 rounded text-sm ${timeframe === 'monthly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Monthly
                 </button>
                 <button 
                   onClick={() => setTimeframe('yearly')} 
-                  className={`px-4 py-2 rounded ${timeframe === 'yearly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  className={`px-3 py-1.5 rounded text-sm ${timeframe === 'yearly' ? 'bg-black text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   Yearly
                 </button>
               </div>
               
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-2 mt-3">
                 <button
                   onClick={exportToExcel}
-                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-black text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                  className="group relative px-4 py-1.5 rounded-full bg-black text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
                 >
-                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
                   <span className="relative flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                     Export to Excel
                   </span>
                 </button>
                 <button
-                  onClick={exportToJSON}
-                  className="group relative overflow-hidden px-6 py-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                  onClick={exportToTxt}
+                  className="group relative px-4 py-1.5 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
                 >
-                  <span className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></span>
                   <span className="relative flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    Export to JSON
+                    Export to TXT
                   </span>
                 </button>
               </div>
             </div>
           </section>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Sales</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <DarkModePanel className="rounded-lg shadow-sm p-4">
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Sales</h3>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 L.E {salesData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
               </p>
             </DarkModePanel>
             
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Total Orders</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <DarkModePanel className="rounded-lg shadow-sm p-4">
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Orders</h3>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {salesData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
               </p>
             </DarkModePanel>
             
-            <DarkModePanel className="rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Average Order Value</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <DarkModePanel className="rounded-lg shadow-sm p-4">
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Average Order Value</h3>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 L.E {(salesData.reduce((sum, item) => sum + item.amount, 0) / 
                       Math.max(1, salesData.reduce((sum, item) => sum + item.count, 0))).toFixed(2)}
               </p>
             </DarkModePanel>
           </div>
           
-          <DarkModePanel className="rounded-lg shadow-sm p-6 mb-8">
-            <div className="h-[400px] w-full">
+          <DarkModePanel className="rounded-lg shadow-sm p-4 mb-4">
+            <div className="h-[350px] w-full">
               {salesData.length > 0 ? (
                 <Chart type="bar" data={prepareChartData()} options={chartOptions} />
               ) : (
@@ -443,27 +481,27 @@ export default function SalesAnalyticsPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
                   <tr>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sales Amount</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Average Order</th>
+                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
+                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sales Amount</th>
+                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Average Order</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {salesData.length > 0 ? (
                     salesData.map((item, index) => (
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.count}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">L.E {item.amount.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.date}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.count}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">L.E {item.amount.toLocaleString()}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           L.E {(item.amount / Math.max(1, item.count)).toFixed(2)}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      <td colSpan={4} className="px-4 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
                         No data available for the selected timeframe
                       </td>
                     </tr>

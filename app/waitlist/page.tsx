@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { useScroll, useTransform, motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { submitToWaitlist } from '../lib/adminIntegration';
+import axios from 'axios';
+import Nav from '../sections/nav';
 
 // Text reveal animation hook
 function useTextRevealAnimation() {
@@ -30,6 +32,23 @@ function useTextRevealAnimation() {
   return { scope, controls, entranceAnimation };
 }
 
+interface WaitlistEntry {
+  _id: string;
+  id?: string;
+  email: string;
+  status: string;
+  source: string;
+  notes: string;
+  createdAt: string;
+}
+
+interface ApiResponse {
+  data?: WaitlistEntry[] | WaitlistEntry;
+  entries?: WaitlistEntry[];
+  success?: boolean;
+  error?: string;
+}
+
 export default function WaitlistPage() {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -45,6 +64,98 @@ export default function WaitlistPage() {
   const portraitWidth = useTransform(scrollYProgress, [0,1], ['100%', '240%']);
   const {scope, controls, entranceAnimation} = useTextRevealAnimation();
   
+  const [entries, setEntries] = useState<WaitlistEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  
+  const fetchWaitlistEntries = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // For local development, use relative path. For production, use full URL
+      const isProduction = window.location.hostname !== 'localhost';
+      const baseUrl = isProduction ? 'https://eleveadmin.netlify.app' : '';
+      
+      console.log('Fetching waitlist entries from:', `${baseUrl}/api/waitlist`);
+      
+      const response = await axios.get(`${baseUrl}/api/waitlist`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      console.log('API Response:', response.data);
+
+      if (!response.data) {
+        throw new Error('No data received from API');
+      }
+
+      // Process the response data
+      let waitlistData: WaitlistEntry[] = [];
+      
+      if (Array.isArray(response.data)) {
+        waitlistData = response.data;
+      } else if (response.data.entries && Array.isArray(response.data.entries)) {
+        waitlistData = response.data.entries;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        waitlistData = response.data.data;
+      } else {
+        console.warn('Unexpected API response format:', response.data);
+        waitlistData = [];
+      }
+
+      // Validate and clean each entry
+      const processedData = waitlistData
+        .filter(entry => entry && entry.email)
+        .map(entry => ({
+          _id: entry._id || entry.id || Math.random().toString(36).substr(2, 9),
+          email: entry.email,
+          status: entry.status || 'pending',
+          source: entry.source || 'website',
+          notes: entry.notes || '',
+          createdAt: entry.createdAt || new Date().toISOString()
+        }));
+
+      console.log('Processed waitlist entries:', processedData.length);
+      setEntries(processedData);
+      
+      if (processedData.length === 0) {
+        console.warn('No valid entries found after processing');
+        setError('No waitlist entries found in the database');
+      }
+    } catch (err: any) {
+      console.error('Error fetching waitlist entries:', err);
+      const errorMessage = err.response?.status === 404 ? 
+        'Waitlist service is temporarily unavailable' :
+        err.message.includes('Network Error') || err.message.includes('timeout') ?
+        'Network error - please check your connection' :
+        'Failed to load waitlist entries';
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWaitlistEntries();
+  }, []);
+
+  const filteredEntries = entries.filter(entry => {
+    const matchesEmail = entry.email.toLowerCase().includes(searchEmail.toLowerCase());
+    const matchesStatus = statusFilter === 'All Statuses' || entry.status === statusFilter.toLowerCase();
+    return matchesEmail && matchesStatus;
+  });
+
+  const handleRefresh = () => {
+    fetchWaitlistEntries();
+  };
+
   const handleClickMobileNavItem = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setIsOpen(false);
@@ -260,169 +371,135 @@ export default function WaitlistPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen dark:bg-black">
+        <Nav />
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading waitlist entries...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col transition-colors duration-300">
-      {/* Hero Section */}
-      <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center py-12 max-w-2xl mx-auto text-center">
-          <motion.h1 
-            ref={scope}
-            initial={{ opacity: 0, y: 50 }}
-            animate={controls}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-10 max-w-4xl uppercase tracking-wider"
-          >
-            <span>Eleve Egypt </span>
-            <br />
-            <span className="font-light">Luxury StreetWear  </span>
-          </motion.h1>
-          
-          {!isSubmitted ? (
-            <>
-              <p className="text-gray-600 dark:text-white/80 mb-12 transition-colors duration-300 uppercase tracking-widest font-medium">JOIN OUR WAITLIST</p>
-              <form onSubmit={handleSubmit} className="w-full max-w-md">
-                <div className="flex flex-col sm:flex-row gap-3 w-full border-b border-black dark:border-white pb-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Write your email here."
-                    className="flex-grow px-0 py-2 bg-transparent border-none text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none transition-colors duration-300 text-center uppercase tracking-widest font-medium"
-                    disabled={isSubmitting}
-                    style={{ textAlign: 'center' }}
-                  />
-                  <button
-                    type="submit"
-                    className={`px-6 py-2 font-medium uppercase tracking-widest transition-colors ${isSubmitting ? 'text-gray-400 cursor-not-allowed' : 'text-black dark:text-white hover:text-gray-700 dark:hover:text-gray-200'}`}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send →'}
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : (
-            <div className="flex flex-col items-center py-12 max-w-2xl mx-auto text-center">
-              <h2 className="text-4xl md:text-5xl font-bold mb-8 text-black dark:text-white">
-                THANK YOU FOR JOINING OUR WAITLIST!
-              </h2>
-              
-              <div className="bg-green-50 dark:bg-green-900 p-6 rounded-lg w-full mb-8">
-                <div className="flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                </div>
-                <p className="text-green-800 dark:text-green-200 text-lg mb-2">
-                  Your email has been successfully added!
-                </p>
-                <p className="text-green-700 dark:text-green-300">
-                  We'll keep you updated on our latest collections and exclusive offers.
-                </p>
+    <div className="flex min-h-screen dark:bg-black">
+      <Nav />
+      <main className="flex-1 p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Waitlist Management</h1>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 flex items-center gap-2"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <span>Refreshing...</span>
+                </>
+              ) : (
+                <span>Refresh</span>
+              )}
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Waitlist Overview</h2>
+            
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Search by Email</label>
+                <input
+                  type="text"
+                  value={searchEmail}
+                  onChange={(e) => setSearchEmail(e.target.value)}
+                  placeholder="Search emails..."
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                />
               </div>
               
-              <p className="text-gray-600 dark:text-gray-300 mb-8">
-                You'll be among the first to know when we launch new products and exclusive collections.
-              </p>
-              
-              <button 
-                onClick={() => setIsSubmitted(false)}
-                className="py-3 px-8 bg-black text-white dark:bg-white dark:text-black font-medium transition-colors hover:bg-gray-800 dark:hover:bg-gray-200 mb-4"
-              >
-                Subscribe Another Email
-              </button>
+              <div className="md:w-48">
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status Filter</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                  <option>All Statuses</option>
+                  <option>Pending</option>
+                  <option>Approved</option>
+                  <option>Rejected</option>
+                </select>
+              </div>
             </div>
-          )}
+
+            {error && (
+              <div className="text-red-600 mb-4 p-4 bg-red-100 dark:bg-red-900 rounded-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredEntries.length > 0 ? (
+                    filteredEntries.map((entry) => (
+                      <tr key={entry._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.email}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            entry.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            entry.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          }`}>
+                            {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.source}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                          {new Date(entry.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.notes || '-'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-sm text-center text-gray-500 dark:text-gray-400">
+                        {searchEmail || statusFilter !== 'All Statuses' ? (
+                          <>
+                            <p className="font-medium">No matching entries found</p>
+                            <p className="mt-1 text-sm">Try adjusting your search or filter criteria</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium">No waitlist entries found</p>
+                            <p className="mt-1 text-sm">Entries will appear here once users join the waitlist</p>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </section>
-      
-      {/* Video Section */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-        <div className="overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover grayscale"
-          >
-            <source src="/videos/waitlist.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      </section>
-      
-      {/* Thank You Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full text-center">
-        <motion.h2 
-          initial={{ opacity: 0, y: 20 }}
-          animate={controls}
-          className="text-3xl font-bold mb-8 transition-colors duration-300 uppercase tracking-wider"
-        >
-          ELEVE
-        </motion.h2>
-        
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={controls}
-          transition={{ delay: 0.2 }}
-          className="text-gray-800 dark:text-white/90 mb-6 max-w-2xl mx-auto transition-colors duration-300 uppercase tracking-wider font-medium"
-        >
-          We just wanted to thank you all for such intense support over our first drop. We're dedicated to
-          continuing growth of this store alongside our community, and look forward to what is to come.
-        </motion.p>
-        
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={controls}
-          transition={{ delay: 0.4 }}
-          className="text-xl font-semibold mb-8 transition-colors duration-300 uppercase tracking-wider"
-        >
-          P.S. TAKE ACTION.
-        </motion.p>
-        
-        <div className="flex justify-center space-x-8">
-          {/* Instagram */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={controls}
-            transition={{ delay: 0.6 }}
-          >
-            <Link href="https://www.instagram.com/eleve__egy?igsh=b3NnYWw4eWgxcTcw" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-            </Link>
-          </motion.div>
-          
-          {/* TikTok */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={controls}
-            transition={{ delay: 0.7 }}
-          >
-            <Link href="https://www.tiktok.com/@eleve__egy/" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3V0Z"/>
-              </svg>
-            </Link>
-          </motion.div>
-          
-          {/* Gmail */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={controls}
-            transition={{ delay: 0.8 }}
-          >
-            <Link href="mailto:eleve.egy.1@gmail.com" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"/>
-              </svg>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+      </main>
     </div>
   );
 } 

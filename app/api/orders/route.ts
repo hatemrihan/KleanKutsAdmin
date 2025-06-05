@@ -114,52 +114,21 @@ async function validateApiKey(request: Request) {
 }
 
 // Get all orders
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    // Check authentication
-    const headersList = headers();
-    const authCookie = headersList.get('cookie');
-    if (!authCookie?.includes('admin-auth=true')) {
-      return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), {
-        status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
-          'Access-Control-Allow-Credentials': 'true',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
-        }
-      });
-    }
-
     await mongooseConnect();
     
     const orders = await Order.find({})
       .sort({ createdAt: -1 })
       .lean();
 
-    return new NextResponse(JSON.stringify(orders), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
-      }
-    });
+    return NextResponse.json(orders);
   } catch (error: any) {
     console.error('Error fetching orders:', error);
-    return new NextResponse(JSON.stringify({ message: error.message }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://eleveadmin.netlify.app',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie'
-      }
-    });
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch orders' },
+      { status: 500 }
+    );
   }
 }
 

@@ -37,6 +37,8 @@ interface Ambassador {
   conversions: number;
   paymentsPending: number;
   paymentsPaid: number;
+  productVideoLink?: string;
+  videoSubmissionDate?: string;
   recentOrders: {
     orderId: string;
     orderDate: string;
@@ -74,7 +76,7 @@ interface Ambassador {
 export default function AmbassadorDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { id } = params;
+  const { id } = params as { id: string };
   
   const [ambassador, setAmbassador] = useState<Ambassador | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -497,6 +499,48 @@ export default function AmbassadorDetailsPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Video Link Section - NEW */}
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Product Video Content</h3>
+                    {ambassador.productVideoLink ? (
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-500 dark:text-white/70">Video Link</div>
+                          <div className="mt-1">
+                            <a 
+                              href={ambassador.productVideoLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 break-all"
+                            >
+                              {ambassador.productVideoLink}
+                            </a>
+                          </div>
+                        </div>
+                        {ambassador.videoSubmissionDate && (
+                          <div>
+                            <div className="text-sm font-medium text-gray-500 dark:text-white/70">Submission Date</div>
+                            <div className="mt-1 text-sm text-gray-900 dark:text-white">
+                              {formatDate(ambassador.videoSubmissionDate)}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <button 
+                            onClick={() => window.open(ambassador.productVideoLink, '_blank')}
+                            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700"
+                          >
+                            View Video Content
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-white/70 italic">
+                        No video content submitted yet.
+                      </div>
+                    )}
                   </div>
                   
                   {/* Payment information */}

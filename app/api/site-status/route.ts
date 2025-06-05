@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { Setting } from '@/app/models/setting';
-
-// Configure CORS headers for the e-commerce site
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Allow all origins during development
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Max-Age': '86400',
-};
+import { responseWithCors, handleCorsOptions } from '../../../lib/cors';
 
 // GET endpoint to retrieve current site status for the e-commerce site to check
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Ensure MongoDB connection
     if (!mongoose.connection.readyState) {
@@ -25,33 +18,31 @@ export async function GET() {
     
     // If setting doesn't exist or site is active, return active status
     if (!siteSetting || siteSetting.value.active) {
-      return NextResponse.json({
+      return responseWithCors({
         status: 'active',
         message: siteSetting?.value?.message || 'Site is currently active'
-      }, { status: 200 });
+      }, 200, request);
     }
     
     // If site is in maintenance mode, return inactive status
-    return NextResponse.json({
+    return responseWithCors({
       status: 'inactive',
       message: siteSetting.value.message || 'Site is under maintenance'
-    }, { status: 200 });
+    }, 200, request);
     
   } catch (error) {
     console.error('Error getting site status:', error);
     // Default to active if there's an error (safer than blocking all users)
-    return NextResponse.json(
+    return responseWithCors(
       { status: 'active', message: 'Site is currently active' },
-      { status: 200 }
+      200,
+      request
     );
   }
 }
 
 // Handle CORS preflight requests
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
   console.log('[API] Handling OPTIONS request for site-status');
-  return new NextResponse(null, {
-    status: 204,
-    headers: corsHeaders
-  });
+  return handleCorsOptions(request);
 } 

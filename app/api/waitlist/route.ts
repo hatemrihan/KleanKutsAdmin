@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-import { connectToDatabase } from '../../../lib/mongodb';
-import Waitlist from '../../../lib/models/Waitlist';
 import mongoose from 'mongoose';
+import { mongooseConnect } from '../../lib/mongoose';
+import { responseWithCors, handleCorsOptions } from '../../../lib/cors';
+import Waitlist from '../../../lib/models/Waitlist';
 
 // Simple interface that matches our data structure
 interface RawWaitlistEntry {
@@ -33,34 +33,26 @@ function logError(message: string, error: any) {
   }
 }
 
-// Helper function to add CORS headers
-function corsHeaders() {
-  const allowedOrigins = [
-    'https://elevee.netlify.app',
-    'https://elevee-store.netlify.app',
-    'http://localhost:3000'
-  ];
+// Handle OPTIONS requests for CORS preflight - CRITICAL FOR PRODUCTION
+export async function OPTIONS(request: NextRequest) {
+  console.log('[WAITLIST API] OPTIONS preflight request received');
+  console.log('[WAITLIST API] Request origin:', request.headers.get('origin'));
+  console.log('[WAITLIST API] Request method:', request.headers.get('access-control-request-method'));
+  console.log('[WAITLIST API] Request headers:', request.headers.get('access-control-request-headers'));
   
-  const requestOrigin = headers().get('origin') || '';
-  const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
-
-  return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-}
-
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders() });
+  // Use the centralized CORS handler
+  const response = handleCorsOptions(request);
+  
+  console.log('[WAITLIST API] Sending OPTIONS response with headers:', Object.fromEntries(response.headers.entries()));
+  
+  return response;
 }
 
 // Get all waitlist entries
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    logInfo('Starting GET request');
-    await connectToDatabase();
+    logInfo('Starting GET request from origin: ' + request.headers.get('origin'));
+    await mongooseConnect();
     
     // Try to get the database instance
     const db = mongoose.connection.db;
@@ -85,75 +77,37 @@ export async function GET() {
     }));
 
     logInfo(`Returning ${processedEntries.length} processed entries`);
-    return NextResponse.json(processedEntries);
+    return responseWithCors(processedEntries, 200, request);
   } catch (error) {
     logError('Failed to fetch waitlist entries', error);
-    return NextResponse.json({ error: 'Failed to fetch waitlist entries' }, { status: 500 });
+    return responseWithCors({ error: 'Failed to fetch waitlist entries' }, 500, request);
   }
 }
 
-// Add new waitlist entry
+// Add new waitlist entry - MAIN ENDPOINT FOR E-COMMERCE
 export async function POST(req: NextRequest) {
   try {
-    logInfo('Processing POST request');
-    const headers: Record<string, string> = {};
-    req.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
-    logInfo('Request headers', headers);
+    const origin = req.headers.get('origin');
+    logInfo('Processing POST request from origin: ' + origin);
     
-    let email = '';
-    let source = 'website';
-    let notes = '';
+    // Parse the JSON body
+    const body = await req.json();
+    logInfo('Request body', body);
     
-    const contentType = req.headers.get('content-type') || '';
-    logInfo('Content-Type', { contentType });
-    
-    if (contentType.includes('application/json')) {
-      const body = await req.json();
-      logInfo('Request body', body);
-      email = body.email;
-      source = body.source || 'website';
-      notes = body.notes || '';
-    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
-      try {
-        const formData = await req.formData();
-        logInfo('Form data entries', Array.from(formData.entries()));
-        email = formData.get('email')?.toString() || '';
-        source = formData.get('source')?.toString() || 'website';
-        notes = formData.get('notes')?.toString() || '';
-      } catch (formError) {
-        logError('Error parsing form data', formError);
-      }
-    } else {
-      const text = await req.text();
-      logInfo('Raw request body', { text });
-      try {
-        const jsonData = JSON.parse(text);
-        logInfo('Parsed JSON from text', jsonData);
-        email = jsonData.email || '';
-        source = jsonData.source || 'website';
-        notes = jsonData.notes || '';
-      } catch (jsonError) {
-        const params = new URLSearchParams(text);
-        logInfo('URL params', Array.from(params.entries()));
-        email = params.get('email') || '';
-        source = params.get('source') || 'website';
-        notes = params.get('notes') || '';
-      }
-    }
-    
-    logInfo('Extracted data', { email, source, notes });
+    const email = body.email;
+    const source = body.source || 'e-commerce';
+    const notes = body.notes || '';
     
     if (!email) {
       logInfo('Missing required email field');
-      return NextResponse.json(
+      return responseWithCors(
         { error: 'Email is required' },
-        { status: 400, headers: corsHeaders() }
+        400,
+        req
       );
     }
     
-    await connectToDatabase();
+    await mongooseConnect();
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not established');
@@ -165,9 +119,14 @@ export async function POST(req: NextRequest) {
     
     if (existing) {
       logInfo('Email already exists in waitlist', { email });
-      return NextResponse.json(
-        { message: 'Email already in waitlist', exists: true },
-        { status: 200, headers: corsHeaders() }
+      return responseWithCors(
+        { 
+          success: true,
+          message: 'Email already in waitlist', 
+          exists: true 
+        },
+        200,
+        req
       );
     }
     
@@ -182,15 +141,28 @@ export async function POST(req: NextRequest) {
     
     logInfo('Successfully created waitlist entry', { id: waitlistEntry.insertedId });
     
-    return NextResponse.json({
+    const response = responseWithCors({
+      success: true,
       message: 'Successfully added to waitlist',
-      waitlistEntry
-    }, { status: 201, headers: corsHeaders() });
+      waitlistEntry: {
+        _id: waitlistEntry.insertedId.toString(),
+        email,
+        source,
+        status: 'pending',
+        notes,
+        createdAt: new Date().toISOString()
+      }
+    }, 201, req);
+    
+    logInfo('Sending POST response with CORS headers');
+    
+    return response;
   } catch (error: any) {
     logError('Error adding to waitlist', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to add to waitlist', details: error.message },
-      { status: 500, headers: corsHeaders() }
+      500,
+      req
     );
   }
 }
@@ -199,14 +171,14 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     logInfo('Starting DELETE request');
-    await connectToDatabase();
+    await mongooseConnect();
     
     // Parse the request body
     const body = await req.json();
     const { id } = body;
     
     if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400, headers: corsHeaders() });
+      return responseWithCors({ error: 'ID is required' }, 400, req);
     }
 
     const db = mongoose.connection.db;
@@ -236,15 +208,16 @@ export async function DELETE(req: NextRequest) {
     }
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Entry not found' }, { status: 404, headers: corsHeaders() });
+      return responseWithCors({ error: 'Entry not found' }, 404, req);
     }
 
-    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+    return responseWithCors({ success: true }, 200, req);
   } catch (error) {
     logError('Failed to delete waitlist entry', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to delete waitlist entry' },
-      { status: 500, headers: corsHeaders() }
+      500,
+      req
     );
   }
 }
@@ -253,25 +226,20 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     logInfo('Starting PUT request');
-    await connectToDatabase();
+    await mongooseConnect();
     
     // Parse the request body
     const body = await req.json();
     const { id, status, notes } = body;
     
     if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400, headers: corsHeaders() });
+      return responseWithCors({ error: 'ID is required' }, 400, req);
     }
 
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not established');
     }
-
-    // Prepare update object
-    const updateObj: { status?: string; notes?: string } = {};
-    if (status) updateObj.status = status;
-    if (notes !== undefined) updateObj.notes = notes;
 
     // Try to update in all possible collections
     const collections = ['waitlist', 'waitlists', 'subscribers'];
@@ -281,9 +249,15 @@ export async function PUT(req: NextRequest) {
       try {
         if (await db.listCollections({ name: collName }).hasNext()) {
           const collection = db.collection(collName);
+          
+          const updateData: any = {};
+          if (status) updateData.status = status;
+          if (notes !== undefined) updateData.notes = notes;
+          updateData.updatedAt = new Date().toISOString();
+
           const result = await collection.updateOne(
             { _id: new mongoose.Types.ObjectId(id) },
-            { $set: updateObj }
+            { $set: updateData }
           );
           
           if (result.matchedCount > 0) {
@@ -298,15 +272,16 @@ export async function PUT(req: NextRequest) {
     }
 
     if (!updated) {
-      return NextResponse.json({ error: 'Entry not found' }, { status: 404, headers: corsHeaders() });
+      return responseWithCors({ error: 'Entry not found' }, 404, req);
     }
 
-    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+    return responseWithCors({ success: true }, 200, req);
   } catch (error) {
     logError('Failed to update waitlist entry', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to update waitlist entry' },
-      { status: 500, headers: corsHeaders() }
+      500,
+      req
     );
   }
 }

@@ -114,7 +114,6 @@ export async function GET(request: NextRequest) {
     
     // Get orders with proper population
     const orders = await Order.find(query)
-      .populate('items.product')
       .sort({ createdAt: -1 });
     
     return responseWithCors(orders, 200, request);

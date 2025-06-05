@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { Ambassador } from '@/app/models/ambassador';
+import { responseWithCors, handleCorsOptions } from '../../../../lib/cors';
+
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  console.log('[COUPON REDEEM API] OPTIONS preflight request received');
+  return handleCorsOptions(request);
+}
 
 // POST /api/coupon/redeem - Track when a coupon is used in a purchase
 export async function POST(request: NextRequest) {
   try {
+    console.log('[COUPON REDEEM API] Processing redemption request from origin:', request.headers.get('origin'));
+    
     // Ensure MongoDB connection
     if (!mongoose.connection.readyState) {
       await mongoose.connect(process.env.MONGODB_URI as string, {
@@ -20,18 +29,11 @@ export async function POST(request: NextRequest) {
       products = []
     } = await request.json();
     
+    console.log('[COUPON REDEEM API] Request data:', { code, orderId, orderAmount, customerEmail });
+    
     if (!code || !orderId || !orderAmount) {
-      const response = NextResponse.json(
-        { error: 'Required fields missing' },
-        { status: 400 }
-      );
-      
-      // Add CORS headers
-      response.headers.set('Access-Control-Allow-Origin', '*');
-      response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-      
-      return response;
+      console.log('[COUPON REDEEM API] Missing required fields');
+      return responseWithCors({ error: 'Required fields missing' }, 400, request);
     }
     
     // Normalize code to uppercase for case-insensitive matching
@@ -48,21 +50,11 @@ export async function POST(request: NextRequest) {
     
     // If not found, not approved, or not active, return error
     if (!ambassador) {
-      console.log(`Invalid or inactive ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
-      const response = NextResponse.json(
-        { error: 'Invalid or inactive ambassador code' },
-        { status: 400 }
-      );
-      
-      // Add CORS headers
-      response.headers.set('Access-Control-Allow-Origin', '*');
-      response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-      
-      return response;
+      console.log(`[COUPON REDEEM API] Invalid or inactive ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
+      return responseWithCors({ error: 'Invalid or inactive ambassador code' }, 400, request);
     }
     
-    console.log(`Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
+    console.log(`[COUPON REDEEM API] Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
     
     // Calculate commission
     const commission = orderAmount * ambassador.commissionRate;
@@ -90,42 +82,26 @@ export async function POST(request: NextRequest) {
       { new: true }
     );
     
-    const response = NextResponse.json({
+    console.log('[COUPON REDEEM API] Ambassador stats updated successfully:', {
+      ambassadorId: ambassador._id,
+      newStats: {
+        sales: updateResult.sales,
+        earnings: updateResult.earnings,
+        orders: updateResult.orders
+      }
+    });
+    
+    return responseWithCors({
       success: true,
       ambassadorId: ambassador._id,
       commission,
       message: 'Coupon redemption recorded successfully'
-    }, { status: 200 });
+    }, 200, request);
     
-    // Add CORS headers
-    response.headers.set('Access-Control-Allow-Origin', '*');
-    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    
-    return response;
-  } catch (error) {
-    console.error('Error redeeming coupon:', error);
-    const response = NextResponse.json(
-      { error: 'Failed to redeem coupon' },
-      { status: 500 }
-    );
-    
-    // Add CORS headers
-    response.headers.set('Access-Control-Allow-Origin', '*');
-    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    
-    return response;
+  } catch (error: any) {
+    console.error('[COUPON REDEEM API] Error processing redemption:', error);
+    return responseWithCors({ 
+      error: error.message || 'Failed to redeem coupon' 
+    }, 500, request);
   }
-}
-
-// Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
-  const response = new NextResponse(null, { status: 204 });
-  
-  response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-  
-  return response;
 } 

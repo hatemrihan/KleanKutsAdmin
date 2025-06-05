@@ -1,3 +1,5 @@
+// CRITICAL: This API must ALWAYS work regardless of site status (ACTIVE/INACTIVE)
+// The waitlist functionality is specifically for collecting emails during maintenance mode
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { mongooseConnect } from '../../lib/mongoose';

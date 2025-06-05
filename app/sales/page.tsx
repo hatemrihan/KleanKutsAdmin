@@ -7,32 +7,16 @@ import * as XLSX from 'xlsx';
 import Nav from '../sections/nav';
 import { config } from '../../config';
 import { DarkModePanel, DarkModeInput } from '../components/ui/dark-mode-wrapper';
-import { Chart } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  ArcElement
-} from 'chart.js';
-
-// Register the required chart components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
+  ResponsiveContainer
+} from 'recharts';
 
 interface SalesData {
   date: string;
@@ -175,82 +159,6 @@ export default function SalesAnalyticsPage() {
     return result;
   };
   
-  // Prepare chart data with explicit type
-  const prepareChartData = () => {
-    const labels = salesData.map(item => item.date);
-    const amounts = salesData.map(item => item.amount);
-    const counts = salesData.map(item => item.count);
-    
-    return {
-      labels,
-      datasets: [
-        {
-          type: 'bar' as const,
-          label: 'Sales Amount (L.E)',
-          data: amounts,
-          backgroundColor: 'rgba(75, 192, 192, 0.5)',
-          borderColor: 'rgb(75, 192, 192)',
-          borderWidth: 1
-        },
-        {
-          type: 'bar' as const,
-          label: 'Orders Count',
-          data: counts,
-          backgroundColor: 'rgba(153, 102, 255, 0.5)',
-          borderColor: 'rgb(153, 102, 255)',
-          borderWidth: 1,
-          yAxisID: 'countAxis',
-        },
-      ],
-    };
-  };
-  
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    scales: {
-      y: {
-        type: 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        title: {
-          display: true,
-          text: 'Sales Amount (L.E)',
-          color: 'rgb(75, 192, 192)',
-        },
-        grid: {
-          color: 'rgba(200, 200, 200, 0.2)',
-        },
-      },
-      countAxis: {
-        type: 'linear' as const,
-        display: true,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'Orders Count',
-          color: 'rgb(153, 102, 255)',
-        },
-        grid: {
-          display: false,
-        },
-      },
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Sales Analytics`,
-      },
-    },
-  };
-  
   const exportToExcel = () => {
     try {
       // Create workbook with sales data
@@ -260,30 +168,7 @@ export default function SalesAnalyticsPage() {
       }
       
       // Use XLSX library to create Excel file
-      const wb = XLSX ? XLSX.utils.book_new() : null;
-      if (!wb) {
-        // Fallback if XLSX is not available
-        const csvContent = 
-          'Date,Orders,Sales Amount,Average Order\n' +
-          salesData.map(item => {
-            return `"${item.date}",${item.count},${item.amount.toFixed(2)},${(item.amount/Math.max(1, item.count)).toFixed(2)}`;
-          }).join('\n');
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `sales_analytics_${timeframe}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        toast.success('Sales data exported as CSV');
-        return;
-      }
-      
-      // Create worksheet
+      const wb = XLSX.utils.book_new();
       const wsData = [
         ['Date', 'Orders', 'Sales Amount (L.E)', 'Average Order Value (L.E)'],
         ...salesData.map(item => [
@@ -471,11 +356,49 @@ export default function SalesAnalyticsPage() {
           <DarkModePanel className="rounded-lg shadow-sm p-4 mb-4">
             <div className="h-[350px] w-full">
               {salesData.length > 0 ? (
-                <Chart 
-                  type="bar" 
-                  data={prepareChartData()} 
-                  options={chartOptions} 
-                />
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                    <XAxis 
+                      dataKey="date" 
+                      className="text-xs text-gray-600 dark:text-gray-400"
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      className="text-xs text-gray-600 dark:text-gray-400"
+                      label={{ value: 'Sales Amount (L.E)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <YAxis 
+                      yAxisId="right"
+                      orientation="right"
+                      className="text-xs text-gray-600 dark:text-gray-400"
+                      label={{ value: 'Orders Count', angle: 90, position: 'insideRight' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px'
+                      }}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="amount" 
+                      name="Sales Amount (L.E)" 
+                      fill="#4ade80"
+                      yAxisId="left"
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      name="Orders Count" 
+                      fill="#818cf8"
+                      yAxisId="right"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               ) : (
                 <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400">
                   No sales data available for the selected timeframe

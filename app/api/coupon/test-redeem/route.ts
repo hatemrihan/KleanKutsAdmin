@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Calculate commission
-    const commission = testOrderAmount * ambassador.commissionRate;
+    const commission = (testOrderAmount * ambassador.commissionRate) / 100;
     
     // Update ambassador stats
     const updatedAmbassador = await Ambassador.findByIdAndUpdate(

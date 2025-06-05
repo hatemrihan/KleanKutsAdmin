@@ -131,13 +131,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[ORDER CREATION] Request body:', JSON.stringify(body, null, 2));
     
     const {
       items,
       shippingInfo,
       total,
-      promocode,
-      transactionScreenshot
+      promocode, // This is the coupon code from e-commerce
+      transactionScreenshot,
+      paymentMethod = 'cod'
     } = body;
 
     // Validate required fields
@@ -152,7 +154,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (Object.values(requiredFields).some(field => !field)) {
-      console.error('Missing or invalid required fields');
+      console.error('[ORDER CREATION] Missing or invalid required fields');
       return responseWithCors(
         { 
           error: 'Missing or invalid required fields',
@@ -165,27 +167,128 @@ export async function POST(request: NextRequest) {
 
     await mongooseConnect();
 
-    // Create order with proper structure
-    const newOrder = new Order({
-      items,
-      shippingInfo,
-      total,
-      totalAmount: total, // Keep both for compatibility
-      promocode,
+    // Handle coupon code and ambassador tracking
+    let ambassadorId = null;
+    let couponDiscount = 0;
+    let finalCouponCode = null;
+
+    if (promocode) {
+      console.log('[ORDER CREATION] Processing coupon code:', promocode);
+      
+      // Import Ambassador model
+      const { Ambassador } = await import("../../models/ambassador");
+      
+      // Find ambassador with this coupon code
+      const ambassador = await Ambassador.findOne({
+        $or: [
+          { couponCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved', isActive: true },
+          { referralCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved', isActive: true }
+        ]
+      });
+
+      if (ambassador) {
+        console.log('[ORDER CREATION] Found ambassador:', ambassador.name);
+        ambassadorId = ambassador._id;
+        finalCouponCode = promocode;
+        
+        // Calculate discount based on ambassador's discount percent
+        couponDiscount = (total * ambassador.discountPercent) / 100;
+        
+        console.log('[ORDER CREATION] Calculated discount:', couponDiscount);
+        
+        // Update ambassador stats immediately
+        const commission = (total * ambassador.commissionRate) / 100;
+        
+        await Ambassador.findByIdAndUpdate(
+          ambassador._id,
+          {
+            $inc: {
+              sales: total,
+              earnings: commission,
+              orders: 1,
+              paymentsPending: commission
+            },
+            $push: {
+              recentOrders: {
+                orderId: `ORD-${Date.now()}`, // Will update with real order ID later
+                orderDate: new Date(),
+                amount: total,
+                commission,
+                isPaid: false
+              }
+            }
+          }
+        );
+        
+        console.log('[ORDER CREATION] Updated ambassador stats:', {
+          ambassadorId: ambassador._id,
+          sales: total,
+          commission,
+          orders: 1
+        });
+      } else {
+        console.log('[ORDER CREATION] No valid ambassador found for coupon:', promocode);
+      }
+    }
+
+    // Create order with proper structure matching the schema
+    const orderData = {
+      customer: {
+        name: shippingInfo.fullName,
+        email: shippingInfo.email || 'customer@example.com',
+        phone: shippingInfo.phone,
+        address: `${shippingInfo.address}, ${shippingInfo.city}`
+      },
+      products: items.map((item: any) => ({
+        productId: item.productId || item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        image: item.image
+      })),
+      totalAmount: total,
+      paymentMethod: paymentMethod,
       transactionScreenshot: transactionScreenshot || null,
       status: 'pending',
       orderDate: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+      couponCode: finalCouponCode, // Store the coupon code
+      couponDiscount: couponDiscount, // Store the discount amount
+      ambassadorId: ambassadorId // Store the ambassador ID
+    };
 
+    console.log('[ORDER CREATION] Creating order with data:', JSON.stringify(orderData, null, 2));
+
+    const newOrder = new Order(orderData);
     await newOrder.save();
-    console.log('Order created successfully:', newOrder._id);
+    
+    // Update the ambassador's recent order with the real order ID
+    if (ambassadorId && finalCouponCode) {
+      const { Ambassador } = await import("../../models/ambassador");
+      await Ambassador.findByIdAndUpdate(
+        ambassadorId,
+        {
+          $set: {
+            "recentOrders.$[elem].orderId": newOrder._id.toString()
+          }
+        },
+        {
+          arrayFilters: [{ "elem.orderId": { $regex: /^ORD-/ } }],
+          sort: { "recentOrders.orderDate": -1 }
+        }
+      );
+    }
+    
+    console.log('[ORDER CREATION] Order created successfully:', newOrder._id);
 
-    return responseWithCors(newOrder, 201, request);
+    return responseWithCors({
+      success: true,
+      orderId: newOrder._id,
+      order: newOrder
+    }, 201, request);
   } catch (error) {
     const apiError = error as ApiError;
-    console.error('Error creating order:', {
+    console.error('[ORDER CREATION] Error creating order:', {
       message: apiError.message,
       stack: apiError.stack
     });

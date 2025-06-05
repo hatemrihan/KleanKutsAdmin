@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     console.log(`[COUPON REDEEM API] Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
     
     // Calculate commission
-    const commission = orderAmount * ambassador.commissionRate;
+    const commission = (orderAmount * ambassador.commissionRate) / 100;
     
     // Update ambassador stats
     const updateResult = await Ambassador.findByIdAndUpdate(

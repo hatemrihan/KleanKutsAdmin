@@ -215,18 +215,22 @@ export default function SalesAnalyticsPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-3 lg:p-6 overflow-x-hidden">
+      <main className="flex-1 p-2 sm:p-3 lg:p-6 overflow-x-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Analytics</h1>
-            </div>
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Sales Analytics
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
           </div>
           
-          <section className="p-4 bg-white dark:bg-black shadow rounded-lg mb-4">
-            <h2 className="text-lg font-semibold mb-3">Sales Analytics</h2>
+          <section className="p-3 sm:p-4 bg-white dark:bg-black shadow rounded-lg mb-4 mx-2 sm:mx-0">
+            <h2 className="text-base sm:text-lg font-semibold mb-3">Analytics Overview</h2>
             
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Select Timeframe:
@@ -234,7 +238,7 @@ export default function SalesAnalyticsPage() {
                 <select
                   value={timeframe}
                   onChange={(e) => setTimeframe(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm sm:text-base"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -247,7 +251,7 @@ export default function SalesAnalyticsPage() {
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Data Range:
                 </label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                   <label className="flex items-center">
                     <input
                       type="radio"
@@ -272,10 +276,10 @@ export default function SalesAnalyticsPage() {
               </div>
             </div>
             
-            <div className="flex gap-2 mt-3">
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
               <button
                 onClick={exportToExcel}
-                className="group relative px-4 py-1.5 rounded-full bg-black text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                className="w-full sm:w-auto group relative px-4 py-1.5 rounded-full bg-black text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
               >
                 <span className="relative flex items-center">
                   <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -286,7 +290,7 @@ export default function SalesAnalyticsPage() {
               </button>
               <button
                 onClick={exportToTxt}
-                className="group relative px-4 py-1.5 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
+                className="w-full sm:w-auto group relative px-4 py-1.5 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
               >
                 <span className="relative flex items-center">
                   <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -298,41 +302,41 @@ export default function SalesAnalyticsPage() {
             </div>
           </section>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <DarkModePanel className="rounded-lg shadow-sm p-4">
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Sales</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 mx-2 sm:mx-0">
+            <DarkModePanel className="rounded-lg shadow-sm p-3 sm:p-4">
+              <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Sales</h3>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 L.E {summary.totalSales.toLocaleString()}
               </p>
               {showAll && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
                   All time total
                 </p>
               )}
             </DarkModePanel>
             
-            <DarkModePanel className="rounded-lg shadow-sm p-4">
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Orders</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <DarkModePanel className="rounded-lg shadow-sm p-3 sm:p-4">
+              <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Total Orders</h3>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {summary.totalOrders.toLocaleString()}
               </p>
               {showAll && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
                   All orders from database
                 </p>
               )}
             </DarkModePanel>
             
-            <DarkModePanel className="rounded-lg shadow-sm p-4">
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Average Order Value</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <DarkModePanel className="rounded-lg shadow-sm p-3 sm:p-4">
+              <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 mb-1">Average Order Value</h3>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 L.E {summary.averageOrderValue.toFixed(2)}
               </p>
             </DarkModePanel>
           </div>
           
-          <DarkModePanel className="rounded-lg shadow-sm p-4 mb-4">
-            <div className="h-[350px] w-full">
+          <DarkModePanel className="rounded-lg shadow-sm p-3 sm:p-4 mb-4 mx-2 sm:mx-0">
+            <div className="h-[300px] sm:h-[350px] w-full">
               {salesData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={salesData}>
@@ -378,45 +382,10 @@ export default function SalesAnalyticsPage() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400">
+                <div className="flex h-full justify-center items-center text-gray-500 dark:text-gray-400 text-sm sm:text-base">
                   No sales data available for the selected timeframe
                 </div>
               )}
-            </div>
-          </DarkModePanel>
-          
-          <DarkModePanel className="rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
-                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sales Amount</th>
-                    <th className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Average Order</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {salesData.length > 0 ? (
-                    salesData.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.date}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{item.count}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">L.E {item.amount.toLocaleString()}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          L.E {(item.amount / Math.max(1, item.count)).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-                        No data available for the selected timeframe
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
             </div>
           </DarkModePanel>
         </div>

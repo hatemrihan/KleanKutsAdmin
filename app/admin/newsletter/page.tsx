@@ -178,31 +178,41 @@ export default function NewsletterAdmin() {
   return (
     <div className="flex min-h-screen">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8 bg-gray-50 dark:bg-black">
+      <main className="flex-1 p-2 sm:p-4 lg:p-8 bg-gray-50 dark:bg-black">
         <div className="max-w-7xl mx-auto">
+          {/* Enhanced Page title with Dashboard-style font */}
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Subscribers
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+          </div>
+
           {/* Header */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 mx-2 sm:mx-0">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white"> Subscribers</h1>
-              <p className="text-gray-500 dark:text-white dark:opacity-70 mt-1">Manage your  subscribers</p>
+              <p className="text-gray-500 dark:text-white dark:opacity-70 mt-1 text-sm sm:text-base">Manage your newsletter subscribers</p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
               <div className="relative w-full sm:w-[300px]">
                 <Input
                   type="search"
                   placeholder="Search emails..."
-                  className="pl-10 w-full dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:placeholder-white dark:placeholder-opacity-50"
+                  className="pl-10 w-full dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:placeholder-white dark:placeholder-opacity-50 text-sm sm:text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-white dark:opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 dark:text-white dark:opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
               
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-full sm:w-[150px] dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white">
+                <SelectTrigger className="w-full sm:w-[150px] dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white text-sm sm:text-base">
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-black dark:border-white dark:border-opacity-20">
@@ -215,7 +225,7 @@ export default function NewsletterAdmin() {
               </Select>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[150px] dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white">
+                <SelectTrigger className="w-full sm:w-[150px] dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white text-sm sm:text-base">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-black dark:border-white dark:border-opacity-20">
@@ -230,11 +240,11 @@ export default function NewsletterAdmin() {
               <div className="dropdown relative" ref={exportDropdownRef}>
                 <Button 
                   variant="outline" 
-                  className="w-full sm:w-auto dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10"
+                  className="w-full sm:w-auto dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 text-sm sm:text-base"
                   onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
                 >
                   Export
-                  <svg className={`ml-2 w-4 h-4 transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`ml-2 w-3 h-3 sm:w-4 sm:h-4 transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </Button>
@@ -245,7 +255,7 @@ export default function NewsletterAdmin() {
                         exportSubscribers('txt');
                         setExportDropdownOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
                     >
                       Export as TXT
                     </button>
@@ -254,7 +264,7 @@ export default function NewsletterAdmin() {
                         exportSubscribers('csv');
                         setExportDropdownOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white dark:hover:bg-opacity-10"
                     >
                       Export as CSV
                     </button>
@@ -265,32 +275,32 @@ export default function NewsletterAdmin() {
           </div>
 
           {/* Table */}
-          <div className="bg-white dark:bg-black rounded-lg shadow-sm overflow-hidden border dark:border-white dark:border-opacity-20">
+          <div className="bg-white dark:bg-black rounded-lg shadow-sm overflow-hidden border dark:border-white dark:border-opacity-20 mx-2 sm:mx-0">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-white dark:divide-opacity-20">
                 <thead>
                   <tr>
-                    <th className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Email</th>
-                    <th className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider hidden sm:table-cell">Source</th>
-                    <th className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Status</th>
-                    <th className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider hidden md:table-cell">Date Subscribed</th>
-                    <th className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Actions</th>
+                    <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Email</th>
+                    <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider hidden sm:table-cell">Source</th>
+                    <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Status</th>
+                    <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider hidden md:table-cell">Date Subscribed</th>
+                    <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-white dark:divide-opacity-20">
                   {subscribers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-3 sm:px-6 py-4 text-center text-gray-500 dark:text-white dark:opacity-70">
+                      <td colSpan={5} className="px-2 sm:px-3 lg:px-6 py-4 text-center text-gray-500 dark:text-white dark:opacity-70 text-sm">
                         No subscribers found.
                       </td>
                     </tr>
                   ) : (
                     subscribers.map((subscriber) => (
                       <tr key={subscriber._id} className="hover:bg-gray-50 dark:hover:bg-white dark:hover:bg-opacity-5">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px] sm:max-w-none">{subscriber.email}</div>
+                        <td className="px-2 sm:px-3 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
+                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px] sm:max-w-none break-all">{subscriber.email}</div>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        <td className="px-2 sm:px-3 lg:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                           <div className="text-xs sm:text-sm text-gray-500 dark:text-white dark:opacity-70">
                             {subscriber.source === 'website_footer' ? 'Website Footer' :
                              subscriber.source === 'popup' ? 'Popup' :
@@ -298,7 +308,7 @@ export default function NewsletterAdmin() {
                              subscriber.source || 'Other'}
                           </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-2 sm:px-3 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             subscriber.subscribed
                               ? 'bg-green-100 text-green-800 dark:bg-white dark:bg-opacity-10 dark:text-white'
@@ -307,10 +317,10 @@ export default function NewsletterAdmin() {
                             {subscriber.subscribed ? 'Subscribed' : 'Unsubscribed'}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 dark:text-white dark:opacity-70 hidden md:table-cell">
+                        <td className="px-2 sm:px-3 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 dark:text-white dark:opacity-70 hidden md:table-cell">
                           {new Date(subscriber.subscribedAt).toLocaleDateString()}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                        <td className="px-2 sm:px-3 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           {subscriber.subscribed && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -348,7 +358,7 @@ export default function NewsletterAdmin() {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-3 sm:gap-0">
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-4 sm:mt-6 gap-3 sm:gap-0 mx-2 sm:mx-0">
               <div className="text-xs sm:text-sm text-gray-500 dark:text-white dark:opacity-70 text-center sm:text-left">
                 Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} subscribers
               </div>
@@ -357,7 +367,7 @@ export default function NewsletterAdmin() {
                   variant="outline"
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
-                  className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 disabled:dark:opacity-30 flex-1 sm:flex-none"
+                  className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 disabled:dark:opacity-30 flex-1 sm:flex-none text-sm"
                 >
                   Previous
                 </Button>
@@ -365,7 +375,7 @@ export default function NewsletterAdmin() {
                   variant="outline"
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.pages}
-                  className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 disabled:dark:opacity-30 flex-1 sm:flex-none"
+                  className="dark:bg-black dark:border-white dark:border-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-10 disabled:dark:opacity-30 flex-1 sm:flex-none text-sm"
                 >
                   Next
                 </Button>

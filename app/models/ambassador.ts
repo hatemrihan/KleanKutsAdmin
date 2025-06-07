@@ -109,13 +109,23 @@ const AmbassadorSchema = new Schema({
     type: Number, 
     default: 0 
   },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'waiting', 'sent', 'paid'],
+    default: 'pending'
+  },
   recentOrders: {
     type: [{
       orderId: { type: String },
       orderDate: { type: Date, default: Date.now },
       amount: { type: Number, default: 0 },
       commission: { type: Number, default: 0 },
-      isPaid: { type: Boolean, default: false }
+      isPaid: { type: Boolean, default: false },
+      paymentStatus: { 
+        type: String, 
+        enum: ['pending', 'waiting', 'sent', 'paid'], 
+        default: 'pending' 
+      }
     }],
     default: []
   },
@@ -209,12 +219,14 @@ interface AmbassadorDocument extends mongoose.Document {
   conversions: number;
   paymentsPending: number;
   paymentsPaid: number;
+  paymentStatus: 'pending' | 'waiting' | 'sent' | 'paid';
   recentOrders: {
     orderId: string;
     orderDate: Date;
     amount: number;
     commission: number;
     isPaid: boolean;
+    paymentStatus: 'pending' | 'waiting' | 'sent' | 'paid';
   }[];
   createdAt: Date;
   updatedAt: Date;

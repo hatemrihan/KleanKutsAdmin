@@ -420,21 +420,31 @@ export default function ProductsPage() {
       <Nav />
       <main className="p-2 sm:p-3 md:p-6">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Products
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
-            <h1 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-0">Products</h1>
-            <div className="flex gap-3">
+            <div></div>
+            <div className="flex gap-3 w-full sm:w-auto">
               {selectedProducts.length > 0 && (
                 <button
                   onClick={handleDeleteSelected}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isDeleting ? 'Deleting...' : `Delete Selected (${selectedProducts.length})`}
                 </button>
               )}
-              <Link href="/products/new">
+              <Link href="/products/new" className="flex-1 sm:flex-initial">
                 <Button 
-                  className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black"
+                  className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black text-sm sm:text-base"
                 >
                   Add New Product
                   <PlusCircle className="ml-2 h-4 w-4" />
@@ -443,22 +453,22 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-sm mb-6">
+          <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-sm mb-6 mx-2 sm:mx-0">
             <div className="p-3 sm:p-4 flex flex-col sm:flex-row gap-3">
               <Input
                   type="search"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-80 bg-white dark:bg-black"
+                className="w-full sm:w-80 bg-white dark:bg-black text-sm sm:text-base"
               />
               
-              <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:ml-auto">
+              <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
                 <Select 
                   value={categoryFilter} 
                   onValueChange={setCategoryFilter}
                 >
-                  <SelectTrigger className="w-full sm:w-40 bg-white dark:bg-black">
+                  <SelectTrigger className="w-full sm:w-40 bg-white dark:bg-black text-sm sm:text-base">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -471,7 +481,7 @@ export default function ProductsPage() {
                   value={sortOption} 
                   onValueChange={setSortOption}
                 >
-                  <SelectTrigger className="w-full sm:w-40 bg-white dark:bg-black">
+                  <SelectTrigger className="w-full sm:w-40 bg-white dark:bg-black text-sm sm:text-base">
                     <SelectValue placeholder="Sort By" />
                   </SelectTrigger>
                   <SelectContent>
@@ -519,7 +529,7 @@ export default function ProductsPage() {
                                 )}
                               </div>
               ) : (
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mx-2 sm:mx-0">
                   {filteredProducts.map((product) => (
                     <ProductCard 
                       key={product._id} 
@@ -537,7 +547,7 @@ export default function ProductsPage() {
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="px-2 sm:px-3 py-1 sm:py-2 text-sm font-medium text-gray-500 bg-white rounded-l-md border border-gray-300 hover:bg-gray-50 dark:bg-black dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900 disabled:opacity-50"
+                      className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white rounded-l-md border border-gray-300 hover:bg-gray-50 dark:bg-black dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900 disabled:opacity-50"
                     >
                       Previous
                                     </button>
@@ -545,7 +555,7 @@ export default function ProductsPage() {
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i + 1)}
-                        className={`hidden sm:block px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-700 ${
+                        className={`hidden sm:block px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium border border-gray-300 dark:border-gray-700 ${
                           currentPage === i + 1
                             ? 'bg-black text-white dark:bg-gray-800'
                             : 'text-gray-500 bg-white hover:bg-gray-50 dark:bg-black dark:text-gray-300 dark:hover:bg-gray-900'
@@ -554,13 +564,13 @@ export default function ProductsPage() {
                         {i + 1}
                       </button>
                     ))}
-                    <span className="sm:hidden px-2 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 dark:bg-black dark:border-gray-700 dark:text-gray-300">
+                    <span className="sm:hidden px-2 py-1 text-xs sm:text-sm font-medium text-gray-500 bg-white border border-gray-300 dark:bg-black dark:border-gray-700 dark:text-gray-300">
                       {currentPage} / {pagination.totalPages}
                                   </span>
                     <button
                       onClick={() => setCurrentPage(Math.min(pagination.totalPages, currentPage + 1))}
                       disabled={currentPage === pagination.totalPages}
-                      className="px-2 sm:px-3 py-1 sm:py-2 text-sm font-medium text-gray-500 bg-white rounded-r-md border border-gray-300 hover:bg-gray-50 dark:bg-black dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900 disabled:opacity-50"
+                      className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white rounded-r-md border border-gray-300 hover:bg-gray-50 dark:bg-black dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900 disabled:opacity-50"
                     >
                       Next
                     </button>

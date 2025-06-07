@@ -321,9 +321,16 @@ export default function WaitlistPage() {
         <div className="max-w-7xl mx-auto">
           {/* Header Section */}
           <div className="sticky top-0 z-10 bg-gray-50 dark:bg-black p-4 sm:p-0 mb-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 font-cal">
-              Waitlist Management
-            </h1>
+            {/* Enhanced Page title with Dashboard-style font */}
+            <div className="mb-6 sm:mb-8">
+              <h1 
+                className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                Waitlist
+              </h1>
+              <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+            </div>
 
             {/* Mobile Action Buttons */}
             <div className="block sm:hidden space-y-2">

@@ -110,21 +110,28 @@ export default function CouponsPage() {
   return (
     <div className="flex min-h-screen">
       <Nav />
-      <main className="flex-1 p-6 bg-gray-50 dark:bg-black">
+      <main className="flex-1 p-2 sm:p-4 lg:p-6 bg-gray-50 dark:bg-black">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-black dark:text-white">Promo Codes</h1>
+          {/* Enhanced Page title with Dashboard-style font */}
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Promo Codes
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
           </div>
           
           {/* Create Promo Code Form */}
-          <div className="bg-white dark:bg-black p-6 rounded-lg shadow mb-8">
-            <h2 className="text-lg font-semibold mb-4 text-black dark:text-white">Create New Promo Code</h2>
-            <p className="mb-4 text-gray-600 dark:text-gray-300">
+          <div className="bg-white dark:bg-black p-3 sm:p-4 lg:p-6 rounded-lg shadow mb-6 sm:mb-8 mx-2 sm:mx-0">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-black dark:text-white">Create New Promo Code</h2>
+            <p className="mb-3 sm:mb-4 text-sm sm:text-base text-gray-600 dark:text-gray-300">
               Create a promo code that works for all products in your store.
             </p>
             
-            <form onSubmit={handleCreateCoupon} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleCreateCoupon} className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
                 <div>
                   <label htmlFor="code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Promo Code
@@ -135,7 +142,7 @@ export default function CouponsPage() {
                     value={newCoupon.code}
                     onChange={(e) => setNewCoupon(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                     placeholder="e.g., SUMMER20"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white text-sm sm:text-base"
                     required
                   />
                 </div>
@@ -151,7 +158,7 @@ export default function CouponsPage() {
                     max="100"
                     value={newCoupon.discount}
                     onChange={(e) => setNewCoupon(prev => ({ ...prev, discount: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-black dark:text-white text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -160,7 +167,7 @@ export default function CouponsPage() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isCreating ? 'Creating...' : 'Create Promo Code'}
                 </button>
@@ -169,55 +176,61 @@ export default function CouponsPage() {
           </div>
           
           {/* Promo Codes List */}
-          <div className="bg-white dark:bg-black rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-black dark:text-white">Active Promo Codes</h2>
+          <div className="bg-white dark:bg-black rounded-lg shadow mx-2 sm:mx-0">
+            <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-base sm:text-lg font-semibold text-black dark:text-white">Active Promo Codes</h2>
             </div>
             
             {loading ? (
-              <div className="p-6 flex justify-center">
+              <div className="p-4 sm:p-6 flex justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : coupons.length === 0 ? (
-              <div className="p-6 text-center">
-                <p className="text-gray-500 dark:text-gray-400">No promo codes found</p>
+              <div className="p-4 sm:p-6 text-center">
+                <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">No promo codes found</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-black">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Code
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Discount
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Created
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                     {coupons.map((coupon) => (
-                      <tr key={coupon._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-black dark:text-white">{coupon.code}</div>
+                      <tr key={coupon._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                            {coupon.code}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-gray-300">{coupon.discount}%</div>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                          <div className="text-xs sm:text-sm text-gray-900 dark:text-white">
+                            {coupon.discount}%
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-gray-300">{formatDate(coupon.createdAt)}</div>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                          <div className="text-xs sm:text-sm text-gray-900 dark:text-white">
+                            {formatDate(coupon.createdAt)}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           <button
                             onClick={() => handleDeleteCoupon(coupon._id)}
                             disabled={isDeleting}
-                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                           >
                             Delete
                           </button>

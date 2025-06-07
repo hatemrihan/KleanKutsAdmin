@@ -293,34 +293,52 @@ export default function OrdersPage() {
 
   const deleteOrder = async (orderId: string) => {
     try {
-      await axios.delete(`/api/orders?id=${orderId}`);
-      setOrders(orders.filter(order => order._id !== orderId));
-      toast.success('Order deleted successfully');
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      toast.error('Failed to delete order');
+      console.log('Deleting order:', orderId);
+      
+      // Send order ID in request body as expected by the API
+      const response = await axios.delete(`/api/orders`, {
+        data: { _id: orderId },
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Delete response:', response.data);
+      
+      if (response.status === 200 && response.data) {
+        // Remove from local state
+        setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+        
+        // Remove from selected orders if it was selected
+        setSelectedOrders(prevSelected => prevSelected.filter(id => id !== orderId));
+        
+        toast.success('Order deleted successfully');
+        return true; // Return success indicator
+      } else {
+        throw new Error('Delete request failed');
+      }
+    } catch (error: any) {
+      console.error('Error deleting order:', {
+        orderId,
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Show specific error message if available
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete order';
+      toast.error(`Failed to delete order: ${errorMessage}`);
+      return false; // Return failure indicator
     }
   };
   
   // Export orders to Excel
   const exportOrdersToExcel = () => {
     try {
-      // Prepare data for export
-      const exportData = orders.map(order => {
-        // Calculate total without discounts/promos
-        const productTotal = order.products.reduce((sum, product) => {
-          return sum + (product.price * product.quantity);
-        }, 0);
-        
-        // Get delivery cost (assuming it's the difference between totalAmount and product prices)
-        // If there's a coupon, we need to add back the discount to get the original total
-        const couponDiscount = order.couponDiscount || 0;
-        const originalTotal = order.totalAmount + (productTotal * (couponDiscount / 100) || 0);
-        const deliveryCost = Math.max(0, originalTotal - productTotal);
-        
-        // Calculate the total we want to show (product cost + delivery, no discounts)
-        const exportTotal = productTotal + deliveryCost;
-        
+      // Prepare data for export with all the columns requested
+      const exportData: any[] = [];
+      
+      orders.forEach(order => {
         // Prepare customer info
         const customerName = (order.customer?.name ?? `${order.firstName ?? ""} ${order.lastName ?? ""}`.trim()) || "Unknown";
         const customerEmail = order.customer?.email ?? order.email ?? "N/A";
@@ -331,57 +349,123 @@ export default function OrdersPage() {
         const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 
                          order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A";
         
-        // Prepare products as a string
-        const productsText = order.products.map(p => 
-          `${p.name} (${p.size}) x${p.quantity} - $${p.price.toFixed(2)}`
-        ).join("\n");
+        // Extract city and area from address if possible
+        const addressParts = customerAddress.split(',').map(part => part.trim());
+        const city = addressParts.length > 1 ? addressParts[addressParts.length - 1] : "N/A";
+        const area = addressParts.length > 2 ? addressParts[addressParts.length - 2] : "N/A";
+        const streetAddress = addressParts.length > 2 ? addressParts.slice(0, -2).join(', ') : customerAddress;
         
-        return {
-          "Order ID": order._id,
-          "Order Date": orderDate,
-          "Customer Name": customerName,
-          "Email": customerEmail,
-          "Phone": customerPhone,
-          "Address": customerAddress,
-          "Payment Method": order.paymentMethod || "N/A",
-          "Status": order.status,
-          "Products": productsText,
-          "Product Cost": productTotal.toFixed(2),
-          "Delivery Cost": deliveryCost.toFixed(2),
-          "Total Cost": exportTotal.toFixed(2),
-          "Notes": order.notes || ""
-        };
+        // Calculate totals
+        const productTotal = order.products.reduce((sum, product) => {
+          return sum + (product.price * product.quantity);
+        }, 0);
+        
+        const couponDiscount = order.couponDiscount || 0;
+        const originalTotal = order.totalAmount + (productTotal * (couponDiscount / 100) || 0);
+        const deliveryCost = Math.max(0, originalTotal - productTotal);
+        
+        // If there are products, create a row for each product
+        if (order.products && order.products.length > 0) {
+          order.products.forEach((product, index) => {
+            exportData.push({
+              "Consignee Name": customerName,
+              "City": city,
+              "Area": area,
+              "Address": streetAddress,
+              "Phone_1": customerPhone,
+              "Phone_2": "", // Secondary phone if available
+              "E-mail": customerEmail,
+              "Order ID": order._id,
+              "Client ID": order._id.substring(0, 8), // First 8 characters as client ID
+              "Item Name": product.name || "Unknown Product",
+              "Quantity": product.quantity || 1,
+              "Item Description": `${product.name || "Unknown Product"} - Size: ${product.size || "N/A"} - Price: L.E ${(product.price || 0).toFixed(2)}`,
+              "Unit Price": (product.price || 0).toFixed(2),
+              "Total Item Price": ((product.price || 0) * (product.quantity || 1)).toFixed(2),
+              "Order Date": orderDate,
+              "Payment Method": order.paymentMethod || "COD",
+              "Order Status": order.status || "pending",
+              "Coupon Code": order.couponCode || order.promoCode?.code || "N/A",
+              "Coupon Discount": couponDiscount > 0 ? `${couponDiscount}%` : "N/A",
+              "Ambassador ID": order.ambassadorId || order.ambassador?.ambassadorId || "N/A",
+              "Delivery Cost": index === 0 ? deliveryCost.toFixed(2) : "0.00", // Only add delivery cost to first item
+              "Order Total": index === 0 ? order.totalAmount.toFixed(2) : "", // Only show total on first item
+              "Notes": order.notes || "",
+              "Transaction Screenshot": order.transactionScreenshot || "N/A"
+            });
+          });
+        } else {
+          // If no products, create a single row
+          exportData.push({
+            "Consignee Name": customerName,
+            "City": city,
+            "Area": area,
+            "Address": streetAddress,
+            "Phone_1": customerPhone,
+            "Phone_2": "",
+            "E-mail": customerEmail,
+            "Order ID": order._id,
+            "Client ID": order._id.substring(0, 8),
+            "Item Name": "No Products",
+            "Quantity": 0,
+            "Item Description": "No products found in this order",
+            "Unit Price": "0.00",
+            "Total Item Price": "0.00",
+            "Order Date": orderDate,
+            "Payment Method": order.paymentMethod || "COD",
+            "Order Status": order.status || "pending",
+            "Coupon Code": order.couponCode || order.promoCode?.code || "N/A",
+            "Coupon Discount": couponDiscount > 0 ? `${couponDiscount}%` : "N/A",
+            "Ambassador ID": order.ambassadorId || order.ambassador?.ambassadorId || "N/A",
+            "Delivery Cost": deliveryCost.toFixed(2),
+            "Order Total": order.totalAmount.toFixed(2),
+            "Notes": order.notes || "",
+            "Transaction Screenshot": order.transactionScreenshot || "N/A"
+          });
+        }
       });
       
       // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
-      // Set column widths
+      // Set column widths for better readability
       const columnWidths = [
-        { wch: 24 }, // Order ID
+        { wch: 20 }, // Consignee Name
+        { wch: 15 }, // City
+        { wch: 15 }, // Area
+        { wch: 35 }, // Address
+        { wch: 15 }, // Phone_1
+        { wch: 15 }, // Phone_2
+        { wch: 25 }, // E-mail
+        { wch: 25 }, // Order ID
+        { wch: 12 }, // Client ID
+        { wch: 25 }, // Item Name
+        { wch: 10 }, // Quantity
+        { wch: 40 }, // Item Description
+        { wch: 12 }, // Unit Price
+        { wch: 15 }, // Total Item Price
         { wch: 12 }, // Order Date
-        { wch: 20 }, // Customer Name
-        { wch: 25 }, // Email
-        { wch: 15 }, // Phone
-        { wch: 30 }, // Address
         { wch: 15 }, // Payment Method
-        { wch: 12 }, // Status
-        { wch: 40 }, // Products
-        { wch: 12 }, // Product Cost
+        { wch: 12 }, // Order Status
+        { wch: 15 }, // Coupon Code
+        { wch: 15 }, // Coupon Discount
+        { wch: 15 }, // Ambassador ID
         { wch: 12 }, // Delivery Cost
-        { wch: 12 }, // Total Cost
-        { wch: 30 }  // Notes
+        { wch: 12 }, // Order Total
+        { wch: 30 }, // Notes
+        { wch: 20 }  // Transaction Screenshot
       ];
       worksheet['!cols'] = columnWidths;
       
       // Create workbook
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Orders Export");
       
       // Generate Excel file and trigger download
-      XLSX.writeFile(workbook, `orders_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const timestamp = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `orders_detailed_export_${timestamp}.xlsx`);
       
-      toast.success('Orders exported successfully');
+      toast.success(`Orders exported successfully - ${exportData.length} rows exported`);
     } catch (error) {
       console.error('Error exporting orders:', error);
       toast.error('Failed to export orders');
@@ -421,32 +505,70 @@ export default function OrdersPage() {
       const loadingToast = toast.loading(`Deleting ${selectedOrders.length} orders...`);
       let successCount = 0;
       let failCount = 0;
+      const failedOrders: string[] = [];
 
-      // Delete orders one by one
+      // Delete orders one by one and track results
       for (const orderId of selectedOrders) {
         try {
-          await deleteOrder(orderId);
-          successCount++;
-        } catch (error) {
-          console.error(`Failed to delete order ${orderId}:`, error);
+          console.log(`Attempting to delete order: ${orderId}`);
+          
+          // Send order ID in request body as expected by the API
+          const response = await axios.delete(`/api/orders`, {
+            data: { _id: orderId },
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log(`Delete response for ${orderId}:`, response.data);
+          
+          if (response.status === 200) {
+            successCount++;
+          } else {
+            throw new Error(`Delete failed with status ${response.status}`);
+          }
+        } catch (error: any) {
+          console.error(`Failed to delete order ${orderId}:`, {
+            error: error.message,
+            response: error.response?.data,
+            status: error.response?.status
+          });
+          failedOrders.push(orderId);
           failCount++;
         }
       }
 
-      // Update UI
-      toast.dismiss(loadingToast);
-      if (failCount === 0) {
-        toast.success(`Successfully deleted ${successCount} orders`);
-      } else {
-        toast.error(`Deleted ${successCount} orders, failed to delete ${failCount} orders`);
+      // Update local state - remove all successfully deleted orders
+      const successfullyDeleted = selectedOrders.filter(id => !failedOrders.includes(id));
+      if (successfullyDeleted.length > 0) {
+        setOrders(prevOrders => prevOrders.filter(order => !successfullyDeleted.includes(order._id)));
       }
 
-      // Refresh orders list and reset selection
-      fetchOrders();
+      // Clear selection
       setSelectedOrders([]);
       setSelectAll(false);
-    } catch (error) {
-      console.error('Error in batch delete:', error);
+
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      // Show result
+      if (failCount === 0) {
+        toast.success(`Successfully deleted ${successCount} orders`);
+      } else if (successCount === 0) {
+        toast.error(`Failed to delete all ${failCount} orders`);
+      } else {
+        toast.success(`Deleted ${successCount} orders, failed to delete ${failCount} orders`);
+      }
+
+      // Refresh the orders list to ensure consistency with database
+      console.log('Refreshing orders list after bulk delete...');
+      await fetchOrders();
+      
+    } catch (error: any) {
+      console.error('Error in bulk delete:', {
+        error: error.message,
+        selectedOrders: selectedOrders.length
+      });
       toast.error('Failed to delete selected orders');
     }
   };
@@ -504,23 +626,34 @@ export default function OrdersPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-2 sm:p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+          {/* Enhanced Page title with Dashboard-style font */}
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Orders
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 mx-2 sm:mx-0">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+              {/* Title removed since it's already at the top */}
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
               <DarkModeInput
                 type="search"
                 placeholder="Search orders..."
-                className="w-full sm:w-[300px]"
+                className="w-full sm:w-[250px] lg:w-[300px] text-sm sm:text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <div className="flex flex-row gap-2 w-full">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[200px] dark:bg-black dark:border-gray-700 dark:text-white">
+                  <SelectTrigger className="w-full sm:w-[160px] lg:w-[200px] dark:bg-black dark:border-gray-700 dark:text-white text-sm sm:text-base">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-black dark:border-gray-700">
@@ -534,7 +667,7 @@ export default function OrdersPage() {
                 </Select>
                 <button
                   onClick={exportOrdersToExcel}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800 whitespace-nowrap min-w-fit"
+                  className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800 whitespace-nowrap text-xs sm:text-sm w-full sm:w-auto"
                 >
                   Export to Excel
                 </button>
@@ -543,309 +676,249 @@ export default function OrdersPage() {
           </div>
 
           <DarkModePanel className="rounded-lg shadow-sm">
-            {/* Desktop view */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-black text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectAll}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coupon</th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredOrders?.map((order) => {
-                    if (!order) {
-                      console.warn('Invalid order data:', order);
-                      return null;
-                    }
+            {/* Single Mobile-First Card Layout - No Desktop Table */}
+            <div className="p-2 sm:p-4">
+              {/* Bulk Actions Header */}
+              {selectedOrders.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div className="text-sm text-blue-800 dark:text-blue-200">
+                      {selectedOrders.length} order(s) selected
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700">
+                          Delete Selected
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[95vw] max-w-md mx-auto">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="dark:text-gray-100">Delete Selected Orders?</AlertDialogTitle>
+                          <AlertDialogDescription className="dark:text-gray-400">
+                            This will permanently delete {selectedOrders.length} selected orders. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                          <AlertDialogCancel className="dark:bg-black/80 dark:text-white/70 dark:hover:bg-black/60 w-full sm:w-auto">Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeleteSelected} className="dark:bg-red-900 dark:hover:bg-red-800 w-full sm:w-auto">
+                            Delete {selectedOrders.length} Orders
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
 
-                    // Get customer name from either format
-                    const customerName = (order.customer?.name ?? `${order.firstName ?? ""} ${order.lastName ?? ""}`.trim()) || "Unknown Customer";
-                    const customerEmail = order.customer?.email ?? order.email ?? "No email provided";
-                    const customerPhone = order.customer?.phone ?? order.phone ?? "No phone provided";
-                    const customerAddress = order.customer?.address ?? order.address ?? "No address provided";
+              {/* Check All Orders */}
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="font-medium">Select All Orders ({filteredOrders.length})</span>
+                </label>
+              </div>
 
-                    return (
-                      <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrders.includes(order._id)}
-                            onChange={() => handleSelectOrder(order._id)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {order._id}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {customerName}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {customerEmail}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {customerPhone}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {customerAddress}
-                          </div>
-                          {order.products?.length > 0 && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                              <strong className="dark:text-gray-300">Products:</strong>
-                              <ul className="list-disc pl-5">
-                                {order.products.map((item) => (
-                                  <li key={item.productId || Math.random()} className="dark:text-gray-400">
-                                    {item.name ?? 'Unknown Product'} - {item.size ?? 'N/A'} x {item.quantity ?? 0} - L.E {(item.price ?? 0).toFixed(2)}
-                                  </li>
-                                ))}
-                              </ul>
+              {/* Order Cards */}
+              <div className="space-y-3">
+                {filteredOrders?.map((order) => {
+                  if (!order) {
+                    console.warn('Invalid order data:', order);
+                    return null;
+                  }
+
+                  // Get customer name from either format
+                  const customerName = (order.customer?.name ?? `${order.firstName ?? ""} ${order.lastName ?? ""}`.trim()) || "Unknown Customer";
+                  const customerEmail = order.customer?.email ?? order.email ?? "No email provided";
+                  const customerPhone = order.customer?.phone ?? order.phone ?? "No phone provided";
+                  const customerAddress = order.customer?.address ?? order.address ?? "No address provided";
+
+                  return (
+                    <div key={order._id} className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="space-y-3">
+                        {/* Header with checkbox, name, and amount */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrders.includes(order._id)}
+                              onChange={() => handleSelectOrder(order._id)}
+                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+                                {customerName}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                                ID: {order._id.slice(-8)}
+                              </div>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          L.E {(order.totalAmount ?? order.total ?? 0).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Select
-                            value={order.status ?? 'pending'}
-                            onValueChange={(value: Order['status']) => updateOrderStatus(order._id, value)}
-                          >
-                            <SelectTrigger className="w-[130px] dark:bg-black dark:border-gray-700">
-                              <SelectValue>
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status ?? 'pending']}`}>
-                                  {(order.status ?? 'pending').charAt(0).toUpperCase() + (order.status ?? 'pending').slice(1)}
-                                </span>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="dark:bg-black dark:border-gray-700">
-                              <SelectItem value="pending" className="dark:text-gray-100 dark:focus:bg-gray-700">Pending</SelectItem>
-                              <SelectItem value="processing" className="dark:text-gray-100 dark:focus:bg-gray-700">Processing</SelectItem>
-                              <SelectItem value="shipped" className="dark:text-gray-100 dark:focus:bg-gray-700">Shipped</SelectItem>
-                              <SelectItem value="delivered" className="dark:text-gray-100 dark:focus:bg-gray-700">Delivered</SelectItem>
-                              <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                              {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'Cash on Delivery'}
-                            </span>
-                            
-                            {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
-                              <PaymentScreenshotViewer 
-                                screenshotUrl={order.transactionScreenshot} 
-                                paymentMethod={order.paymentMethod}
-                              />
-                            )}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {(() => {
-                            // Extract coupon information from all possible sources
-                            const couponCode = order.couponCode || 
-                                              (order.promoCode && order.promoCode.code) || 
-                                              (order.ambassador && order.ambassador.couponCode);
-                            
-                            const couponDiscount = order.couponDiscount || 
-                                                  (order.promoCode && order.promoCode.value) || 
-                                                  0;
-                            
-                            const ambassadorId = order.ambassadorId || 
-                                                (order.ambassador && order.ambassador.ambassadorId) || 
-                                                undefined; // Remove the ambassadorId reference from promoCode
-                            
-                            return couponCode ? (
-                              <div className="flex flex-col gap-1">
-                                <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                              L.E {(order.totalAmount ?? order.total ?? 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Customer details in compact format */}
+                        <div className="text-xs space-y-1">
+                          <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
+                            <span className="flex-shrink-0">📧</span>
+                            <span className="break-all">{customerEmail}</span>
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
+                            <span className="flex-shrink-0">📞</span>
+                            <span>{customerPhone}</span>
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
+                            <span className="flex-shrink-0">📍</span>
+                            <span>{customerAddress}</span>
+                          </div>
+                        </div>
+
+                        {/* Products in a compact box */}
+                        {order.products?.length > 0 && (
+                          <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded text-xs">
+                            <div className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                              Products ({order.products.length}):
+                            </div>
+                            <div className="space-y-1">
+                              {order.products.map((item) => (
+                                <div key={item.productId || Math.random()} className="text-gray-600 dark:text-gray-400 break-words">
+                                  • {item.name ?? 'Unknown Product'} ({item.size ?? 'N/A'}) ×{item.quantity ?? 0} - L.E {(item.price ?? 0).toFixed(2)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Status and Payment in responsive grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Status */}
+                          <div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status:</div>
+                            <Select
+                              value={order.status ?? 'pending'}
+                              onValueChange={(value: Order['status']) => updateOrderStatus(order._id, value)}
+                            >
+                              <SelectTrigger className="w-full h-8 dark:bg-black dark:border-gray-700 text-xs">
+                                <SelectValue>
+                                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status ?? 'pending']}`}>
+                                    {(order.status ?? 'pending').charAt(0).toUpperCase() + (order.status ?? 'pending').slice(1)}
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="dark:bg-black dark:border-gray-700">
+                                <SelectItem value="pending" className="dark:text-gray-100 dark:focus:bg-gray-700">Pending</SelectItem>
+                                <SelectItem value="processing" className="dark:text-gray-100 dark:focus:bg-gray-700">Processing</SelectItem>
+                                <SelectItem value="shipped" className="dark:text-gray-100 dark:focus:bg-gray-700">Shipped</SelectItem>
+                                <SelectItem value="delivered" className="dark:text-gray-100 dark:focus:bg-gray-700">Delivered</SelectItem>
+                                <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Payment */}
+                          <div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Payment:</div>
+                            <div className="space-y-1">
+                              <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 break-words">
+                                {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'COD'}
+                              </span>
+                              {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
+                                <div>
+                                  <PaymentScreenshotViewer 
+                                    screenshotUrl={order.transactionScreenshot} 
+                                    paymentMethod={order.paymentMethod}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Coupon info if available */}
+                        {(() => {
+                          const couponCode = order.couponCode || 
+                                            (order.promoCode && order.promoCode.code) || 
+                                            (order.ambassador && order.ambassador.couponCode);
+                          
+                          const couponDiscount = order.couponDiscount || 
+                                                (order.promoCode && order.promoCode.value) || 
+                                                0;
+                          
+                          const ambassadorId = order.ambassadorId || 
+                                              (order.ambassador && order.ambassador.ambassadorId) || 
+                                              undefined;
+                          
+                          return couponCode ? (
+                            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Coupon Applied:</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full break-words 
                                   ${ambassadorId ? 
                                     'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
                                     'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
                                   {couponCode}
                                 </span>
                                 {couponDiscount > 0 && (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {couponDiscount}% off
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    {couponDiscount}% discount
                                   </span>
                                 )}
                               </div>
-                            ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">No coupon</span>
-                            );
-                          })()} 
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            </div>
+                          ) : null;
+                        })()}
+
+                        {/* Actions */}
+                        <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-gray-600">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
+                              <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20">
+                                Delete Order
+                              </button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="dark:bg-black dark:border-gray-700">
+                            <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[95vw] max-w-md mx-auto">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="dark:text-gray-100">Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogTitle className="dark:text-gray-100">Delete Order?</AlertDialogTitle>
                                 <AlertDialogDescription className="dark:text-gray-400">
-                                  This action cannot be undone. This will permanently delete the order.
+                                  This will permanently delete this order. This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="dark:bg-black/80 dark:text-white/70 dark:hover:bg-black/60">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteOrder(order._id)} className="dark:bg-red-900 dark:hover:bg-red-800">
+                              <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                <AlertDialogCancel className="dark:bg-black/80 dark:text-white/70 dark:hover:bg-black/60 w-full sm:w-auto">Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteOrder(order._id)} className="dark:bg-red-900 dark:hover:bg-red-800 w-full sm:w-auto">
                                   Delete
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile view */}
-            <div className="md:hidden space-y-4">
-              {filteredOrders?.map((order) => {
-                if (!order) {
-                  console.warn('Invalid order data in mobile view:', order);
-                  return null;
-                }
-
-                // Get customer name from either format
-                const customerName = (order.customer?.name ?? `${order.firstName ?? ""} ${order.lastName ?? ""}`.trim()) || "Unknown Customer";
-                const customerEmail = order.customer?.email ?? order.email ?? "No email provided";
-                const customerPhone = order.customer?.phone ?? order.phone ?? "No phone provided";
-                const customerAddress = order.customer?.address ?? order.address ?? "No address provided";
-
-                return (
-                  <div key={order._id} className="bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {customerName}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {customerEmail}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {customerPhone}
-                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            L.E {(order.totalAmount ?? order.total ?? 0).toFixed(2)}
-                          </div>
-                          {(order.couponCode || order.promoCode?.code) && (
-                            <div className="mt-1">
-                              <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full 
-                                ${order.ambassadorId || order.ambassador?.ambassadorId ? 
-                                  'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                                  'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                                {order.couponCode || order.promoCode?.code}
-                              </span>
-                              {(order.couponDiscount || order.promoCode?.value) && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  {order.couponDiscount || order.promoCode?.value}% off
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {customerAddress}
-                      </div>
-
-                      {order.products?.length > 0 && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <strong className="dark:text-gray-300">Products:</strong>
-                          <ul className="list-disc pl-5">
-                            {order.products.map((item) => (
-                              <li key={item.productId || Math.random()} className="text-sm text-gray-600 dark:text-gray-400">
-                                {item.name ?? 'Unknown Product'} - {item.size ?? 'N/A'} x {item.quantity ?? 0} - L.E {(item.price ?? 0).toFixed(2)}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        <strong className="dark:text-gray-300">Payment:</strong>{' '}
-                        <span className="px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                          {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'Cash on Delivery'}
-                        </span>
-                        
-                        {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
-                          <div className="mt-1">
-                            <PaymentScreenshotViewer 
-                              screenshotUrl={order.transactionScreenshot} 
-                              paymentMethod={order.paymentMethod}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <Select
-                          value={order.status ?? 'pending'}
-                          onValueChange={(value: Order['status']) => updateOrderStatus(order._id, value)}
-                        >
-                          <SelectTrigger className="w-[130px] dark:bg-black dark:border-gray-700">
-                            <SelectValue>
-                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status ?? 'pending']}`}>
-                                {(order.status ?? 'pending').charAt(0).toUpperCase() + (order.status ?? 'pending').slice(1)}
-                              </span>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-black dark:border-gray-700">
-                            <SelectItem value="pending" className="dark:text-gray-100 dark:focus:bg-gray-700">Pending</SelectItem>
-                            <SelectItem value="processing" className="dark:text-gray-100 dark:focus:bg-gray-700">Processing</SelectItem>
-                            <SelectItem value="shipped" className="dark:text-gray-100 dark:focus:bg-gray-700">Shipped</SelectItem>
-                            <SelectItem value="delivered" className="dark:text-gray-100 dark:focus:bg-gray-700">Delivered</SelectItem>
-                            <SelectItem value="cancelled" className="dark:text-gray-100 dark:focus:bg-gray-700">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm">Delete</button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="dark:bg-black dark:border-gray-700">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="dark:text-gray-100">Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription className="dark:text-gray-400">
-                                This action cannot be undone. This will permanently delete the order.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="dark:bg-black/80 dark:text-white/70 dark:hover:bg-black/60">Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteOrder(order._id)} className="dark:bg-red-900 dark:hover:bg-red-800">
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </div>
+                  );
+                })}
+                
+                {/* Empty state */}
+                {filteredOrders.length === 0 && (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <div className="text-4xl mb-4">📦</div>
+                    <div className="text-lg font-medium mb-2">No orders found</div>
+                    <div className="text-sm">
+                      {searchQuery || statusFilter !== 'all' 
+                        ? 'Try adjusting your search or filter criteria'
+                        : 'Orders will appear here when customers place them'
+                      }
+                    </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
           </DarkModePanel>
         </div>

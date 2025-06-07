@@ -4,6 +4,7 @@ import { mongooseConnect } from "../../lib/mongoose";
 import clientPromise from '../../lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { addToBlacklist } from '../../utils/updateBlacklist';
+import { responseWithCors, handleCorsOptions } from '../../../lib/cors';
 
 interface ProductQuery {
   deleted?: { $ne: boolean };
@@ -53,13 +54,27 @@ export async function GET(req: NextRequest) {
       });
 
       if (!product) {
-        return NextResponse.json(
+        return responseWithCors(
           { error: 'Product not found' },
-          { status: 404 }
+          404,
+          req
         );
       }
 
-      return NextResponse.json(product);
+      // Calculate comprehensive stock status
+      const stockStatus = calculateStockStatus(product);
+      
+      // Add stock status to product response
+      const enhancedProduct = {
+        ...product,
+        stockStatus,
+        // Legacy compatibility
+        hasStock: stockStatus.hasStock,
+        totalStock: stockStatus.totalStock,
+        isOutOfStock: !stockStatus.hasStock
+      };
+
+      return responseWithCors(enhancedProduct, 200, req);
     }
     
     // Otherwise get all products
@@ -88,16 +103,85 @@ export async function GET(req: NextRequest) {
         console.log(`Invalid month: ${month}`);
       }
     }
-    
+
     const products = await Product.find(query).sort({ createdAt: -1 });
-    return NextResponse.json(products);
+    
+    // Enhance each product with stock status
+    const enhancedProducts = products.map(product => {
+      const stockStatus = calculateStockStatus(product);
+      return {
+        ...product.toObject(),
+        stockStatus,
+        hasStock: stockStatus.hasStock,
+        totalStock: stockStatus.totalStock,
+        isOutOfStock: !stockStatus.hasStock
+      };
+    });
+    
+    return responseWithCors(enhancedProducts, 200, req);
   } catch (error) {
     console.error('Error in GET /api/products:', error);
-    return NextResponse.json(
+    return responseWithCors(
       { error: 'Failed to fetch products' },
-      { status: 500 }
+      500,
+      req
     );
   }
+}
+
+// Helper function to calculate comprehensive stock status
+function calculateStockStatus(product: any) {
+  let totalStock = 0;
+  let hasStock = false;
+  const variantDetails = [];
+
+  // Check sizeVariants first (new structure)
+  if (product.sizeVariants && Array.isArray(product.sizeVariants)) {
+    for (const sizeVariant of product.sizeVariants) {
+      if (sizeVariant.colorVariants && Array.isArray(sizeVariant.colorVariants)) {
+        for (const colorVariant of sizeVariant.colorVariants) {
+          const stock = colorVariant.stock || 0;
+          totalStock += stock;
+          
+          variantDetails.push({
+            size: sizeVariant.size,
+            color: colorVariant.color,
+            stock: stock
+          });
+          
+          if (stock > 0) {
+            hasStock = true;
+          }
+        }
+      }
+    }
+  }
+  
+  // Fallback to legacy stock field if no variants
+  if (totalStock === 0 && product.stock && typeof product.stock === 'number') {
+    totalStock = product.stock;
+    hasStock = product.stock > 0;
+  }
+  
+  // Fallback to stockInfo array if available
+  if (totalStock === 0 && product.stockInfo && Array.isArray(product.stockInfo)) {
+    for (const stockItem of product.stockInfo) {
+      const stock = stockItem.quantity || 0;
+      totalStock += stock;
+      
+      if (stock > 0) {
+        hasStock = true;
+      }
+    }
+  }
+
+  return {
+    hasStock,
+    totalStock,
+    variantDetails,
+    status: hasStock ? 'in-stock' : 'out-of-stock',
+    lastCalculated: new Date().toISOString()
+  };
 }
 
 // POST new product
@@ -334,4 +418,9 @@ export async function PATCH(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsOptions(request);
 } 

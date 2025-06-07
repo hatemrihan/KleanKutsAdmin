@@ -386,13 +386,24 @@ export default function WaitlistPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-2 sm:p-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Waitlist Management</h1>
+          {/* Enhanced Page title with Dashboard-style font */}
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Waitlist
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div></div>
             <button
               onClick={handleRefresh}
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 flex items-center gap-2"
+              className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2 text-sm sm:text-base"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -406,10 +417,10 @@ export default function WaitlistPage() {
             </button>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Waitlist Overview</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 mx-2 sm:mx-0">
+            <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Management Overview</h2>
             
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="flex flex-col gap-3 sm:gap-4 mb-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Search by Email</label>
                 <input
@@ -417,16 +428,16 @@ export default function WaitlistPage() {
                   value={searchEmail}
                   onChange={(e) => setSearchEmail(e.target.value)}
                   placeholder="Search emails..."
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm sm:text-base"
                 />
               </div>
               
-              <div className="md:w-48">
+              <div className="w-full sm:w-48">
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status Filter</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                 >
                   <option>All Statuses</option>
                   <option>Pending</option>
@@ -437,11 +448,11 @@ export default function WaitlistPage() {
             </div>
 
             {error && (
-              <div className="text-red-600 mb-4 p-4 bg-red-100 dark:bg-red-900 rounded-lg flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <div className="text-red-600 mb-4 p-3 sm:p-4 bg-red-100 dark:bg-red-900 rounded-lg flex items-center gap-2 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
-                <span>{error}</span>
+                <span className="break-words">{error}</span>
               </div>
             )}
 
@@ -449,19 +460,19 @@ export default function WaitlistPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (
                       <tr key={entry._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.email}</td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-all">{entry.email}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             entry.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                             entry.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
@@ -470,25 +481,25 @@ export default function WaitlistPage() {
                             {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.source}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-100">{entry.source}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                           {new Date(entry.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{entry.notes || '-'}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words">{entry.notes || '-'}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-sm text-center text-gray-500 dark:text-gray-400">
+                      <td colSpan={5} className="px-2 sm:px-4 py-6 sm:py-8 text-xs sm:text-sm text-center text-gray-500 dark:text-gray-400">
                         {searchEmail || statusFilter !== 'All Statuses' ? (
                           <>
                             <p className="font-medium">No matching entries found</p>
-                            <p className="mt-1 text-sm">Try adjusting your search or filter criteria</p>
+                            <p className="mt-1 text-xs sm:text-sm">Try adjusting your search or filter criteria</p>
                           </>
                         ) : (
                           <>
                             <p className="font-medium">No waitlist entries found</p>
-                            <p className="mt-1 text-sm">Entries will appear here once users join the waitlist</p>
+                            <p className="mt-1 text-xs sm:text-sm">Entries will appear here once users join the waitlist</p>
                           </>
                         )}
                       </td>

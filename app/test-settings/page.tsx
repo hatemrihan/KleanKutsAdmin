@@ -204,25 +204,34 @@ export default function SettingsPage() {
   return (
     <div className="flex min-h-screen dark:bg-black">
       <Nav />
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-2 sm:p-4 lg:p-8">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Store Settings</h1>
+          {/* Enhanced Page title with Dashboard-style font */}
+          <div className="mb-6 sm:mb-8">
+            <h1 
+              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Settings
+            </h1>
+            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+          </div>
 
-          <div className="mb-6 flex border-b border-gray-200 dark:border-gray-700">
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row border-b border-gray-200 dark:border-gray-700 mx-2 sm:mx-0">
             <button
-              className={`py-2 px-4 ${activeTab === 'site' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`py-2 px-3 sm:px-4 text-sm sm:text-base ${activeTab === 'site' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
               onClick={() => setActiveTab('site')}
             >
               Site Status
             </button>
             <button
-              className={`py-2 px-4 ${activeTab === 'tracking' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`py-2 px-3 sm:px-4 text-sm sm:text-base ${activeTab === 'tracking' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
               onClick={() => setActiveTab('tracking')}
             >
               Tracking
             </button>
             <button
-              className={`py-2 px-4 ${activeTab === 'security' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`py-2 px-3 sm:px-4 text-sm sm:text-base ${activeTab === 'security' ? 'border-b-2 border-blue-500 font-medium dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
               onClick={() => setActiveTab('security')}
             >
               Security
@@ -231,14 +240,14 @@ export default function SettingsPage() {
             
           {/* Site Status Tab */}
           {activeTab === 'site' && (
-            <DarkModePanel className="rounded-lg shadow-sm mb-6">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+            <DarkModePanel className="rounded-lg shadow-sm mb-4 sm:mb-6 mx-2 sm:mx-0">
+              <CardHeader className="pb-3 p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                   <div>
-                    <CardTitle className="text-xl font-semibold dark:text-white">
+                    <CardTitle className="text-lg sm:text-xl font-semibold dark:text-white">
                       Site Status
                     </CardTitle>
-                    <CardDescription className="dark:text-white/70">
+                    <CardDescription className="dark:text-white/70 text-sm sm:text-base">
                       Control whether your e-commerce store is live or in maintenance mode
                     </CardDescription>
                   </div>
@@ -266,14 +275,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-3 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-sm font-medium dark:text-white mb-1">
                       Maintenance Message
                     </label>
                     <textarea
-                      className="w-full min-h-[100px] p-3 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-black dark:text-white"
+                      className="w-full min-h-[80px] sm:min-h-[100px] p-3 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-black dark:text-white text-sm sm:text-base"
                       placeholder="Enter a message to display when your site is in maintenance mode"
                       value={maintenanceMessage}
                       onChange={(e) => setMaintenanceMessage(e.target.value)}
@@ -283,7 +292,7 @@ export default function SettingsPage() {
                   
                   {!siteStatus.active && (
                     <button
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
+                      className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
                       onClick={handleToggleSiteStatus}
                       disabled={siteStatusLoading}
                     >
@@ -297,28 +306,28 @@ export default function SettingsPage() {
           
           {/* Tracking Tab */}
           {activeTab === 'tracking' && (
-            <div className="grid gap-6">
+            <div className="grid gap-4 sm:gap-6 mx-2 sm:mx-0">
               {trackingOptions.map((option) => (
                 <DarkModePanel key={option.key} className="rounded-lg shadow-sm">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center">
-                      <div className="mr-3">{option.icon}</div>
+                  <CardHeader className="pb-3 p-3 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="mr-0 sm:mr-3">{option.icon}</div>
                       <div>
-                        <CardTitle className="text-xl font-semibold dark:text-white">{option.title}</CardTitle>
-                        <CardDescription className="dark:text-white/70">{option.description}</CardDescription>
+                        <CardTitle className="text-lg sm:text-xl font-semibold dark:text-white">{option.title}</CardTitle>
+                        <CardDescription className="dark:text-white/70 text-sm sm:text-base">{option.description}</CardDescription>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-6">
                     <DarkModeInput
                       placeholder={option.placeholder}
                       value={settings[option.key] || ''}
                       onChange={(e) => handleSettingChange(option.key, e.target.value)}
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     />
-                    <div className="flex justify-end mt-4">
+                    <div className="flex justify-end mt-3 sm:mt-4">
                       <button
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
+                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
                         onClick={() => saveSettingValue(option.key)}
                         disabled={isLoading}
                       >
@@ -333,17 +342,17 @@ export default function SettingsPage() {
           
           {/* Security Tab */}
           {activeTab === 'security' && (
-            <DarkModePanel className="rounded-lg shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xl font-semibold dark:text-white">
+            <DarkModePanel className="rounded-lg shadow-sm mx-2 sm:mx-0">
+              <CardHeader className="pb-3 p-3 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl font-semibold dark:text-white">
                   Change Password
                 </CardTitle>
-                <CardDescription className="dark:text-white/70">
+                <CardDescription className="dark:text-white/70 text-sm sm:text-base">
                   Update your admin account password
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <CardContent className="p-3 sm:p-6">
+                <form onSubmit={handlePasswordSubmit} className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-sm font-medium dark:text-white mb-1">
                       Current Password
@@ -354,7 +363,7 @@ export default function SettingsPage() {
                       value={passwordData.currentPassword}
                       onChange={handlePasswordChange}
                       placeholder="Enter your current password"
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     />
                   </div>
                   
@@ -368,7 +377,7 @@ export default function SettingsPage() {
                       value={passwordData.newPassword}
                       onChange={handlePasswordChange}
                       placeholder="Enter your new password"
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     />
                   </div>
                   
@@ -382,13 +391,13 @@ export default function SettingsPage() {
                       value={passwordData.confirmPassword}
                       onChange={handlePasswordChange}
                       placeholder="Confirm your new password"
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     />
                   </div>
                   
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium dark:bg-blue-700 dark:hover:bg-blue-800"
                     disabled={isLoading}
                   >
                     {isLoading ? 'Updating Password...' : 'Update Password'}

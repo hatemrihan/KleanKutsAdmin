@@ -24,6 +24,7 @@ interface SiteStatus {
 
 const Nav = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({ active: true, message: '' });
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
@@ -33,8 +34,6 @@ const Nav = () => {
   const topLineRef = useRef<HTMLDivElement>(null);
   const bottomLineRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-
-  const router = useRouter();
 
   // Fetch site status when component mounts
   useEffect(() => {
@@ -551,7 +550,7 @@ const Nav = () => {
                     localStorage.removeItem('adminAuthenticated');
                     localStorage.removeItem('admin-auth');
                     
-                    // Redirect to login page - using router.push instead of window.location
+                    // Redirect to login page
                     router.push('/');
                   } catch (error) {
                     console.error('Logout failed:', error);

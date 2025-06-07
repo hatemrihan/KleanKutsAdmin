@@ -110,18 +110,18 @@ export default function NewsletterAdmin() {
       };
       
       // For both formats, we need to handle it as a blob download
-      const response = await axios.post('/api/newsletter/subscribers', payload, {
+        const response = await axios.post('/api/newsletter/subscribers', payload, {
         responseType: 'blob'
-      });
-      
-      // Create a blob URL and trigger download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
+        });
+        
+        // Create a blob URL and trigger download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
       link.setAttribute('download', `newsletter_subscribers.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       window.URL.revokeObjectURL(url);
       
       toast.success(`${format.toUpperCase()} exported successfully`);

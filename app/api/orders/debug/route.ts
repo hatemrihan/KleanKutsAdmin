@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
       }
       ordersByDate[date]++;
     });
-
+    
     return NextResponse.json({
       summary: {
         totalOrderCount: totalOrders,

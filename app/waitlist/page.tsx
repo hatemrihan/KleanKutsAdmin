@@ -141,7 +141,7 @@ export default function WaitlistPage() {
       setIsLoading(false);
     }
   };
-
+  
   useEffect(() => {
     fetchWaitlistEntries();
   }, []);
@@ -155,7 +155,7 @@ export default function WaitlistPage() {
   const handleRefresh = () => {
     fetchWaitlistEntries();
   };
-
+  
   const handleClickMobileNavItem = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setIsOpen(false);
@@ -401,11 +401,11 @@ export default function WaitlistPage() {
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
             <div></div>
-            <button
+                  <button
               onClick={handleRefresh}
               className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2 text-sm sm:text-base"
               disabled={isLoading}
-            >
+                  >
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
@@ -414,12 +414,12 @@ export default function WaitlistPage() {
               ) : (
                 <span>Refresh</span>
               )}
-            </button>
-          </div>
+                  </button>
+                </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 mx-2 sm:mx-0">
             <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Management Overview</h2>
-            
+              
             <div className="flex flex-col gap-3 sm:gap-4 mb-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Search by Email</label>
@@ -438,7 +438,7 @@ export default function WaitlistPage() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
-                >
+              >
                   <option>All Statuses</option>
                   <option>Pending</option>
                   <option>Approved</option>
@@ -507,8 +507,8 @@ export default function WaitlistPage() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
+        </div>
+        </div>
         </div>
       </main>
     </div>

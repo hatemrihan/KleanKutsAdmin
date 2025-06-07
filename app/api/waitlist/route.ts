@@ -55,9 +55,9 @@ export async function GET(request: NextRequest) {
   try {
     logInfo('Starting GET request from origin: ' + request.headers.get('origin'));
     await mongooseConnect();
-    
+      
     // Try to get the database instance
-    const db = mongoose.connection.db;
+      const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not established');
     }
@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
     logInfo('Processing POST request from origin: ' + origin);
     
     // Parse the JSON body
-    const body = await req.json();
-    logInfo('Request body', body);
+      const body = await req.json();
+      logInfo('Request body', body);
     
     const email = body.email;
     const source = body.source || 'e-commerce';
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     if (!db) {
       throw new Error('Database connection not established');
     }
-
+    
     // Check if email already exists
     const collection = db.collection('waitlists');
     const existing = await collection.findOne({ email });
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     
     const response = responseWithCors({
       success: true,
-      message: 'Successfully added to waitlist',
+        message: 'Successfully added to waitlist',
       waitlistEntry: {
         _id: waitlistEntry.insertedId.toString(),
         email,
@@ -182,7 +182,7 @@ export async function DELETE(req: NextRequest) {
     if (!id) {
       return responseWithCors({ error: 'ID is required' }, 400, req);
     }
-
+    
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not established');
@@ -197,7 +197,7 @@ export async function DELETE(req: NextRequest) {
         if (await db.listCollections({ name: collName }).hasNext()) {
           const collection = db.collection(collName);
           const result = await collection.deleteOne({ _id: new mongoose.Types.ObjectId(id) });
-          
+    
           if (result.deletedCount > 0) {
             logInfo(`Successfully deleted entry from ${collName}`);
             deleted = true;
@@ -212,7 +212,7 @@ export async function DELETE(req: NextRequest) {
     if (!deleted) {
       return responseWithCors({ error: 'Entry not found' }, 404, req);
     }
-
+    
     return responseWithCors({ success: true }, 200, req);
   } catch (error) {
     logError('Failed to delete waitlist entry', error);
@@ -237,7 +237,7 @@ export async function PUT(req: NextRequest) {
     if (!id) {
       return responseWithCors({ error: 'ID is required' }, 400, req);
     }
-
+    
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not established');
@@ -260,7 +260,7 @@ export async function PUT(req: NextRequest) {
           const result = await collection.updateOne(
             { _id: new mongoose.Types.ObjectId(id) },
             { $set: updateData }
-          );
+      );
           
           if (result.matchedCount > 0) {
             logInfo(`Successfully updated entry in ${collName}`);
@@ -286,4 +286,4 @@ export async function PUT(req: NextRequest) {
       req
     );
   }
-}
+} 

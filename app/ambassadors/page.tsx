@@ -315,20 +315,6 @@ export default function AmbassadorsPage() {
                         <DarkModeText className="text-xs md:text-sm">Commission Rate:</DarkModeText>
                         <span className="text-xs md:text-sm font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate}%</span>
                       </div>
-                      
-                      <div className="mt-3 pt-3 md:mt-4 md:pt-4 border-t border-gray-200 dark:border-white/10">
-                        <div className="font-medium mb-2 text-xs sm:text-sm md:text-base text-gray-900 dark:text-white">Performance</div>
-                        <div className="flex gap-3 sm:gap-4 md:gap-6">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">{ambassador.ordersCount || 0}</div>
-                            <div className="text-xs text-gray-500 dark:text-white/70">Total Orders</div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-400 truncate">L.E. {(ambassador.totalEarnings || 0).toFixed(2)}</div>
-                            <div className="text-xs text-gray-500 dark:text-white/70">Total Earnings</div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     
                     <div className="mt-3 sm:mt-4 md:mt-6 flex flex-wrap justify-end gap-2 md:gap-3">

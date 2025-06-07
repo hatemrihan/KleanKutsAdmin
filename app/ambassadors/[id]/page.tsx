@@ -266,7 +266,7 @@ export default function AmbassadorDetailsPage() {
   };
 
   return (
-    <div className="flex min-h-screen dark:bg-black">
+    <div className="min-h-screen bg-background dark:bg-black overflow-x-hidden">
       <Nav />
       <main className="flex-1 p-2 sm:p-4 lg:p-8 bg-background dark:bg-black">
         <div className="max-w-7xl mx-auto">
@@ -283,15 +283,15 @@ export default function AmbassadorDetailsPage() {
             </Link>
           </div>
 
-          {/* Enhanced Page title with Dashboard-style font */}
+          {/* Enhanced Page title with Dashboard-style font - FIXED for mobile */}
           <div className="mb-6 sm:mb-8">
             <h1 
-              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              className="font-montserrat text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white break-words"
               style={{ fontFamily: 'var(--font-montserrat)' }}
             >
               Ambassador Details
             </h1>
-            <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
+            <div className="h-1 w-12 sm:w-16 md:w-24 lg:w-32 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-4 sm:mb-6">
@@ -457,11 +457,11 @@ export default function AmbassadorDetailsPage() {
                   {/* Ambassador details */}
                   <div className="border-b border-gray-200 dark:border-gray-700">
                     <div className="px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-start">
-                      <div className="flex-1 mb-3 sm:mb-0">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{ambassador.name}</h2>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-white/70 break-all">{ambassador.email}</p>
+                      <div className="flex-1 mb-3 sm:mb-0 min-w-0">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white break-words">{ambassador.name}</h2>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-white/70 break-all overflow-hidden">{ambassador.email}</p>
                       </div>
-                      <div className="self-start sm:self-center">
+                      <div className="self-start sm:self-center flex-shrink-0">
                         <DarkModeStatus
                           status={ambassador.status === 'approved' ? 'success' : ambassador.status === 'rejected' ? 'error' : 'warning'}
                         >
@@ -475,9 +475,9 @@ export default function AmbassadorDetailsPage() {
                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Basic Information</h3>
                     <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-medium text-gray-500 dark:text-white/70">User ID</div>
-                        <div className="mt-1 text-sm text-gray-900 dark:text-white font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all">{ambassador.userId}</div>
+                        <div className="mt-1 text-sm text-gray-900 dark:text-white font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all overflow-hidden">{ambassador.userId}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-500 dark:text-white/70">Application Date</div>
@@ -497,7 +497,7 @@ export default function AmbassadorDetailsPage() {
                   {/* Application reason */}
                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-2">Reason for Application</h3>
-                    <div className="bg-gray-50 dark:bg-black/40 p-3 sm:p-4 rounded-md text-sm text-gray-700 dark:text-white/90 break-words">
+                    <div className="bg-gray-50 dark:bg-black/40 p-3 sm:p-4 rounded-md text-sm text-gray-700 dark:text-white/90 break-words overflow-hidden">
                       {ambassador.reason}
                     </div>
                   </div>
@@ -506,22 +506,22 @@ export default function AmbassadorDetailsPage() {
                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Referral Information</h3>
                     <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-medium text-gray-500 dark:text-white/70">Referral Code</div>
                         <div className="mt-1">
-                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
+                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all overflow-hidden">
                             {ambassador.referralCode || 'Not generated yet'}
                           </code>
                         </div>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-medium text-gray-500 dark:text-white/70">Coupon Code</div>
                         <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3">
-                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
+                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all overflow-hidden">
                             {ambassador.couponCode || ambassador.referralCode || 'Not generated yet'}
                           </code>
                           {ambassador.discountPercent && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 flex-shrink-0">
                               {ambassador.discountPercent}% discount
                             </span>
                           )}
@@ -558,14 +558,14 @@ export default function AmbassadorDetailsPage() {
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Product Video Content</h3>
                     {ambassador.productVideoLink ? (
                       <div className="grid grid-cols-1 gap-4">
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Video Link</div>
                           <div className="mt-1">
                             <a 
                               href={ambassador.productVideoLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 break-all text-sm"
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 break-all text-sm overflow-hidden"
                             >
                               {ambassador.productVideoLink}
                             </a>
@@ -694,111 +694,111 @@ export default function AmbassadorDetailsPage() {
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Application Details</h3>
                     {ambassador.application ? (
                       <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Full Name</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.fullName || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.fullName || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Phone Number</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-all">{ambassador.application.phoneNumber || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-all overflow-hidden">{ambassador.application.phoneNumber || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Email</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-all">{ambassador.application.email || ambassador.email}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-all overflow-hidden">{ambassador.application.email || ambassador.email}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Instagram Handle</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">
                             {ambassador.application.instagramHandle ? (
                               <a 
                                 href={`https://instagram.com/${ambassador.application.instagramHandle.replace('@', '')}`} 
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline break-all"
+                                className="text-blue-600 hover:underline break-all overflow-hidden"
                               >
                                 {ambassador.application.instagramHandle}
                               </a>
                             ) : 'Not provided'}
                           </div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">TikTok Handle</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">
                             {ambassador.application.tiktokHandle ? (
                               <a 
                                 href={`https://tiktok.com/@${ambassador.application.tiktokHandle.replace('@', '')}`} 
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline break-all"
+                                className="text-blue-600 hover:underline break-all overflow-hidden"
                               >
                                 {ambassador.application.tiktokHandle}
                               </a>
                             ) : 'Not provided'}
                           </div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Other Social Media</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.otherSocialMedia || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.otherSocialMedia || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Personal Style</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.personalStyle || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.personalStyle || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Sold Products Before</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.soldBefore || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.soldBefore || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">How They Plan to Promote</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.promotionPlan || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.promotionPlan || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Investment Option</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.investmentOption || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.investmentOption || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Content Creation Comfort</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.contentComfort || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.contentComfort || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Instagram Followers</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.instagramFollowers || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.instagramFollowers || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">TikTok Followers</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.tiktokFollowers || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.tiktokFollowers || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Other Platform Followers</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.otherFollowers || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.otherFollowers || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Target Audience</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.targetAudience || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.targetAudience || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Other Audience Details</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.otherAudience || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.otherAudience || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Motivation</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.motivation || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.motivation || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Has Camera Equipment</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.hasCamera || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.hasCamera || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Can Attend Events</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.attendEvents || 'Not provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.attendEvents || 'Not provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Additional Information</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.additionalInfo || 'None provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.additionalInfo || 'None provided'}</div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-500 dark:text-white/70">Questions</div>
-                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words">{ambassador.application.questions || 'None provided'}</div>
+                          <div className="mt-1 text-sm text-gray-900 dark:text-white break-words overflow-hidden">{ambassador.application.questions || 'None provided'}</div>
                         </div>
                       </div>
                     ) : (
@@ -810,43 +810,77 @@ export default function AmbassadorDetailsPage() {
                   <div className="px-4 sm:px-6 py-4 sm:py-5">
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Recent Orders</h3>
                     {ambassador.recentOrders && ambassador.recentOrders.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <DarkModeTable>
-                          <DarkModeTableHeader>
-                            <tr>
-                              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
-                                Order ID
-                              </th>
-                              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
-                                Date
-                              </th>
-                              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
-                                Amount
-                              </th>
-                              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
-                                Commission
-                              </th>
-                              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
-                                Status
-                              </th>
-                            </tr>
-                          </DarkModeTableHeader>
-                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {ambassador.recentOrders.map((order, index) => (
-                              <DarkModeTableRow key={index}>
-                                <DarkModeTableCell className="whitespace-nowrap font-medium px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{order.orderId}</DarkModeTableCell>
-                                <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatDate(order.orderDate)}</DarkModeTableCell>
-                                <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatCurrency(order.amount)}</DarkModeTableCell>
-                                <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatCurrency(order.commission)}</DarkModeTableCell>
-                                <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4">
+                      <div className="space-y-3 sm:space-y-0">
+                        {/* Mobile-first card layout */}
+                        <div className="block sm:hidden space-y-3">
+                          {ambassador.recentOrders.map((order, index) => (
+                            <div key={index} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800/50">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                      Order #{order.orderId}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-white/70">
+                                      {formatDate(order.orderDate)}
+                                    </div>
+                                  </div>
                                   <DarkModeStatus status={order.isPaid ? 'success' : 'warning'}>
                                     {order.isPaid ? 'Paid' : 'Pending'}
                                   </DarkModeStatus>
-                                </DarkModeTableCell>
-                              </DarkModeTableRow>
-                            ))}
-                          </tbody>
-                        </DarkModeTable>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-gray-600 dark:text-white/70">Amount:</span>
+                                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(order.amount)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-gray-600 dark:text-white/70">Commission:</span>
+                                  <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(order.commission)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Desktop table layout */}
+                        <div className="hidden sm:block overflow-x-auto">
+                          <DarkModeTable>
+                            <DarkModeTableHeader>
+                              <tr>
+                                <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
+                                  Order ID
+                                </th>
+                                <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
+                                  Date
+                                </th>
+                                <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
+                                  Amount
+                                </th>
+                                <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
+                                  Commission
+                                </th>
+                                <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/70 uppercase tracking-wider">
+                                  Status
+                                </th>
+                              </tr>
+                            </DarkModeTableHeader>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                              {ambassador.recentOrders.map((order, index) => (
+                                <DarkModeTableRow key={index}>
+                                  <DarkModeTableCell className="whitespace-nowrap font-medium px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{order.orderId}</DarkModeTableCell>
+                                  <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatDate(order.orderDate)}</DarkModeTableCell>
+                                  <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatCurrency(order.amount)}</DarkModeTableCell>
+                                  <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">{formatCurrency(order.commission)}</DarkModeTableCell>
+                                  <DarkModeTableCell className="whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4">
+                                    <DarkModeStatus status={order.isPaid ? 'success' : 'warning'}>
+                                      {order.isPaid ? 'Paid' : 'Pending'}
+                                    </DarkModeStatus>
+                                  </DarkModeTableCell>
+                                </DarkModeTableRow>
+                              ))}
+                            </tbody>
+                          </DarkModeTable>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500 dark:text-white/70">No orders recorded yet.</p>

@@ -1,21 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../components/ui/alert-dialog";
+
 import { Button } from "../components/ui/button";
 import {
   Select,
@@ -28,7 +19,6 @@ import Nav from '../sections/nav';
 import { Input } from '../components/ui/input';
 import { DarkModePanel, DarkModeInput, DarkModeStatus } from '../components/ui/dark-mode-wrapper';
 import { calculateTotalStock } from '../utils/stockCalculator';
-import { PlusCircle } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { AxiosError } from 'axios';
 
@@ -93,6 +83,7 @@ const ProductImage = ({ src, alt }: { src: string; alt: string }) => {
 };
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -207,191 +198,32 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (productId: string) => {
-    // First, get the product details to show in the confirmation
-    let productDetails: any = null;
-    try {
-      const productResponse = await axios.get(`/api/products/${productId}`);
-      if (productResponse.data && productResponse.data.product) {
-        productDetails = productResponse.data.product;
-      }
-    } catch (fetchError) {
-      console.error('Error fetching product details for confirmation:', fetchError);
-      // Continue with deletion even if we can't get details
-    }
-    
-    // Enhanced confirmation with product details if available
-    const confirmMessage = productDetails 
-      ? `Are you sure you want to delete "${productDetails.title}" (ID: ${productId.slice(-6)})? This action cannot be undone.`
-      : 'Are you sure you want to delete this product? This action cannot be undone.';
-      
-    if (!window.confirm(confirmMessage)) {
-      return; // User cancelled
-    }
-    
-    // Track deletion process for telemetry/debugging
-    console.log(`Starting deletion process for product ${productId}`);
-    const startTime = Date.now();
-    let success = false;
-    let errorMessage = '';
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    // Create a function for the deletion with retry logic
-    const attemptDeletion = async (retryNumber: number): Promise<boolean> => {
+    if (confirm('Are you sure you want to delete this product?')) {
       try {
-        if (retryNumber > 0) {
-          console.log(`Retry attempt ${retryNumber} for deleting product ${productId}`);
-        }
-        
-        // Update API URL to use the [id] route format with cache busting
-        const timestamp = Date.now();
-        const deleteUrl = `/api/products/${productId}?permanent=true&t=${timestamp}`;
-        
-        // Set timeout for deletion requests
-        const response = await axios.delete(deleteUrl, { 
-          timeout: 15000, // 15 second timeout
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        if (response.data && response.data.success) {
-          console.log(`Product ${productId} deleted successfully in ${Date.now() - startTime}ms`);
+        await axios.delete(`/api/products/${productId}`);
         toast.success('Product deleted successfully');
-          
-          // Update UI immediately to give immediate feedback
-          setProducts(prevProducts => prevProducts.filter(p => p._id !== productId));
-          
-          // Refresh products list in the background 
-          setTimeout(() => {
         fetchProducts();
-          }, 1000);
-          
-          // Also update dashboard counts to keep them in sync - multiple approaches for redundancy
-          try {
-            // First approach: Force dashboard to update its product count with retry logic
-            const countResponse = await axios.get('/api/products/count?forceRefresh=true', {
-              headers: { 'Cache-Control': 'no-cache' }
-            });
-            console.log('Product count API responded:', countResponse.data);
-            
-            // Second approach: Directly update dashboard stats if possible
-            try {
-              // This is an event-based approach to notify all components about the change
-              const event = new CustomEvent('product-deleted', { 
-                detail: { 
-                  productId,
-                  timestamp: new Date().toISOString(),
-                  success: true
-                } 
-              });
-              window.dispatchEvent(event);
-              console.log('Product deletion event dispatched to update dashboard');
-            } catch (eventError) {
-              console.log('Event dispatch not supported, using fallback approach');
-            }
-
-            // Third approach: Notify any dashboard instances via localStorage
-            try {
-              localStorage.setItem('dashboard_refresh_needed', 'true');
-              localStorage.setItem('dashboard_last_product_action', JSON.stringify({
-                type: 'delete',
-                productId,
-                success: true,
-                timestamp: new Date().toISOString()
-              }));
-              console.log('LocalStorage updated to notify other tabs');
-            } catch (storageError) {
-              console.log('LocalStorage update failed, not critical', storageError);
-            }
-            
-            // Fourth approach: Direct API call to dashboard to force refresh
-            try {
-              const dashboardResponse = await axios.get('/api/dashboard?forceRefresh=true', {
-                headers: { 'Cache-Control': 'no-cache' }
-              });
-              console.log('Dashboard API called for refresh:', dashboardResponse.status);
-            } catch (dashboardError) {
-              console.log('Dashboard refresh API call failed, not critical');
-            }
-          } catch (dashboardError) {
-            console.log('Dashboard update failed, but product was deleted successfully');
-          }
-          
-          return true;
-        } else {
-          console.error('Delete API returned success=false:', response.data);
-          errorMessage = (response.data as any)?.error || 'Failed to delete product (API returned success=false)';
-          return false;
-        }
-      } catch (error: any) {
-        const axiosError = error as AxiosError;
-        
-        // Log detailed error for debugging
-        console.error('Error deleting product:', {
-          message: axiosError.message,
-          status: axiosError.response?.status,
-          data: axiosError.response?.data,
-          attempt: retryNumber
-        });
-        
-        errorMessage = typeof axiosError.response?.data === 'object' && axiosError.response?.data ? 
-          ((axiosError.response.data as any)?.error || 'Failed to delete product') : 
-          axiosError.message || 'Failed to delete product';
-        
-        // For certain errors, retrying won't help
-        if (axiosError.response?.status === 404) {
-          // Not found - don't retry, but update UI
-          console.log('Product not found (404), refreshing product list...');
-          fetchProducts(); // Refresh to ensure UI is in sync with server
-          toast.error('Product not found or already deleted');
-          return true; // Consider this a success from the UI perspective
-        }
-        
-        // For network or server errors, retrying might help
-        if (
-          axiosError.code === 'ECONNABORTED' || // Timeout
-          axiosError.code === 'ERR_NETWORK' || // Network error
-          axiosError.response?.status === 500 || // Server error
-          axiosError.response?.status === 503 // Service unavailable
-        ) {
-          if (retryNumber < maxRetries) {
-            console.log(`Will retry deletion after network/server error: ${axiosError.message}`);
-            // Wait before retrying - exponential backoff
-            const delay = Math.min(1000 * (2 ** retryNumber), 8000);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return attemptDeletion(retryNumber + 1);
-          }
-        }
-        
-        return false;
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        toast.error('Failed to delete product');
       }
-    };
-    
-    // Start deletion process with retry logic
-    success = await attemptDeletion(retryCount);
-    
-    // Handle final result
-    if (!success) {
-      console.error(`Failed to delete product after ${retryCount} retries`);
-      toast.error(errorMessage || 'Failed to delete product');
-      
-      // As a last resort, refresh the products list to ensure UI is in sync
-      fetchProducts();
     }
   };
 
-  const handleEdit = async (productId: string) => {
-    // Implement the edit functionality
+  const handleEdit = (productId: string) => {
+    router.push(`/products/edit/${productId}`);
   };
 
   const handleDeleteProduct = async (productId: string) => {
     await handleDelete(productId);
   };
 
-  const handleEditProduct = async (productId: string) => {
-    await handleEdit(productId);
+  const handleEditProduct = (productId: string) => {
+    handleEdit(productId);
+  };
+
+  const handleAddProduct = () => {
+    router.push('/products/new');
   };
 
   const filteredProducts = products.filter(product => 
@@ -442,15 +274,17 @@ export default function ProductsPage() {
                   {isDeleting ? 'Deleting...' : `Delete Selected (${selectedProducts.length})`}
                 </button>
               )}
-              <Link href="/products/new" className="flex-1 sm:flex-initial">
-                <Button 
-                  className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black text-sm sm:text-base"
-                >
-                  Add New Product
-                  <PlusCircle className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+              <Button 
+                onClick={handleAddProduct}
+                className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black text-sm sm:text-base"
+              >
+                Add New Product
+                <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </Button>
             </div>
+            
           </div>
 
           <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-sm mb-6 mx-2 sm:mx-0">
@@ -521,11 +355,9 @@ export default function ProductsPage() {
                       Try adjusting your filters or search query
                     </p>
                   ) : (
-                    <Link href="/products/new">
-                      <Button className="mt-2">
-                        Add Your First Product
-                      </Button>
-                    </Link>
+                    <Button onClick={handleAddProduct} className="mt-2">
+                      Add Your First Product
+                    </Button>
                                 )}
                               </div>
               ) : (

@@ -182,7 +182,7 @@ export default function SalesAnalyticsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
+      
       toast.success('Sales data exported successfully');
     } catch (err) {
       console.error('Error exporting to text:', err);
@@ -217,9 +217,9 @@ export default function SalesAnalyticsPage() {
       <Nav />
       <main className="flex-1 p-2 sm:p-3 lg:p-6 overflow-x-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6 sm:mb-8 px-2 sm:px-0">
             <h1 
-              className="font-montserrat text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white"
+              className="font-montserrat text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl tracking-tight font-bold text-center sm:text-left text-gray-900 dark:text-white break-words"
               style={{ fontFamily: 'var(--font-montserrat)' }}
             >
               Sales Analytics
@@ -277,28 +277,28 @@ export default function SalesAnalyticsPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2 mt-3">
-              <button
-                onClick={exportToExcel}
+                <button
+                  onClick={exportToExcel}
                 className="w-full sm:w-auto group relative px-4 py-1.5 rounded-full bg-black text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
-              >
-                <span className="relative flex items-center">
+                >
+                  <span className="relative flex items-center">
                   <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Export to Excel
-                </span>
-              </button>
-              <button
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Export to Excel
+                  </span>
+                </button>
+                <button
                 onClick={exportToTxt}
                 className="w-full sm:w-auto group relative px-4 py-1.5 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white text-sm font-medium shadow hover:shadow-md transition-all duration-300 ease-out whitespace-nowrap flex items-center justify-center"
-              >
-                <span className="relative flex items-center">
+                >
+                  <span className="relative flex items-center">
                   <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
                   Export to TXT
-                </span>
-              </button>
+                  </span>
+                </button>
             </div>
           </section>
           

@@ -379,19 +379,13 @@ export default function OrdersPage() {
               "Client ID": order._id.substring(0, 8), // First 8 characters as client ID
               "Item Name": product.name || "Unknown Product",
               "Quantity": product.quantity || 1,
-              "Item Description": `${product.name || "Unknown Product"} - Size: ${product.size || "N/A"} - Price: L.E ${(product.price || 0).toFixed(2)}`,
-              "Unit Price": (product.price || 0).toFixed(2),
-              "Total Item Price": ((product.price || 0) * (product.quantity || 1)).toFixed(2),
+              "Item Description": `${product.name || "Unknown Product"} - Size: ${product.size || "N/A"}`,
               "Order Date": orderDate,
               "Payment Method": order.paymentMethod || "COD",
               "Order Status": order.status || "pending",
-              "Coupon Code": order.couponCode || order.promoCode?.code || "N/A",
-              "Coupon Discount": couponDiscount > 0 ? `${couponDiscount}%` : "N/A",
-              "Ambassador ID": order.ambassadorId || order.ambassador?.ambassadorId || "N/A",
               "Delivery Cost": index === 0 ? deliveryCost.toFixed(2) : "0.00", // Only add delivery cost to first item
               "Order Total": index === 0 ? order.totalAmount.toFixed(2) : "", // Only show total on first item
-              "Notes": order.notes || "",
-              "Transaction Screenshot": order.transactionScreenshot || "N/A"
+              "Notes": order.notes || ""
             });
           });
         } else {
@@ -409,18 +403,12 @@ export default function OrdersPage() {
             "Item Name": "No Products",
             "Quantity": 0,
             "Item Description": "No products found in this order",
-            "Unit Price": "0.00",
-            "Total Item Price": "0.00",
             "Order Date": orderDate,
             "Payment Method": order.paymentMethod || "COD",
             "Order Status": order.status || "pending",
-            "Coupon Code": order.couponCode || order.promoCode?.code || "N/A",
-            "Coupon Discount": couponDiscount > 0 ? `${couponDiscount}%` : "N/A",
-            "Ambassador ID": order.ambassadorId || order.ambassador?.ambassadorId || "N/A",
             "Delivery Cost": deliveryCost.toFixed(2),
             "Order Total": order.totalAmount.toFixed(2),
-            "Notes": order.notes || "",
-            "Transaction Screenshot": order.transactionScreenshot || "N/A"
+            "Notes": order.notes || ""
           });
         }
       });
@@ -442,18 +430,12 @@ export default function OrdersPage() {
         { wch: 25 }, // Item Name
         { wch: 10 }, // Quantity
         { wch: 40 }, // Item Description
-        { wch: 12 }, // Unit Price
-        { wch: 15 }, // Total Item Price
         { wch: 12 }, // Order Date
         { wch: 15 }, // Payment Method
         { wch: 12 }, // Order Status
-        { wch: 15 }, // Coupon Code
-        { wch: 15 }, // Coupon Discount
-        { wch: 15 }, // Ambassador ID
-        { wch: 12 }, // Delivery Cost
+        { wch: 15 }, // Delivery Cost
         { wch: 12 }, // Order Total
         { wch: 30 }, // Notes
-        { wch: 20 }  // Transaction Screenshot
       ];
       worksheet['!cols'] = columnWidths;
       

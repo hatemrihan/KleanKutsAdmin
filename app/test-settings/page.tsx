@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import axios, { AxiosError } from 'axios';
 import Nav from '../sections/nav';
 import { CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { useRouter } from 'next/navigation';
 import { DarkModePanel, DarkModeText, DarkModeInput } from "../components/ui/dark-mode-wrapper";
+import { Switch } from '../components/ui/switch';
+import { Button } from '../components/ui/button';
 
 interface ApiErrorResponse {
   error: string;
@@ -19,7 +20,6 @@ interface SiteStatus {
 }
 
 export default function SettingsPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [siteStatusLoading, setSiteStatusLoading] = useState(false);
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({

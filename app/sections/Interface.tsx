@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
-import { toast } from 'react-hot-toast';
-import { Toaster } from 'sonner';
+import { toast, Toaster } from 'react-hot-toast';
 import axios, { AxiosError } from 'axios';
 
 export default function Interface() {
@@ -76,7 +75,6 @@ export default function Interface() {
         setTimeout(() => {
           console.log('Executing redirect to dashboard...');
           router.push('/dashboard');
-          router.refresh();
         }, 1500);
       }
     } catch (error: unknown) {
@@ -156,7 +154,7 @@ export default function Interface() {
         <p>For assistance, please contact technical support.</p>
       </div>
 
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" />
     </div>
   );
 }

@@ -140,11 +140,11 @@ export default function WaitlistPage() {
       });
       
       if (response.data.success) {
-        setWaitlistEntries(entries => 
-          entries.map(entry => 
+      setWaitlistEntries(entries => 
+        entries.map(entry => 
             entry._id === id ? { ...entry, status: newStatus } : entry
-          )
-        );
+        )
+      );
         toast.success(`Status updated to ${newStatus}`);
       } else {
         throw new Error(response.data.error || 'Failed to update status');
@@ -198,8 +198,8 @@ export default function WaitlistPage() {
       });
       
       if (response.data.success) {
-        setWaitlistEntries(entries => entries.filter(entry => entry._id !== id));
-        toast.success('Entry deleted successfully');
+      setWaitlistEntries(entries => entries.filter(entry => entry._id !== id));
+      toast.success('Entry deleted successfully');
       } else {
         throw new Error(response.data.error || 'Failed to delete entry');
       }
@@ -363,7 +363,7 @@ export default function WaitlistPage() {
                     Delete Selected ({selectedEntries.length})
                   </Button>
                 )}
-              </div>
+                </div>
               
               <Button 
                 onClick={fetchWaitlistEntries} 
@@ -374,61 +374,61 @@ export default function WaitlistPage() {
               </Button>
             </div>
           </div>
-
+          
           {/* Search & Filter Card */}
           <div className="px-4 sm:px-0">
             <Card className="mb-4 dark:bg-black dark:border-white dark:border-opacity-20">
-              <CardHeader className="pb-2">
+            <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold">Search & Filter</CardTitle>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                      Search by Email
-                    </label>
-                    <Input
-                      placeholder="Search emails..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                    Search by Email
+                  </label>
+                  <Input
+                    placeholder="Search emails..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full"
-                    />
-                  </div>
-                  
+                  />
+                </div>
+                
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                      Status Filter
-                    </label>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    Status Filter
+                  </label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-full bg-white dark:bg-black">
                         <SelectValue placeholder="All Statuses" />
-                      </SelectTrigger>
+                    </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="contacted">Contacted</SelectItem>
                         <SelectItem value="subscribed">Subscribed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
           </div>
-
+          
           {/* Table Section */}
           <div className="px-4 sm:px-0">
-            <Card className="dark:bg-black dark:border-white dark:border-opacity-20">
-              <CardContent className="p-0">
-                {isLoading ? (
+          <Card className="dark:bg-black dark:border-white dark:border-opacity-20">
+            <CardContent className="p-0">
+              {isLoading ? (
                   <div className="flex justify-center items-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black dark:border-white"></div>
-                  </div>
-                ) : filteredEntries.length === 0 ? (
+                </div>
+              ) : filteredEntries.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
-                    No waitlist entries found
-                  </div>
-                ) : (
+                  No waitlist entries found
+                </div>
+              ) : (
                   <div className="overflow-x-hidden">
                     <div className="min-w-full">
                       {filteredEntries.map((entry) => (
@@ -450,21 +450,21 @@ export default function WaitlistPage() {
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
                                   <div className="font-medium text-gray-900 dark:text-white break-all">
-                                    {entry.email}
+                            {entry.email}
                                   </div>
                                   <div className="text-sm text-gray-500 mt-1">
-                                    {formatDate(entry.createdAt)}
+                            {formatDate(entry.createdAt)}
                                   </div>
                                 </div>
                                 
                                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                  <Select 
-                                    value={entry.status} 
+                            <Select 
+                              value={entry.status} 
                                     onValueChange={(value: WaitlistStatus) => updateEntryStatus(entry._id, value)}
-                                  >
+                            >
                                     <SelectTrigger className={`h-8 w-full sm:w-[130px] ${getStatusStyles(entry.status)}`}>
-                                      <SelectValue />
-                                    </SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="pending">
                                         <div className="flex items-center gap-2">
@@ -484,21 +484,21 @@ export default function WaitlistPage() {
                                           Subscribed
                                         </div>
                                       </SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                              </SelectContent>
+                            </Select>
                                   
                                   <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleEditClick(entry)}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEditClick(entry)}
                                       className="h-8 px-2 min-w-[32px] flex-1 sm:flex-none"
-                                    >
+                              >
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                       </svg>
                                       <span className="ml-2 sm:hidden">Edit Notes</span>
-                                    </Button>
+                              </Button>
                                     <Button
                                       variant="destructive"
                                       size="sm"
@@ -524,10 +524,10 @@ export default function WaitlistPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           </div>
         </div>
       </main>
@@ -554,7 +554,7 @@ export default function WaitlistPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="dark:bg-black dark:border-white dark:border-opacity-20 w-[95vw] max-w-md mx-auto">
           <DialogHeader>

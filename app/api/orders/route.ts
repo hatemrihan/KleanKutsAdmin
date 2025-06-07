@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
 
     const newOrder = new Order(orderData);
     await newOrder.save();
-    
+
     // Update the ambassador's recent order with the real order ID
     if (ambassadorId && finalCouponCode) {
       const { Ambassador } = await import("../../models/ambassador");
@@ -333,7 +333,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
     const { _id } = body;
-    
+
     if (!_id) {
       return responseWithCors(
         { error: 'Order ID is required' },

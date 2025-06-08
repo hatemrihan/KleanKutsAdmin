@@ -160,14 +160,17 @@ export default function OrdersPage() {
       console.log('Raw orders data:', response.data);
       
       // Enhanced debug logging for orders
-      response.data.forEach((order: any) => {
-        console.log('DEBUG Raw order:', {
+      response.data.forEach((order: any, index: number) => {
+        console.log(`DEBUG Raw order ${index + 1}:`, {
           id: order._id,
+          notes: order.notes,
           couponCode: order.couponCode,
           couponDiscount: order.couponDiscount,
           ambassadorId: order.ambassadorId,
           promoCode: order.promoCode,
-          ambassador: order.ambassador
+          ambassador: order.ambassador,
+          // Log all possible field variations
+          allFields: Object.keys(order)
         });
       });
       
@@ -184,17 +187,18 @@ export default function OrdersPage() {
           address: 'No address provided'
         };
 
-        // Normalize coupon information
+        // Normalize coupon information with more field variations
         const normalizedCouponInfo = {
-          couponCode: order.couponCode || order.promoCode?.code || null,
-          couponDiscount: order.couponDiscount || order.promoCode?.value || null,
-          ambassadorId: order.ambassadorId || order.ambassador?.ambassadorId || null,
+          couponCode: order.couponCode || order.promoCode?.code || order.discountCode || order.promocode || null,
+          couponDiscount: order.couponDiscount || order.promoCode?.value || order.discount || order.discountAmount || null,
+          ambassadorId: order.ambassadorId || order.ambassador?.ambassadorId || order.ambassador_id || null,
           promoCode: order.promoCode || null,
           ambassador: order.ambassador || null
         };
 
         console.log('DEBUG Normalized coupon info:', {
           orderId: order._id,
+          originalNotes: order.notes,
           ...normalizedCouponInfo
         });
 
@@ -211,6 +215,7 @@ export default function OrdersPage() {
             totalAmount: Number(order.total || order.totalAmount) || 0,
             paymentMethod: order.paymentMethod || 'cod',
             transactionScreenshot: order.transactionScreenshot || null,
+            notes: order.notes || order.note || order.customerNotes || order.orderNotes || '', // Multiple field variations
             // Use normalized coupon information
             ...normalizedCouponInfo,
             products: Array.isArray(order.products) ? order.products.map((product: any) => ({
@@ -222,7 +227,12 @@ export default function OrdersPage() {
               image: product.image || ''
             })) : []
           };
-          console.log('DEBUG Transformed order:', transformedOrder);
+          console.log('DEBUG Transformed order (old format):', {
+            id: transformedOrder._id,
+            notes: transformedOrder.notes,
+            couponCode: transformedOrder.couponCode,
+            totalAmount: transformedOrder.totalAmount
+          });
           return transformedOrder;
         }
 
@@ -247,11 +257,17 @@ export default function OrdersPage() {
           totalAmount: Number(order.totalAmount || order.total) || 0,
           paymentMethod: order.paymentMethod || 'cod',
           transactionScreenshot: order.transactionScreenshot || null,
+          notes: order.notes || order.note || order.customerNotes || order.orderNotes || '', // Multiple field variations
           // Use normalized coupon information
           ...normalizedCouponInfo
         };
 
-        console.log('DEBUG Transformed order:', transformedOrder);
+        console.log('DEBUG Transformed order (new format):', {
+          id: transformedOrder._id,
+          notes: transformedOrder.notes,
+          couponCode: transformedOrder.couponCode,
+          totalAmount: transformedOrder.totalAmount
+        });
         return transformedOrder;
       }).filter(Boolean);
       
@@ -857,6 +873,16 @@ export default function OrdersPage() {
                             </div>
                           ) : null;
                         })()}
+
+                        {/* Customer Notes if available */}
+                        {order.notes && order.notes.trim() && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Customer Notes:</div>
+                            <div className="text-xs text-gray-700 dark:text-gray-300 break-words">
+                              {order.notes}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-gray-600">

@@ -26,6 +26,7 @@ interface SizeVariant {
 
 interface ProductData {
   title: string;
+  name?: string; // Will be set from title if not provided
   price: number;
   selectedImages: string[];
   categories?: string[];
@@ -35,6 +36,9 @@ interface ProductData {
   selectedSizes?: string[];
   stock?: number;
   color?: string;
+  discount?: number;
+  discountType?: string;
+  gender?: string;
 }
 
 // GET all products or single product
@@ -190,6 +194,8 @@ export async function POST(req: Request) {
     await mongooseConnect();
     const data: ProductData = await req.json();
 
+    console.log('Received product creation data:', JSON.stringify(data, null, 2));
+
     // Validate required fields
     if (!data.title?.trim()) {
       return NextResponse.json(
@@ -210,19 +216,36 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create the product
-    const product = await Product.create({
+    // Prepare product data with required fields
+    const productData = {
       ...data,
+      name: data.title, // Ensure name field is set from title
       categories: data.categories || [],
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    };
 
+    console.log('Creating product with processed data:', JSON.stringify(productData, null, 2));
+
+    // Create the product
+    const product = await Product.create(productData);
+
+    console.log('Product created successfully:', product._id);
     return NextResponse.json(product);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /api/products:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      return NextResponse.json(
+        { error: `Validation error: ${validationErrors.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      { error: `Failed to create product: ${error.message || 'Unknown error'}` },
       { status: 500 }
     );
   }

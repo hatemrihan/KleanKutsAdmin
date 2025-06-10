@@ -24,14 +24,27 @@ export async function POST(request: NextRequest) {
     const { 
       code,
       orderId,
-      orderAmount,
+      orderAmount, // Keep for backward compatibility
+      total, // Full amount (products + shipping)
+      subtotal, // Products only  
+      shippingCost, // Delivery cost
+      discountAmount, // Applied discount
       customerEmail,
       products = []
     } = await request.json();
     
-    console.log('[COUPON REDEEM API] Request data:', { code, orderId, orderAmount, customerEmail });
+    console.log('[COUPON REDEEM API] Request data:', { 
+      code, 
+      orderId, 
+      orderAmount, 
+      total, 
+      subtotal, 
+      shippingCost, 
+      discountAmount, 
+      customerEmail 
+    });
     
-    if (!code || !orderId || !orderAmount) {
+    if (!code || !orderId || (!orderAmount && !total && !subtotal)) {
       console.log('[COUPON REDEEM API] Missing required fields');
       return responseWithCors({ error: 'Required fields missing' }, 400, request);
     }
@@ -56,15 +69,54 @@ export async function POST(request: NextRequest) {
     
     console.log(`[COUPON REDEEM API] Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
     
-    // Calculate commission
-    const commission = (orderAmount * ambassador.commissionRate) / 100;
+    // ✅ NEW COMMISSION CALCULATION: (subtotal - discountAmount) × rate%
+    // Use new structure if available, fallback to old orderAmount for backward compatibility
+    let commissionableAmount: number;
+    let orderTotal: number;
+    
+    if (subtotal !== undefined) {
+      // New structure - commission only on product sales (excluding shipping)
+      commissionableAmount = subtotal - (discountAmount || 0);
+      orderTotal = total || (subtotal + (shippingCost || 0));
+      
+      console.log('[COUPON REDEEM API] Using new structure:', {
+        subtotal,
+        discountAmount: discountAmount || 0,
+        shippingCost: shippingCost || 0,
+        commissionableAmount,
+        orderTotal
+      });
+    } else {
+      // Backward compatibility - use old orderAmount
+      commissionableAmount = orderAmount;
+      orderTotal = orderAmount;
+      
+      console.log('[COUPON REDEEM API] Using legacy structure:', {
+        orderAmount,
+        commissionableAmount,
+        orderTotal
+      });
+    }
+    
+    // Ensure commission amount is not negative
+    commissionableAmount = Math.max(0, commissionableAmount);
+    
+    // Calculate commission on the commissionable amount only
+    const commission = (commissionableAmount * ambassador.commissionRate) / 100;
+    
+    console.log('[COUPON REDEEM API] Commission calculation:', {
+      commissionableAmount,
+      commissionRate: ambassador.commissionRate,
+      commission,
+      ambassadorName: ambassador.name
+    });
     
     // Update ambassador stats
     const updateResult = await Ambassador.findByIdAndUpdate(
       ambassador._id,
       {
         $inc: {
-          sales: orderAmount,
+          sales: commissionableAmount, // Track product sales only (excluding shipping)
           earnings: commission,
           orders: 1,
           paymentsPending: commission
@@ -73,7 +125,7 @@ export async function POST(request: NextRequest) {
           recentOrders: {
             orderId,
             orderDate: new Date(),
-            amount: orderAmount,
+            amount: commissionableAmount, // Store commissionable amount, not total
             commission,
             isPaid: false
           }

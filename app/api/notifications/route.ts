@@ -15,7 +15,11 @@ interface ApplicationData {
 interface OrderData {
   orderId: string;
   referralCode: string;
-  amount: number;
+  amount: number; // Keep for backward compatibility
+  total?: number; // Full amount (products + shipping)
+  subtotal?: number; // Products only
+  shippingCost?: number; // Delivery cost
+  discountAmount?: number; // Applied discount
 }
 
 // POST /api/notifications - Handle notifications from the main site
@@ -154,7 +158,7 @@ async function logApplicationError(data: ApplicationData) {
   
 // Process order notifications with ambassador codes
 async function handleOrderCompletion(data: OrderData) {
-  const { orderId, referralCode, amount } = data;
+  const { orderId, referralCode, amount, total, subtotal, shippingCost, discountAmount } = data;
   
   try {
     // Find the ambassador by referral code
@@ -162,46 +166,87 @@ async function handleOrderCompletion(data: OrderData) {
       referralCode: referralCode 
     });
   
-  if (!ambassador) {
+    if (!ambassador) {
       console.warn(`No ambassador found for referral code: ${referralCode}`);
-    return;
-  }
-  
-  // Calculate commission
-  const commission = amount * ambassador.commissionRate;
-  
+      return;
+    }
+    
+    // ✅ NEW COMMISSION CALCULATION: (subtotal - discountAmount) × rate%
+    // Use new structure if available, fallback to old amount for backward compatibility
+    let commissionableAmount: number;
+    let orderTotal: number;
+    
+    if (subtotal !== undefined) {
+      // New structure - commission only on product sales (excluding shipping)
+      commissionableAmount = subtotal - (discountAmount || 0);
+      orderTotal = total || (subtotal + (shippingCost || 0));
+      
+      console.log('[COMMISSION CALC] Using new structure:', {
+        subtotal,
+        discountAmount: discountAmount || 0,
+        shippingCost: shippingCost || 0,
+        commissionableAmount,
+        orderTotal
+      });
+    } else {
+      // Backward compatibility - use old amount
+      commissionableAmount = amount;
+      orderTotal = amount;
+      
+      console.log('[COMMISSION CALC] Using legacy structure:', {
+        amount,
+        commissionableAmount,
+        orderTotal
+      });
+    }
+    
+    // Ensure commission amount is not negative
+    commissionableAmount = Math.max(0, commissionableAmount);
+    
+    // Calculate commission on the commissionable amount only
+    const commission = commissionableAmount * ambassador.commissionRate;
+    
+    console.log('[COMMISSION CALC] Final calculation:', {
+      commissionableAmount,
+      commissionRate: ambassador.commissionRate,
+      commission,
+      ambassadorName: ambassador.name
+    });
+    
     // Update ambassador statistics
-    ambassador.sales += amount;
+    // Note: sales field now tracks product sales only (excluding shipping)
+    ambassador.sales += commissionableAmount;
     ambassador.earnings += commission;
     ambassador.orders += 1;
     ambassador.paymentsPending += commission;
   
-  // Add to recent orders
-  ambassador.recentOrders.push({
-    orderId,
-    orderDate: new Date(),
-    amount,
-    commission,
-    isPaid: false
-  });
+    // Add to recent orders
+    ambassador.recentOrders.push({
+      orderId,
+      orderDate: new Date(),
+      amount: commissionableAmount, // Store commissionable amount, not total
+      commission,
+      isPaid: false
+    });
   
     // Keep only the most recent orders (limit to 20)
     if (ambassador.recentOrders.length > 20) {
       ambassador.recentOrders = ambassador.recentOrders.slice(-20);
     }
     
-  await ambassador.save();
+    await ambassador.save();
   
     // Notify admin
     await sendAdminNotification({
       title: 'New Ambassador Sale',
-      message: `Order #${orderId} for $${amount} was completed using ambassador ${ambassador.name}'s code`,
+      message: `Order #${orderId} for $${orderTotal.toFixed(2)} (commission on $${commissionableAmount.toFixed(2)}) was completed using ambassador ${ambassador.name}'s code`,
       type: 'ambassador_sale',
       data: { 
         orderId, 
         ambassadorId: ambassador._id,
         ambassadorName: ambassador.name,
-        amount,
+        orderTotal,
+        commissionableAmount,
         commission 
       }
     });

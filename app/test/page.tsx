@@ -66,6 +66,9 @@ interface Order {
   status: string;
   totalAmount: number;
   total?: number;
+  subtotal?: number;
+  shippingCost?: number;
+  discountAmount?: number;
   createdAt: string;
   orderDate?: string;
   products: OrderProduct[];
@@ -361,10 +364,6 @@ export default function OrdersPage() {
         const customerPhone = order.customer?.phone ?? order.phone ?? "N/A";
         const customerAddress = order.customer?.address ?? order.address ?? "N/A";
         
-        // Format date
-        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 
-                         order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A";
-        
         // Extract city and area from address if possible
         const addressParts = customerAddress.split(',').map(part => part.trim());
         const city = addressParts.length > 1 ? addressParts[addressParts.length - 1] : "N/A";
@@ -376,9 +375,19 @@ export default function OrdersPage() {
           return sum + (product.price * product.quantity);
         }, 0);
         
-        const couponDiscount = order.couponDiscount || 0;
-        const originalTotal = order.totalAmount + (productTotal * (couponDiscount / 100) || 0);
-        const deliveryCost = Math.max(0, originalTotal - productTotal);
+        // Payment method logic: If InstaPay, show as COD in Excel
+        const paymentMethod = order.paymentMethod?.toLowerCase();
+        let displayPaymentMethod: string;
+        let totalAmount: string;
+        
+        if (paymentMethod === 'instapay') {
+          displayPaymentMethod = 'COD';
+          totalAmount = 'COD';
+        } else {
+          // For COD, show "COD + order total"
+          displayPaymentMethod = 'COD';
+          totalAmount = `COD ${order.totalAmount.toFixed(2)}`;
+        }
         
         // If there are products, create a row for each product
         if (order.products && order.products.length > 0) {
@@ -396,12 +405,8 @@ export default function OrdersPage() {
               "Item Name": product.name || "Unknown Product",
               "Quantity": product.quantity || 1,
               "Item Description": `${product.name || "Unknown Product"} - Size: ${product.size || "N/A"}`,
-              "Order Date": orderDate,
-              "Payment Method": order.paymentMethod || "COD",
-              "Order Status": order.status || "pending",
-              "Delivery Cost": index === 0 ? deliveryCost.toFixed(2) : "0.00", // Only add delivery cost to first item
-              "Order Total": index === 0 ? order.totalAmount.toFixed(2) : "", // Only show total on first item
-              "Notes": order.notes || ""
+              "Payment Method": displayPaymentMethod,
+              "Total Amount": index === 0 ? totalAmount : "", // Only show total on first item
             });
           });
         } else {
@@ -419,12 +424,8 @@ export default function OrdersPage() {
             "Item Name": "No Products",
             "Quantity": 0,
             "Item Description": "No products found in this order",
-            "Order Date": orderDate,
-            "Payment Method": order.paymentMethod || "COD",
-            "Order Status": order.status || "pending",
-            "Delivery Cost": deliveryCost.toFixed(2),
-            "Order Total": order.totalAmount.toFixed(2),
-            "Notes": order.notes || ""
+            "Payment Method": displayPaymentMethod,
+            "Total Amount": totalAmount,
           });
         }
       });
@@ -446,12 +447,8 @@ export default function OrdersPage() {
         { wch: 25 }, // Item Name
         { wch: 10 }, // Quantity
         { wch: 40 }, // Item Description
-        { wch: 12 }, // Order Date
         { wch: 15 }, // Payment Method
-        { wch: 12 }, // Order Status
-        { wch: 15 }, // Delivery Cost
-        { wch: 12 }, // Order Total
-        { wch: 30 }, // Notes
+        { wch: 20 }, // Total Amount
       ];
       worksheet['!cols'] = columnWidths;
       
@@ -461,9 +458,9 @@ export default function OrdersPage() {
       
       // Generate Excel file and trigger download
       const timestamp = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `orders_detailed_export_${timestamp}.xlsx`);
+      XLSX.writeFile(workbook, `orders_shipping_export_${timestamp}.xlsx`);
       
-      toast.success(`Orders exported successfully - ${exportData.length} rows exported`);
+      toast.success(`Orders exported successfully for shipping - ${exportData.length} rows exported`);
     } catch (error) {
       console.error('Error exporting orders:', error);
       toast.error('Failed to export orders');

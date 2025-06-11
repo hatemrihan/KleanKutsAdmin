@@ -28,7 +28,7 @@ export default function ProductContentFields({
       <div className="mb-4 flex justify-start">
         <button
           onClick={handleGoBack}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+          className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 dark:bg-yellow-500 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 flex items-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -81,7 +81,7 @@ export default function ProductContentFields({
             />
             <button
               type="button"
-              className="ml-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="ml-2 px-3 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
               onClick={(e) => {
                 const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                 if (input.value.trim() !== '') {

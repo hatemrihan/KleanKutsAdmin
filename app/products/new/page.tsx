@@ -3,21 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import axios, { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '../../components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import Nav from '../../sections/nav';
 import dynamic from 'next/dynamic';
 import { 
   DarkModePanel, 
   DarkModeInput, 
-  DarkModeText, 
   DarkModeLabel,
-  DarkModeButton
 } from '../../components/ui/dark-mode-wrapper';
 
 // Lazy load components with ssr disabled to prevent hydration mismatch
@@ -217,7 +211,7 @@ export default function NewProduct() {
         stock: totalStock, // Set calculated stock
         selectedSizes, // Update selected sizes based on variants
         gender: formData.gender, // Ensure gender is explicitly included
-        categories: formData.category ? [formData.category] : [], // Make categories optional
+        // Remove categories field entirely since category selection is not available
         sizeVariants: formData.sizeVariants.map(sv => ({
           size: sv.size,
           colorVariants: sv.colorVariants.map(cv => ({
@@ -296,7 +290,18 @@ export default function NewProduct() {
       <Nav />
       <main className="flex-1 p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Removed GET BACK button as requested */}
+          {/* Mobile/Tablet only Get Back */}
+          <div className="block md:hidden mb-4">
+            <button
+              onClick={() => router.push('/products')}
+              className="text-yellow-500 dark:text-yellow-500 font-medium text-sm flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Get Back
+            </button>
+          </div>
           
           <h1 className="text-2xl font-semibold text-black dark:text-white mb-6">Create New Product</h1>
           
@@ -394,7 +399,7 @@ export default function NewProduct() {
                   {/* Removed sizes checkboxes section as requested */}
                   
                   <DarkModePanel className="mb-4">
-                    <h3 className="text-lg font-semibold mb-4 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-800 pb-2">Size & Color Variants</h3>
+                    <h3 className="text-lg text-center font-semibold mb-4 text-yellow-500 dark:text-yellow-500 border-b border-gray-200 dark:border-gray-800 pb-2">Size & Color Variants</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       Add specific sizes with their color variants and stock quantities for precise inventory management.
                     </p>
@@ -624,7 +629,7 @@ export default function NewProduct() {
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white"
+                className="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-500 dark:hover:bg-yellow-600 text-white"
               >
                 {isLoading ? 'Creating...' : 'Create Product'}
               </Button>

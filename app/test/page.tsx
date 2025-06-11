@@ -619,10 +619,10 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="flex min-h-screen dark:bg-black">
+    <div className="flex min-h-screen dark:bg-black overflow-hidden">
       <Nav />
-      <main className="flex-1 p-2 sm:p-4 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 p-2 sm:p-4 lg:p-8 overflow-x-hidden">
+        <div className="max-w-full mx-auto">
           {/* Enhanced Page title with Dashboard-style font */}
           <div className="mb-6 sm:mb-8">
             <h1 
@@ -634,7 +634,7 @@ export default function OrdersPage() {
             <div className="h-1 w-16 sm:w-24 md:w-32 lg:w-40 bg-black dark:bg-white mt-2 mx-auto sm:mx-0"></div>
           </div>
 
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 mx-2 sm:mx-0">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 px-2 sm:px-0">
             <div className="flex items-center gap-4">
               {/* Title removed since it's already at the top */}
             </div>
@@ -642,13 +642,13 @@ export default function OrdersPage() {
               <DarkModeInput
                 type="search"
                 placeholder="Search orders..."
-                className="w-full sm:w-[250px] lg:w-[300px] text-sm sm:text-base"
+                className="w-full sm:w-[200px] lg:w-[250px] text-sm sm:text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[160px] lg:w-[200px] dark:bg-black dark:border-gray-700 dark:text-white text-sm sm:text-base">
+                  <SelectTrigger className="w-full sm:w-[140px] lg:w-[160px] dark:bg-black dark:border-gray-700 dark:text-white text-sm sm:text-base">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-black dark:border-gray-700">
@@ -662,31 +662,31 @@ export default function OrdersPage() {
                 </Select>
                 <button
                   onClick={exportOrdersToExcel}
-                  className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800 whitespace-nowrap text-xs sm:text-sm w-full sm:w-auto"
+                  className="px-2 sm:px-3 lg:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800 whitespace-nowrap text-xs sm:text-sm w-full sm:w-auto"
                 >
-                  Export to Excel
+                  Export Excel
                 </button>
               </div>
             </div>
           </div>
 
-          <DarkModePanel className="rounded-lg shadow-sm">
+          <DarkModePanel className="rounded-lg shadow-sm overflow-hidden">
             {/* Single Mobile-First Card Layout - No Desktop Table */}
-            <div className="p-2 sm:p-4">
+            <div className="p-2 sm:p-4 overflow-x-hidden">
               {/* Bulk Actions Header */}
               {selectedOrders.length > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4 overflow-hidden">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <div className="text-sm text-blue-800 dark:text-blue-200 truncate">
                       {selectedOrders.length} order(s) selected
                     </div>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <button className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700">
+                        <button className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 whitespace-nowrap">
                           Delete Selected
                         </button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[95vw] max-w-md mx-auto">
+                      <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[90vw] max-w-md mx-auto">
                         <AlertDialogHeader>
                           <AlertDialogTitle className="dark:text-gray-100">Delete Selected Orders?</AlertDialogTitle>
                           <AlertDialogDescription className="dark:text-gray-400">
@@ -706,20 +706,20 @@ export default function OrdersPage() {
               )}
 
               {/* Check All Orders */}
-              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={selectAll}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                   />
                   <span className="font-medium">Select All Orders ({filteredOrders.length})</span>
                 </label>
               </div>
 
               {/* Order Cards */}
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-x-hidden">
                 {filteredOrders?.map((order) => {
                   if (!order) {
                     console.warn('Invalid order data:', order);
@@ -733,10 +733,10 @@ export default function OrdersPage() {
                   const customerAddress = order.customer?.address ?? order.address ?? "No address provided";
 
                   return (
-                    <div key={order._id} className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div key={order._id} className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                       <div className="space-y-3">
                         {/* Header with checkbox, name, and amount */}
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-3 min-w-0">
                           <div className="flex items-start gap-3 min-w-0 flex-1">
                             <input
                               type="checkbox"
@@ -761,31 +761,31 @@ export default function OrdersPage() {
                         </div>
 
                         {/* Customer details in compact format */}
-                        <div className="text-xs space-y-1">
+                        <div className="text-xs space-y-1 overflow-hidden">
                           <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
                             <span className="flex-shrink-0">📧</span>
-                            <span className="break-all">{customerEmail}</span>
+                            <span className="break-all min-w-0">{customerEmail}</span>
                           </div>
                           <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
                             <span className="flex-shrink-0">📞</span>
-                            <span>{customerPhone}</span>
+                            <span className="min-w-0">{customerPhone}</span>
                           </div>
                           <div className="text-gray-600 dark:text-gray-400 break-words flex items-start gap-1">
                             <span className="flex-shrink-0">📍</span>
-                            <span>{customerAddress}</span>
+                            <span className="min-w-0">{customerAddress}</span>
                           </div>
                         </div>
 
                         {/* Products in a compact box */}
                         {order.products?.length > 0 && (
-                          <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded text-xs">
+                          <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded text-xs overflow-hidden">
                             <div className="font-medium text-gray-900 dark:text-gray-100 mb-1">
                               Products ({order.products.length}):
                             </div>
                             <div className="space-y-1">
                               {order.products.map((item) => (
                                 <div key={item.productId || Math.random()} className="text-gray-600 dark:text-gray-400 break-words">
-                                  • {item.name ?? 'Unknown Product'} ({item.size ?? 'N/A'}) ×{item.quantity ?? 0} - L.E {(item.price ?? 0).toFixed(2)}
+                                  • <span className="inline-block">{item.name ?? 'Unknown Product'}</span> <span className="inline-block">({item.size ?? 'N/A'})</span> <span className="inline-block">×{item.quantity ?? 0}</span> - <span className="inline-block">L.E {(item.price ?? 0).toFixed(2)}</span>
                                 </div>
                               ))}
                             </div>
@@ -793,9 +793,9 @@ export default function OrdersPage() {
                         )}
 
                         {/* Status and Payment in responsive grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-hidden">
                           {/* Status */}
-                          <div>
+                          <div className="min-w-0">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status:</div>
                             <Select
                               value={order.status ?? 'pending'}
@@ -819,14 +819,14 @@ export default function OrdersPage() {
                           </div>
                           
                           {/* Payment */}
-                          <div>
+                          <div className="min-w-0">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Payment:</div>
                             <div className="space-y-1">
-                              <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 break-words">
+                              <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                 {isInstaPay(order.paymentMethod) ? 'InstaPay' : 'COD'}
                               </span>
                               {isInstaPay(order.paymentMethod) && order.transactionScreenshot && (
-                                <div>
+                                <div className="mt-1">
                                   <PaymentScreenshotViewer 
                                     screenshotUrl={order.transactionScreenshot} 
                                     paymentMethod={order.paymentMethod}
@@ -852,7 +852,7 @@ export default function OrdersPage() {
                                               undefined;
                           
                           return couponCode ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded overflow-hidden">
                               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Coupon Applied:</div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full break-words 
@@ -873,7 +873,7 @@ export default function OrdersPage() {
 
                         {/* Customer Notes if available */}
                         {order.notes && order.notes.trim() && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded overflow-hidden">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Customer Notes:</div>
                             <div className="text-xs text-gray-700 dark:text-gray-300 break-words">
                               {order.notes}
@@ -889,7 +889,7 @@ export default function OrdersPage() {
                                 Delete Order
                               </button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[95vw] max-w-md mx-auto">
+                            <AlertDialogContent className="dark:bg-black dark:border-gray-700 w-[90vw] max-w-md mx-auto">
                               <AlertDialogHeader>
                                 <AlertDialogTitle className="dark:text-gray-100">Delete Order?</AlertDialogTitle>
                                 <AlertDialogDescription className="dark:text-gray-400">
@@ -911,11 +911,11 @@ export default function OrdersPage() {
                 })}
                 
                 {/* Empty state */}
-                {filteredOrders.length === 0 && (
+                                {filteredOrders.length === 0 && (
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <div className="text-4xl mb-4">📦</div>
                     <div className="text-lg font-medium mb-2">No orders found</div>
-                    <div className="text-sm">
+                    <div className="text-sm px-4">
                       {searchQuery || statusFilter !== 'all' 
                         ? 'Try adjusting your search or filter criteria'
                         : 'Orders will appear here when customers place them'

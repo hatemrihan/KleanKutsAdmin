@@ -35,7 +35,6 @@ interface DashboardStats {
   totalOrders: number;
   totalSales: number;
   activeProducts: number;
-  totalCategories: number;
   monthlyGoal: number;
   currentMonthSales: number;
   recentOrders: Array<{
@@ -56,7 +55,6 @@ const fallbackStats: DashboardStats = {
   totalOrders: 0,
   totalSales: 0,
   activeProducts: 0,
-  totalCategories: 0,
   monthlyGoal: 100000,
   currentMonthSales: 0,
   recentOrders: [],
@@ -182,12 +180,18 @@ export default function Dashboard() {
     fetchProductsAndCategoriesCounts();
     fetchRealSalesData(); // Add initial real sales data fetch
     
-    // Set up intervals for auto-refresh
+    // Set up intervals for auto-refresh - Like big investment companies!
     const dashboardRefreshInterval = setInterval(() => {
       console.log('Auto-refreshing dashboard data...');
       fetchDashboardStats();
       fetchRealSalesData(); // Add real sales data refresh
-    }, 60000); // Refresh every minute
+    }, 5000); // Refresh every 5 seconds for real-time updates!
+    
+    // Additional interval for critical sales data - even faster
+    const salesRefreshInterval = setInterval(() => {
+      console.log('Fast sales data refresh...');
+      fetchRealSalesData();
+    }, 3000); // Refresh sales every 3 seconds
     
     // Set up event listeners for order updates
     const handleOrderUpdate = () => {
@@ -214,6 +218,7 @@ export default function Dashboard() {
     
     return () => {
       clearInterval(dashboardRefreshInterval);
+      clearInterval(salesRefreshInterval);
       clearInterval(orderUpdateCheckInterval);
       window.removeEventListener('order-created', handleOrderUpdate);
       window.removeEventListener('order-updated', handleOrderUpdate);
@@ -244,10 +249,17 @@ export default function Dashboard() {
     try {
       console.log('Fetching dashboard stats...');
       
-      // Add cache-busting parameter to prevent stale data
+      // Add cache-busting parameter to prevent stale data - AGGRESSIVE CACHE BUSTING FOR DEPLOYMENT
       const timestamp = new Date().getTime();
-      const response = await axios.get(`/api/dashboard?_=${timestamp}`, {
-        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      const randomId = Math.floor(Math.random() * 1000000);
+      const response = await axios.get(`/api/dashboard?_=${timestamp}&r=${randomId}`, {
+        headers: { 
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-Modified-Since': '0'
+        },
+        timeout: 10000 // 10 second timeout
       });
       
       console.log('Dashboard stats loaded:', response.data);
@@ -778,8 +790,7 @@ export default function Dashboard() {
             if (!prevStats) return fallbackStats;
             return {
                 ...prevStats,
-                activeProducts: data.productCount,
-                totalCategories: data.categoryCount
+                activeProducts: data.productCount
             };
         });
     } catch (error) {
@@ -791,7 +802,20 @@ export default function Dashboard() {
   // Improved version to fetch real sales data with better integration with monthly goal
   const fetchRealSalesData = async () => {
     try {
-      const response = await axios.get('/api/dashboard/real-sales');
+      // AGGRESSIVE CACHE BUSTING FOR REAL-TIME SALES DATA
+      const timestamp = new Date().getTime();
+      const randomId = Math.floor(Math.random() * 1000000);
+      
+      const response = await axios.get(`/api/dashboard/real-sales?_=${timestamp}&r=${randomId}`, {
+        headers: { 
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-Modified-Since': '0'
+        },
+        timeout: 8000 // 8 second timeout for faster updates
+      });
+      
       if (response.data) {
         setCurrentMonthSales(response.data.currentMonthSales || 0);
         setMonthlyGoal(response.data.monthlyGoal || 100000);
@@ -802,12 +826,20 @@ export default function Dashboard() {
           return {
             ...prevStats,
             currentMonthSales: response.data.currentMonthSales || 0,
-            monthlyGoal: response.data.monthlyGoal || 100000
+            monthlyGoal: response.data.monthlyGoal || 100000,
+            totalSales: response.data.totalSales || prevStats.totalSales,
+            totalOrders: response.data.totalOrders || prevStats.totalOrders
           };
+        });
+        
+        console.log('✅ REAL-TIME SALES UPDATED:', {
+          currentMonthSales: response.data.currentMonthSales,
+          totalSales: response.data.totalSales,
+          totalOrders: response.data.totalOrders
         });
       }
     } catch (error) {
-      console.error('Error fetching real-time sales data:', error);
+      console.error('❌ Error fetching real-time sales data:', error);
     }
   };
 
@@ -1159,7 +1191,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="text-xs text-black/70 dark:text-white/70 mt-2">
-                Auto-refreshes every 3 minutes
+                🔴 LIVE - Updates every 3 seconds
               </div>
             </CardContentUI>
           </CardUI>
@@ -1200,43 +1232,7 @@ export default function Dashboard() {
             </CardContentUI>
           </CardUI>
 
-          {/* Categories Card */}
-          <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">
-            <CardHeaderUI className="pb-2">
-              <CardTitleUI className="text-sm font-medium text-black dark:text-white">Categories</CardTitleUI>
-            </CardHeaderUI>
-            <CardContentUI className="pt-0">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-black dark:text-white">{stats.totalCategories}</div>
-                <div className="p-2 rounded-full bg-black/5 dark:bg-white/10">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5 text-black dark:text-white"
-                  >
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                  </svg>
-                </div>
-              </div>
-              <a
-                href="/categories"
-                className="text-sm text-black hover:text-black/70 dark:text-white dark:hover:text-white/70 mt-2 inline-flex items-center"
-              >
-                Manage Categories
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-              </a>
-            </CardContentUI>
-          </CardUI>
+
           
           {/* Status Card */}
           <CardUI className="bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow border border-black/10 dark:border-white/10">

@@ -197,7 +197,10 @@ export async function POST(request: NextRequest) {
         console.log('[ORDER CREATION] Calculated discount:', couponDiscount);
         
         // Update ambassador stats immediately
-        const commission = (total * ambassador.commissionRate) / 100;
+        // Note: This is a legacy API - commission should ideally be calculated on product subtotal only
+        // But for backward compatibility with existing orders, we'll use total for now
+        // TODO: Update to use subtotal when e-commerce system provides it
+        const commission = total * ambassador.commissionRate;
         
         await Ambassador.findByIdAndUpdate(
           ambassador._id,

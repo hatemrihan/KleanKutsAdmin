@@ -58,7 +58,7 @@ const AmbassadorSchema = new mongoose.Schema({
   sales: { type: Number, default: 0 },
   earnings: { type: Number, default: 0 },
   orders: { type: Number, default: 0 },
-  commissionRate: { type: Number, default: 0.1 },
+  commissionRate: { type: Number, default: 10 }, // 10% stored as percentage
   
   // Payment tracking
   paymentsPending: { type: Number, default: 0 },

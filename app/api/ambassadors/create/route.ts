@@ -34,10 +34,8 @@ export async function POST(request: NextRequest) {
       data.status = 'approved';
     }
 
-    // Convert commission rate from percentage to decimal if needed
-    if (data.commissionRate > 1) {
-      data.commissionRate = data.commissionRate / 100;
-    }
+    // Commission rate is now stored as percentage (20 = 20%)
+    // No conversion needed - store the percentage value directly
 
     // Create a new ambassador
     const ambassador = new Ambassador(data);

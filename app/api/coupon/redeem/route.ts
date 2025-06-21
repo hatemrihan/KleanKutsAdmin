@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
     commissionableAmount = Math.max(0, commissionableAmount);
     
     // Calculate commission on the commissionable amount only
-    // Note: commissionRate is stored as decimal (e.g., 0.1 = 10%), so multiply by 100 if needed
-    const commission = commissionableAmount * ambassador.commissionRate;
+    // Note: commissionRate is now stored as percentage (e.g., 20 = 20%), so divide by 100
+    const commission = (commissionableAmount * ambassador.commissionRate) / 100;
     
     console.log('[COUPON REDEEM API] Commission calculation:', {
       commissionableAmount,

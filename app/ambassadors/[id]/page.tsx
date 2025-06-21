@@ -115,7 +115,7 @@ export default function AmbassadorDetailsPage() {
       // Set form data initial values
       setFormData({
         status: data.ambassador.status,
-        commissionRate: data.ambassador.commissionRate * 100, // Convert to percentage
+        commissionRate: data.ambassador.commissionRate, // Keep as percentage (no conversion needed)
         couponCode: data.ambassador.couponCode || '',
         discountPercent: data.ambassador.discountPercent || 10,
       });
@@ -140,10 +140,10 @@ export default function AmbassadorDetailsPage() {
     setError(null);
     
     try {
-      // Convert commission rate from percentage to decimal for storage
+      // Keep commission rate as percentage for storage (20% = 20, not 0.2)
       const updateData = {
         ...formData,
-        commissionRate: formData.commissionRate / 100,
+        commissionRate: formData.commissionRate,
       };
       
       const response = await fetch(`/api/ambassadors/${id}`, {
@@ -489,7 +489,7 @@ export default function AmbassadorDetailsPage() {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-500 dark:text-white/70">Commission Rate</div>
-                        <div className="mt-1 text-sm text-gray-900 dark:text-white">{(ambassador.commissionRate * 100).toFixed(1)}%</div>
+                        <div className="mt-1 text-sm text-gray-900 dark:text-white">{ambassador.commissionRate.toFixed(1)}%</div>
                       </div>
                     </div>
                   </div>
@@ -502,30 +502,217 @@ export default function AmbassadorDetailsPage() {
                     </div>
                   </div>
                   
-                  {/* Referral information - REMOVED referral link */}
+                  {/* 🔗 ADMIN LINKS MANAGEMENT TABLE */}
                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Referral Information</h3>
-                    <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-gray-500 dark:text-white/70">Referral Code</div>
-                        <div className="mt-1">
-                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all overflow-hidden">
-                            {ambassador.referralCode || 'Not generated yet'}
-                          </code>
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-gray-500 dark:text-white/70">Coupon Code</div>
-                        <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3">
-                          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all overflow-hidden">
-                            {ambassador.couponCode || ambassador.referralCode || 'Not generated yet'}
-                          </code>
-                          {ambassador.discountPercent && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 flex-shrink-0">
-                              {ambassador.discountPercent}% discount
-                            </span>
+                    <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">
+                      🔗 Admin Links Management
+                    </h3>
+                    
+                    {/* Professional Links Table */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <thead className="bg-gray-50 dark:bg-gray-900">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Link Type
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Code/Link
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Details
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {/* Referral Code Row */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-8 w-8">
+                                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                    <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">Referral Code</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">For tracking referrals</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <code className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+                                {ambassador.referralCode || 'Not generated yet'}
+                              </code>
+                            </td>
+                                                         <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                               Commission: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate.toFixed(1)}%</span>
+                             </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(ambassador.referralCode || '')}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                              >
+                                Copy
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Coupon Code Row */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-8 w-8">
+                                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">Coupon Code</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">For customer discounts</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <code className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+                                {ambassador.couponCode || ambassador.referralCode || 'Not generated yet'}
+                              </code>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                              Discount: <span className="font-semibold text-blue-600 dark:text-blue-400">{ambassador.discountPercent}%</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(ambassador.couponCode || ambassador.referralCode || '')}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                              >
+                                Copy
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Referral Link Row */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-8 w-8">
+                                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                                    <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">Referral Link</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">Direct store link with code</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="max-w-xs">
+                                <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
+                                  {ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}` || 'Not generated yet'}
+                                </code>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                              Pre-filled tracking link
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}` || '')}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                              >
+                                Copy
+                              </button>
+                              <button
+                                onClick={() => window.open(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`, '_blank')}
+                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                              >
+                                Visit
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Video Link Row (if exists) */}
+                          {ambassador.productVideoLink && (
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-8 w-8">
+                                    <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                      <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                  <div className="ml-3">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white">Video Content</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">Product showcase video</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="max-w-xs">
+                                  <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
+                                    {ambassador.productVideoLink}
+                                  </code>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {ambassador.videoSubmissionDate && `Submitted: ${formatDate(ambassador.videoSubmissionDate)}`}
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(ambassador.productVideoLink || '')}
+                                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                                >
+                                  Copy
+                                </button>
+                                <button
+                                  onClick={() => window.open(ambassador.productVideoLink, '_blank')}
+                                  className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                >
+                                  Watch
+                                </button>
+                              </td>
+                            </tr>
                           )}
-                        </div>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Quick Actions for All Links */}
+                    <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Quick Actions</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => {
+                            const allLinks = [
+                              `Referral Code: ${ambassador.referralCode}`,
+                              `Coupon Code: ${ambassador.couponCode || ambassador.referralCode}`,
+                              `Referral Link: ${ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`}`,
+                              ambassador.productVideoLink ? `Video: ${ambassador.productVideoLink}` : null
+                            ].filter(Boolean).join('\n');
+                            navigator.clipboard.writeText(allLinks);
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+                        >
+                          📋 Copy All Links
+                        </button>
+                        <button
+                          onClick={() => window.open(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`, '_blank')}
+                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
+                        >
+                          🚀 Test Store Link
+                        </button>
                       </div>
                     </div>
                   </div>

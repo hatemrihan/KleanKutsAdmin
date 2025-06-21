@@ -313,7 +313,7 @@ export default function AmbassadorsPage() {
                       
                       <div className="mt-3 sm:mt-4 flex flex-wrap gap-1 sm:gap-2">
                         <DarkModeText className="text-xs md:text-sm">Commission Rate:</DarkModeText>
-                        <span className="text-xs md:text-sm font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate}%</span>
+                        <span className="text-xs md:text-sm font-semibold text-emerald-600 dark:text-emerald-400">{ambassador.commissionRate.toFixed(1)}%</span>
                       </div>
                     </div>
                     

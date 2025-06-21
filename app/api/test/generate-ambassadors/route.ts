@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         status: 'approved',
         couponCode: 'TEST10',
         discountPercent: 10,
-        commissionRate: 0.10,
+        commissionRate: 10, // 10% stored as percentage
         reason: 'Test ambassador with 10% discount',
         sales: 1000,
         earnings: 100,
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         status: 'approved',
         couponCode: 'TEST20',
         discountPercent: 20,
-        commissionRate: 0.15,
+        commissionRate: 15, // 15% stored as percentage
         reason: 'Test ambassador with 20% discount',
         sales: 2000,
         earnings: 300,

@@ -204,7 +204,8 @@ async function handleOrderCompletion(data: OrderData) {
     commissionableAmount = Math.max(0, commissionableAmount);
     
     // Calculate commission on the commissionable amount only
-    const commission = commissionableAmount * ambassador.commissionRate;
+    // Commission rate is now stored as percentage (20 = 20%), so divide by 100
+    const commission = (commissionableAmount * ambassador.commissionRate) / 100;
     
     console.log('[COMMISSION CALC] Final calculation:', {
       commissionableAmount,

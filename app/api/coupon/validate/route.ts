@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         value: ambassador.discountPercent,
         ambassadorId: ambassador._id
       },
-      commissionRate: ambassador.commissionRate * 100, // Convert decimal to percentage (e.g., 0.1 -> 10)
+      commissionRate: ambassador.commissionRate, // Now stored as percentage (20 = 20%)
       message: `Coupon code applied: ${ambassador.discountPercent}% discount`
     });
   } catch (error) {

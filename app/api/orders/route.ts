@@ -200,7 +200,8 @@ export async function POST(request: NextRequest) {
         // Note: This is a legacy API - commission should ideally be calculated on product subtotal only
         // But for backward compatibility with existing orders, we'll use total for now
         // TODO: Update to use subtotal when e-commerce system provides it
-        const commission = total * ambassador.commissionRate;
+        // Commission rate is now stored as percentage (20 = 20%), so divide by 100
+        const commission = (total * ambassador.commissionRate) / 100;
         
         await Ambassador.findByIdAndUpdate(
           ambassador._id,

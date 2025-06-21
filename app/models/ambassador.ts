@@ -42,7 +42,7 @@ const AmbassadorSchema = new Schema({
   },
   commissionRate: {
     type: Number,
-    default: 0.10 // 10% by default
+    default: 10 // 10% by default (stored as percentage)
   },
   reason: {
     type: String,

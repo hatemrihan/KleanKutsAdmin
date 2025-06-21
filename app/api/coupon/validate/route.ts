@@ -96,15 +96,28 @@ export async function POST(request: NextRequest) {
     }
     
     // If no regular coupon found, check for ambassador coupons
-    console.log('Checking for ambassador coupon');
-    const ambassador = await Ambassador.findOne({
+    console.log('Checking for ambassador coupon with code:', normalizedCode);
+    
+    // First, let's check for direct matches without regex
+    const directMatch = await Ambassador.findOne({
       $or: [
-        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true },
-        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true }
+        { couponCode: normalizedCode, status: 'approved' },
+        { couponCode: code.toLowerCase(), status: 'approved' },
+        { referralCode: normalizedCode, status: 'approved' },
+        { referralCode: code.toLowerCase(), status: 'approved' }
       ]
     });
     
-    console.log('Ambassador search result:', ambassador ? 'Found' : 'Not found');
+    console.log('Direct match result:', directMatch ? `Found: ${directMatch.name}` : 'Not found');
+    
+    const ambassador = directMatch || await Ambassador.findOne({
+      $or: [
+        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' },
+        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' }
+      ]
+    });
+    
+    console.log('Ambassador search result:', ambassador ? `Found: ${ambassador.name}` : 'Not found');
     
     // If not found, inactive, or not approved, return invalid
     if (!ambassador) {
@@ -112,6 +125,15 @@ export async function POST(request: NextRequest) {
       return createResponse({ 
         valid: false, 
         message: 'Invalid or expired coupon code'
+      });
+    }
+    
+    // Check if ambassador is active (some may not have isActive field set)
+    if (ambassador.isActive === false) {
+      console.log(`Inactive ambassador code attempted: ${normalizedCode}`);
+      return createResponse({ 
+        valid: false, 
+        message: 'This coupon code is no longer active'
       });
     }
     

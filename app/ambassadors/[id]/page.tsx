@@ -598,48 +598,7 @@ export default function AmbassadorDetailsPage() {
                             </td>
                           </tr>
 
-                          {/* Referral Link Row */}
-                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td className="px-4 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-8 w-8">
-                                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                                    <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                  </div>
-                                </div>
-                                <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900 dark:text-white">Referral Link</div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">Direct store link with code</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="max-w-xs">
-                                <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
-                                  {ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}` || 'Not generated yet'}
-                                </code>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                              Pre-filled tracking link
-                            </td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() => navigator.clipboard.writeText(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}` || '')}
-                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                              >
-                                Copy
-                              </button>
-                              <button
-                                onClick={() => window.open(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`, '_blank')}
-                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                              >
-                                Visit
-                              </button>
-                            </td>
-                          </tr>
+
 
                           {/* Video Link Row (if exists) */}
                           {ambassador.productVideoLink && (
@@ -698,25 +657,204 @@ export default function AmbassadorDetailsPage() {
                             const allLinks = [
                               `Referral Code: ${ambassador.referralCode}`,
                               `Coupon Code: ${ambassador.couponCode || ambassador.referralCode}`,
-                              `Referral Link: ${ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`}`,
                               ambassador.productVideoLink ? `Video: ${ambassador.productVideoLink}` : null
                             ].filter(Boolean).join('\n');
                             navigator.clipboard.writeText(allLinks);
                           }}
                           className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
                         >
-                          📋 Copy All Links
+                          📋 Copy All Codes
                         </button>
-                        <button
-                          onClick={() => window.open(ambassador.referralLink || `https://elevee.netlify.app?ref=${ambassador.referralCode}`, '_blank')}
-                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
-                        >
-                          🚀 Test Store Link
-                        </button>
+                        {ambassador.productVideoLink && (
+                          <button
+                            onClick={() => window.open(ambassador.productVideoLink, '_blank')}
+                            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
+                          >
+                            🎥 Watch Video
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                   
+                  {/* 📤 AMBASSADOR SUBMITTED LINKS */}
+                  <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">
+                      📤 Links Submitted by Ambassador
+                    </h3>
+                    
+                    {(ambassador.productVideoLink || ambassador.application?.instagramHandle || ambassador.application?.tiktokHandle) ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <thead className="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Content Type
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Link/Handle
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Status
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {/* Product Video Link */}
+                            {ambassador.productVideoLink && (
+                              <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-8 w-8">
+                                      <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                        <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white">Product Video</div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                                        {ambassador.videoSubmissionDate ? formatDate(ambassador.videoSubmissionDate) : 'Recently submitted'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <div className="max-w-xs">
+                                    <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white break-all">
+                                      {ambassador.productVideoLink}
+                                    </code>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                    ✅ Submitted
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                  <button
+                                    onClick={() => navigator.clipboard.writeText(ambassador.productVideoLink || '')}
+                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                                  >
+                                    Copy
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(ambassador.productVideoLink, '_blank')}
+                                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                  >
+                                    Watch
+                                  </button>
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* Instagram Handle */}
+                            {ambassador.application?.instagramHandle && (
+                              <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-8 w-8">
+                                      <div className="h-8 w-8 rounded-full bg-pink-100 dark:bg-pink-900 flex items-center justify-center">
+                                        <svg className="h-4 w-4 text-pink-600 dark:text-pink-400" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.004 5.367 18.637.001 12.017.001zM12.017 7.754c2.313 0 4.188 1.875 4.188 4.188 0 2.313-1.875 4.188-4.188 4.188s-4.188-1.875-4.188-4.188c0-2.313 1.875-4.188 4.188-4.188zM12.017 2.138c3.758 0 6.804 3.046 6.804 6.804 0 3.758-3.046 6.804-6.804 6.804s-6.804-3.046-6.804-6.804c0-3.758 3.046-6.804 6.804-6.804z"/>
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white">Instagram</div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">Social media handle</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <code className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+                                    @{ambassador.application.instagramHandle}
+                                  </code>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                                    📱 Active
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                  <button
+                                    onClick={() => navigator.clipboard.writeText(`@${ambassador.application?.instagramHandle}` || '')}
+                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                                  >
+                                    Copy
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(`https://instagram.com/${ambassador.application?.instagramHandle}`, '_blank')}
+                                    className="text-pink-600 hover:text-pink-900 dark:text-pink-400 dark:hover:text-pink-300"
+                                  >
+                                    Visit
+                                  </button>
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* TikTok Handle */}
+                            {ambassador.application?.tiktokHandle && (
+                              <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-8 w-8">
+                                      <div className="h-8 w-8 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center">
+                                        <svg className="h-4 w-4 text-white dark:text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z"/>
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white">TikTok</div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">Social media handle</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <code className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+                                    @{ambassador.application.tiktokHandle}
+                                  </code>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                                    🎬 Active
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                  <button
+                                    onClick={() => navigator.clipboard.writeText(`@${ambassador.application?.tiktokHandle}` || '')}
+                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                                  >
+                                    Copy
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(`https://tiktok.com/@${ambassador.application?.tiktokHandle}`, '_blank')}
+                                    className="text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
+                                  >
+                                    Visit
+                                  </button>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No links submitted yet</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">This ambassador hasn't submitted any content links yet.</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Performance metrics - REMOVED conversion rate */}
                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">Performance Metrics</h3>

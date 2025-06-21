@@ -53,11 +53,10 @@ export async function POST(request: NextRequest) {
     const normalizedCode = code.trim().toUpperCase();
     
     // Try to find an ambassador with this coupon code (case-insensitive)
-    // Also check that ambassador is active (isActive: true)
     let ambassador = await Ambassador.findOne({
       $or: [
-        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true },
-        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved', isActive: true }
+        { couponCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' },
+        { referralCode: { $regex: new RegExp(`^${normalizedCode}$`, 'i') }, status: 'approved' }
       ]
     });
     

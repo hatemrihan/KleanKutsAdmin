@@ -181,8 +181,8 @@ export async function POST(request: NextRequest) {
       // Find ambassador with this coupon code
       const ambassador = await Ambassador.findOne({
         $or: [
-          { couponCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved', isActive: true },
-          { referralCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved', isActive: true }
+          { couponCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved' },
+          { referralCode: { $regex: new RegExp(`^${promocode.trim()}$`, 'i') }, status: 'approved' }
         ]
       });
 

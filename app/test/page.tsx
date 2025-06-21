@@ -837,7 +837,7 @@ export default function OrdersPage() {
                           </div>
                         </div>
 
-                        {/* Coupon info if available */}
+                        {/* 🎟️ COUPON CODE DISPLAY - PROMINENT */}
                         {(() => {
                           const couponCode = order.couponCode || 
                                             (order.promoCode && order.promoCode.code) || 
@@ -851,24 +851,40 @@ export default function OrdersPage() {
                                               (order.ambassador && order.ambassador.ambassadorId) || 
                                               undefined;
                           
-                          return couponCode ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded overflow-hidden">
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Coupon Applied:</div>
+                          // Show a placeholder if no coupon (for testing)
+                          if (!couponCode) {
+                            return (
+                              <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-dashed border-gray-300 dark:border-gray-600 overflow-hidden">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 italic">No coupon code used</div>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="bg-gradient-to-r from-green-50 to-purple-50 dark:from-green-900/20 dark:to-purple-900/20 p-3 rounded-lg border-l-4 border-green-400 dark:border-green-500 overflow-hidden">
+                              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                                🎟️ COUPON CODE APPLIED
+                              </div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full break-words 
+                                <span className={`px-3 py-1.5 inline-flex items-center text-sm font-bold rounded-lg break-words border-2 
                                   ${ambassadorId ? 
-                                    'bg-purple-100 dark:bg-purple-700 text-purple-800 dark:text-purple-200' : 
-                                    'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200'}`}>
-                                  {couponCode}
+                                    'bg-purple-100 dark:bg-purple-800 text-purple-900 dark:text-purple-100 border-purple-300 dark:border-purple-600' : 
+                                    'bg-green-100 dark:bg-green-800 text-green-900 dark:text-green-100 border-green-300 dark:border-green-600'}`}>
+                                  {couponCode.toUpperCase()}
                                 </span>
+                                {ambassadorId && (
+                                  <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full font-semibold">
+                                    🏆 AMBASSADOR
+                                  </span>
+                                )}
                                 {couponDiscount > 0 && (
-                                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                                    {couponDiscount}% discount
+                                  <span className="text-sm font-semibold text-green-700 dark:text-green-300 bg-green-200 dark:bg-green-800 px-2 py-1 rounded">
+                                    {couponDiscount}% OFF
                                   </span>
                                 )}
                               </div>
                             </div>
-                          ) : null;
+                          );
                         })()}
 
                         {/* Customer Notes if available */}

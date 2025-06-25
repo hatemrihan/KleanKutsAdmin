@@ -224,12 +224,46 @@ export async function POST(request: NextRequest) {
           }
         );
         
-        console.log('[ORDER CREATION] Updated ambassador stats:', {
+        console.log('[ORDER CREATION] ✅ AMBASSADOR STATS UPDATED:', {
           ambassadorId: ambassador._id,
-          sales: total,
+          ambassadorName: ambassador.name,
+          couponCode: promocode,
+          orderTotal: total,
           commission,
-          orders: 1
+          commissionRate: ambassador.commissionRate,
+          ordersCount: 1,
+          newTotalSales: total,
+          newTotalEarnings: commission,
+          timestamp: new Date().toISOString()
         });
+        
+        // 🔥 ADDITIONAL SAFETY: Call redeem API as backup tracking
+        try {
+          console.log('[ORDER CREATION] 🔄 Calling backup tracking via redeem API...');
+          
+          const redeemResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://eleveadmin.netlify.app'}/api/coupon/redeem`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: promocode,
+              orderId: `ORD-${Date.now()}`,
+              total: total,
+              subtotal: total * 0.8, // Assume 80% products, 20% shipping
+              shippingCost: total * 0.2,
+              discountAmount: couponDiscount,
+              customerEmail: shippingInfo.email || 'customer@example.com'
+            })
+          });
+          
+          if (redeemResponse.ok) {
+            console.log('[ORDER CREATION] ✅ Backup tracking successful');
+          } else {
+            console.log('[ORDER CREATION] ⚠️ Backup tracking failed, but primary tracking completed');
+          }
+        } catch (backupError) {
+          console.log('[ORDER CREATION] ⚠️ Backup tracking error:', backupError);
+          // Don't fail the order creation if backup fails
+        }
       } else {
         console.log('[ORDER CREATION] No valid ambassador found for coupon:', promocode);
       }

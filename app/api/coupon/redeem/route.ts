@@ -60,13 +60,28 @@ export async function POST(request: NextRequest) {
       ]
     });
     
-    // If not found, not approved, or not active, return error
+    // If not found or not approved, return error
     if (!ambassador) {
-      console.log(`[COUPON REDEEM API] Invalid or inactive ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
-      return responseWithCors({ error: 'Invalid or inactive ambassador code' }, 400, request);
+      console.log(`[COUPON REDEEM API] Invalid ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
+      return responseWithCors({ error: 'Invalid ambassador code' }, 400, request);
     }
     
-    console.log(`[COUPON REDEEM API] Valid ambassador code redeemed: ${normalizedCode}, ambassador: ${ambassador.name}, OrderID: ${orderId}`);
+    // Check if ambassador is explicitly inactive (some may not have isActive field)
+    if (ambassador.isActive === false) {
+      console.log(`[COUPON REDEEM API] Inactive ambassador code used in order: ${normalizedCode}, OrderID: ${orderId}`);
+      return responseWithCors({ error: 'Ambassador code is inactive' }, 400, request);
+    }
+    
+    console.log(`[COUPON REDEEM API] ✅ VALID AMBASSADOR FOUND:`, {
+      code: normalizedCode,
+      ambassadorName: ambassador.name,
+      ambassadorId: ambassador._id,
+      orderId: orderId,
+      commissionRate: ambassador.commissionRate,
+      discountPercent: ambassador.discountPercent,
+      status: ambassador.status,
+      isActive: ambassador.isActive
+    });
     
     // ✅ NEW COMMISSION CALCULATION: (subtotal - discountAmount) × rate%
     // Use new structure if available, fallback to old orderAmount for backward compatibility
